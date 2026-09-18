@@ -2,12 +2,6 @@ import "server-only";
 
 import { defaultAppConfig, appConfigSchema, type AppConfig } from "@/config/app.config";
 import { createClient } from "@/lib/supabase/server";
-import type { Json } from "@/types/database.types";
-
-interface FilaConfiguracion {
-  clave: string;
-  valor: Json;
-}
 
 /**
  * Combina los valores por defecto de `config/app.config.ts` con los
@@ -24,11 +18,7 @@ export async function resolverConfiguracion(): Promise<AppConfig> {
     return defaultAppConfig;
   }
 
-  // TODO(fase 4): una vez generados los tipos reales de la base
-  // (`npm run supabase:types`), este cast deja de ser necesario.
-  const filas = data as unknown as FilaConfiguracion[];
-
-  const overrides = Object.fromEntries(filas.map((fila) => [fila.clave, fila.valor]));
+  const overrides = Object.fromEntries(data.map((fila) => [fila.clave, fila.valor]));
   const combinado = deepMerge(defaultAppConfig as unknown as Record<string, unknown>, overrides);
 
   const resultado = appConfigSchema.safeParse(combinado);
