@@ -40,14 +40,14 @@ actual está en [`docs/diagnostico-excel.md`](docs/diagnostico-excel.md).
 
 ## Estado actual
 
-| Fase                       | Contenido                                                                                  | Estado                                                                                                               |
-| -------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| 1. Diagnóstico             | `docs/diagnostico-excel.md`, `scripts/analizar-excel.ts`                                   | ✅ Hecho (basado en diagnóstico preliminar; falta re-ejecutar con los archivos reales, ver `docs/fuentes/README.md`) |
-| 2. Arquitectura            | `docs/arquitectura.md`                                                                     | ✅ Hecho                                                                                                             |
-| 3. Estructura del proyecto | Next.js 15, Tailwind, shadcn/ui-style, Vitest, Playwright, ESLint, Prettier, CI            | ✅ Hecho                                                                                                             |
-| 4. Base de datos           | `supabase/migrations/`, RLS, índices, triggers, seeds                                      | ✅ Hecho (migraciones y seeds versionados; **no aplicadas** contra ningún proyecto Supabase real todavía)            |
-| 5. Autenticación y roles   | Supabase Auth, restricción `@grupolaar.com`, `perfil_usuario`                              | ⏳ Esquema de roles y RLS listos en migraciones; falta la UI de gestión de usuarios (fase 15)                        |
-| 6–16. Módulos funcionales  | Transportistas, Vehículos, Importador, Prefacturas, PDF, Correo, Dashboard, Reportes, etc. | ⏳ Pendiente                                                                                                         |
+| Fase                       | Contenido                                                                                  | Estado                                                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Diagnóstico             | `docs/diagnostico-excel.md`, `scripts/analizar-excel.ts`                                   | ✅ Hecho (basado en diagnóstico preliminar; falta re-ejecutar con los archivos reales, ver `docs/fuentes/README.md`)               |
+| 2. Arquitectura            | `docs/arquitectura.md`                                                                     | ✅ Hecho                                                                                                                           |
+| 3. Estructura del proyecto | Next.js 15, Tailwind, shadcn/ui-style, Vitest, Playwright, ESLint, Prettier, CI            | ✅ Hecho                                                                                                                           |
+| 4. Base de datos           | `supabase/migrations/`, RLS, índices, triggers, seeds                                      | ✅ Hecho (migraciones y seeds versionados; **no aplicadas** contra ningún proyecto Supabase real todavía)                          |
+| 5. Autenticación y roles   | Supabase Auth, restricción `@grupolaar.com`, `perfil_usuario`, `rol_actual()`              | ✅ Esquema, trigger de dominio, auto-creación de perfil y RLS por rol en migraciones; falta la UI de gestión de usuarios (fase 15) |
+| 6–16. Módulos funcionales  | Transportistas, Vehículos, Importador, Prefacturas, PDF, Correo, Dashboard, Reportes, etc. | ⏳ Pendiente                                                                                                                       |
 
 Cada fase, al completarse, se documenta con: qué se implementó, qué archivos
 se crearon, qué decisiones técnicas se tomaron, cómo probarlo y qué falta —
@@ -99,16 +99,38 @@ supabase db push
 Incluyen: catálogos, maestros, tablas de importación (staging), operación
 (ODT, prefacturas, descuentos), documentos y envíos, control/auditoría e
 histórico — con RLS activado en todas las tablas, índices (incluido
-`pg_trgm` para búsqueda por texto), triggers de auditoría y la secuencia de
-correlativo sin huecos bajo concurrencia. Ver el detalle de cada tabla en
+`pg_trgm` para búsqueda por texto), triggers de auditoría, la secuencia de
+correlativo sin huecos bajo concurrencia, los 4 buckets de Storage
+(`imports`, `prefacturas`, `archivo`, `brand`) con sus políticas, y las
+vistas `v_resumen_facturacion` / `v_total_facturacion` + la función
+`match_escaneo()` para el módulo de escaneo. Ver el detalle de cada tabla en
 los propios archivos de migración (comentados) y en
 [`docs/arquitectura.md`](docs/arquitectura.md#3-modelo-de-datos-entidad-relación-simplificado).
 
+**Modelo de roles (RLS).** `public.rol_actual()` resuelve el rol del usuario
+autenticado desde `perfil_usuario` (creado automáticamente al registrarse,
+con rol `CONSULTA` por defecto — un ADMIN debe promoverlo, ver
+`supabase/seed.sql`). Las políticas siguen un patrón consistente:
+`ADMIN` administra todo; `OPERADOR_TRANSPORTE` lee todo y escribe en las
+tablas operativas (importación, ODT, prefacturas, PDFs, correo, novedades,
+escaneo) pero no en catálogos/usuarios/configuración; `CONSULTA` solo lee.
+Un usuario sin perfil activo no cumple ninguna política (deny-by-default).
+
+Estas migraciones se han validado con un parser estático de SQL
+(`libpg-query`, la gramática real de Postgres) para descartar errores de
+sintaxis, pero **no se han ejecutado contra ninguna instancia real** — no
+hay un proyecto Supabase conectado a este entorno. Ejecuta `supabase db
+push` (o `supabase db reset` en local) contra un proyecto real antes de dar
+por buena la fase 4 en producción.
+
 ## Seeds y migración de maestros
 
-- `supabase/seed/` contiene los seeds de catálogos (períodos, rutas macro,
-  tipo de ruta → centro de costo, calendario, regionales) derivados de la
-  hoja `DATA LIST` del macro `.xlsb`, según el diagnóstico preliminar.
+- `supabase/seed.sql` contiene los seeds de catálogos (regionales, períodos
+  de ejemplo, tipo de ruta → centro de costo, calendario laborable, mapeo
+  de columnas). Se ejecuta automáticamente con `supabase db reset`. Lo
+  marcado como "EJEMPLO" en los comentarios del archivo debe reemplazarse
+  por datos reales una vez migrada la hoja `DATA LIST` del `.xlsb`; lo
+  marcado como "verificado" viene del diagnóstico preliminar confirmado.
 - `scripts/migrar-maestros.ts` (fase 7, pendiente) migrará las hojas
   `VEHICULOS` y `BD CORREOS` del `.xlsb` real a las tablas `vehiculo`,
   `transportista`, `conductor` y `contacto_correo`, con reporte de
