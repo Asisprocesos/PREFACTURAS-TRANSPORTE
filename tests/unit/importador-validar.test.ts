@@ -102,7 +102,12 @@ describe("validarFila — fecha fuera de corte", () => {
 
 describe("validarFila — tipo de ruta", () => {
   it("advierte con REEMPLAZO TRANSPORTE (sin centro de costo asignado)", () => {
-    const r = validarFila(1, { ...filaValidaBase, tipo_ruta: "REEMPLAZO TRANSPORTE" }, contextoBase(), new Set());
+    const r = validarFila(
+      1,
+      { ...filaValidaBase, tipo_ruta: "REEMPLAZO TRANSPORTE" },
+      contextoBase(),
+      new Set(),
+    );
     expect(r.advertencias.some((a) => a.includes("por revisar"))).toBe(true);
   });
 });

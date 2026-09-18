@@ -36,7 +36,10 @@ const TAMANO_PAGINA = 30;
  * OFFSET creciente se vuelve cada vez más costoso. El cursor codifica
  * (fecha_creacion, id) de la última fila de la página anterior.
  */
-export async function buscarOdt(filtros: FiltrosBuscadorOdt, cursor?: string | null): Promise<ResultadoBuscadorOdt> {
+export async function buscarOdt(
+  filtros: FiltrosBuscadorOdt,
+  cursor?: string | null,
+): Promise<ResultadoBuscadorOdt> {
   const supabase = await createClient();
 
   let vehiculoIds: string[] | null = null;

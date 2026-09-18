@@ -90,7 +90,9 @@ export default async function DetalleVehiculoPage({ params }: { params: Promise<
               {historial.map((h) => (
                 <li key={h.id} className="border-b pb-2 last:border-0">
                   <span className="font-medium">{ETIQUETA_ACCION[h.accion] ?? h.accion}</span>
-                  <span className="ml-2 text-muted-foreground">{new Date(h.fecha).toLocaleString("es-EC")}</span>
+                  <span className="ml-2 text-muted-foreground">
+                    {new Date(h.fecha).toLocaleString("es-EC")}
+                  </span>
                 </li>
               ))}
             </ul>

@@ -156,9 +156,7 @@ function procesarVehiculos(wb: XLSX.WorkBook, conflictos: Conflicto[]) {
 
   filasCrudas.forEach((fila, i) => {
     const numeroFila = i + 2; // +1 por encabezado, +1 por índice base 1
-    const placa = valorPorIndice(fila, mapa.placa)
-      .toUpperCase()
-      .replace(/[-\s]/g, "");
+    const placa = valorPorIndice(fila, mapa.placa).toUpperCase().replace(/[-\s]/g, "");
     if (!placa) {
       conflictos.push({ hoja: "VEHICULOS", fila: numeroFila, motivo: "Fila sin placa, se omite." });
       return;
@@ -167,10 +165,18 @@ function procesarVehiculos(wb: XLSX.WorkBook, conflictos: Conflicto[]) {
     const ruc = valorPorIndice(fila, mapa.ruc);
     const contratista = valorPorIndice(fila, mapa.contratista);
     if (ruc && !contratista) {
-      conflictos.push({ hoja: "VEHICULOS", fila: numeroFila, motivo: `Placa ${placa}: RUC sin razón social.` });
+      conflictos.push({
+        hoja: "VEHICULOS",
+        fila: numeroFila,
+        motivo: `Placa ${placa}: RUC sin razón social.`,
+      });
     }
     if (contratista && !ruc) {
-      conflictos.push({ hoja: "VEHICULOS", fila: numeroFila, motivo: `Placa ${placa}: razón social sin RUC, no se puede migrar el transportista.` });
+      conflictos.push({
+        hoja: "VEHICULOS",
+        fila: numeroFila,
+        motivo: `Placa ${placa}: razón social sin RUC, no se puede migrar el transportista.`,
+      });
     }
     if (ruc && contratista && !transportistas.has(ruc)) {
       transportistas.set(ruc, {
@@ -218,7 +224,11 @@ function procesarCorreos(wb: XLSX.WorkBook, conflictos: Conflicto[]): CorreoMigr
   const correos: CorreoMigrado[] = [];
 
   if (!hoja) {
-    conflictos.push({ hoja: "BD CORREOS", fila: 0, motivo: "No se encontró la hoja BD CORREOS en el libro." });
+    conflictos.push({
+      hoja: "BD CORREOS",
+      fila: 0,
+      motivo: "No se encontró la hoja BD CORREOS en el libro.",
+    });
     return correos;
   }
 
@@ -232,15 +242,17 @@ function procesarCorreos(wb: XLSX.WorkBook, conflictos: Conflicto[]): CorreoMigr
 
   filasCrudas.forEach((fila, i) => {
     const numeroFila = i + 2;
-    const placa = valorPorIndice(fila, mapa.placa)
-      .toUpperCase()
-      .replace(/[-\s]/g, "");
+    const placa = valorPorIndice(fila, mapa.placa).toUpperCase().replace(/[-\s]/g, "");
     const estado = valorPorIndice(fila, mapa.estado).toUpperCase();
     const crudos = valorPorIndice(fila, mapa.correos);
 
     if (!placa) return;
     if (estado.includes("NO TIENE") || !crudos) {
-      conflictos.push({ hoja: "BD CORREOS", fila: numeroFila, motivo: `Placa ${placa}: sin correo ("${estado}").` });
+      conflictos.push({
+        hoja: "BD CORREOS",
+        fila: numeroFila,
+        motivo: `Placa ${placa}: sin correo ("${estado}").`,
+      });
       return;
     }
 
@@ -248,7 +260,11 @@ function procesarCorreos(wb: XLSX.WorkBook, conflictos: Conflicto[]): CorreoMigr
       const email = emailCrudo.trim().toLowerCase();
       if (!email) continue;
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-        conflictos.push({ hoja: "BD CORREOS", fila: numeroFila, motivo: `Placa ${placa}: correo con formato inválido "${email}".` });
+        conflictos.push({
+          hoja: "BD CORREOS",
+          fila: numeroFila,
+          motivo: `Placa ${placa}: correo con formato inválido "${email}".`,
+        });
         continue;
       }
       const clave = `${placa}:${email}`;
@@ -313,7 +329,10 @@ async function aplicarEnSupabase(
   for (const t of transportistas.values()) {
     const { error } = await supabase
       .from("transportista")
-      .upsert({ ruc: t.ruc, razon_social: t.razonSocial, tipo_transportista: t.tipoTransportista }, { onConflict: "ruc" });
+      .upsert(
+        { ruc: t.ruc, razon_social: t.razonSocial, tipo_transportista: t.tipoTransportista },
+        { onConflict: "ruc" },
+      );
     if (error) console.error(`  Error transportista RUC ${t.ruc}: ${error.message}`);
   }
 
@@ -357,7 +376,10 @@ async function aplicarEnSupabase(
     if (!vehiculoId) continue;
     const { error } = await supabase
       .from("contacto_correo")
-      .upsert({ vehiculo_id: vehiculoId, email: c.email, tipo: "PRINCIPAL" }, { onConflict: "vehiculo_id,email" });
+      .upsert(
+        { vehiculo_id: vehiculoId, email: c.email, tipo: "PRINCIPAL" },
+        { onConflict: "vehiculo_id,email" },
+      );
     if (error) console.error(`  Error correo ${c.email} (${c.placa}): ${error.message}`);
   }
 }
@@ -385,7 +407,9 @@ async function main() {
   generarReporte(vehiculos, transportistas, correos, conflictos, APLICAR);
   console.log(`Reporte escrito en ${REPORTE}`);
   if (!APLICAR) {
-    console.log("Dry-run: no se escribió nada en Supabase. Vuelve a correr con --aplicar para migrar de verdad.");
+    console.log(
+      "Dry-run: no se escribió nada en Supabase. Vuelve a correr con --aplicar para migrar de verdad.",
+    );
   }
 }
 

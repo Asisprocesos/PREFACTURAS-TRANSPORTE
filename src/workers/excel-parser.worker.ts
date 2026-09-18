@@ -10,12 +10,17 @@ import * as XLSX from "xlsx";
  */
 
 export type MensajeEntrada =
-  | { tipo: "analizar"; archivo: File }
-  | { tipo: "previsualizar"; hoja: string; filas?: number };
+  { tipo: "analizar"; archivo: File } | { tipo: "previsualizar"; hoja: string; filas?: number };
 
 export type MensajeSalida =
   | { tipo: "hojas"; hojas: { nombre: string; filas: number }[] }
-  | { tipo: "previsualizacion"; hoja: string; filaEncabezado: number; encabezados: string[]; filas: unknown[][] }
+  | {
+      tipo: "previsualizacion";
+      hoja: string;
+      filaEncabezado: number;
+      encabezados: string[];
+      filas: unknown[][];
+    }
   | { tipo: "error"; mensaje: string };
 
 let libroActual: XLSX.WorkBook | null = null;
@@ -42,7 +47,9 @@ self.onmessage = async (event: MessageEvent<MensajeEntrada>) => {
 
       const hojas = libroActual.SheetNames.map((nombre) => {
         const hoja = libroActual!.Sheets[nombre];
-        const filas: unknown[][] = hoja ? XLSX.utils.sheet_to_json(hoja, { header: 1, raw: false, defval: "" }) : [];
+        const filas: unknown[][] = hoja
+          ? XLSX.utils.sheet_to_json(hoja, { header: 1, raw: false, defval: "" })
+          : [];
         return { nombre, filas: Math.max(0, filas.length - 1) };
       });
 
@@ -56,18 +63,31 @@ self.onmessage = async (event: MessageEvent<MensajeEntrada>) => {
       const hoja = libroActual.Sheets[mensaje.hoja];
       if (!hoja) throw new Error(`La hoja "${mensaje.hoja}" no existe.`);
 
-      const todasLasFilas: unknown[][] = XLSX.utils.sheet_to_json(hoja, { header: 1, raw: false, defval: "" });
+      const todasLasFilas: unknown[][] = XLSX.utils.sheet_to_json(hoja, {
+        header: 1,
+        raw: false,
+        defval: "",
+      });
       const filaEncabezado = detectarFilaEncabezado(todasLasFilas);
       const encabezados = (todasLasFilas[filaEncabezado] ?? []).map((h) => String(h ?? "").trim());
       const limite = mensaje.filas ?? 50;
       const filas = todasLasFilas.slice(filaEncabezado + 1, filaEncabezado + 1 + limite);
 
-      const respuesta: MensajeSalida = { tipo: "previsualizacion", hoja: mensaje.hoja, filaEncabezado, encabezados, filas };
+      const respuesta: MensajeSalida = {
+        tipo: "previsualizacion",
+        hoja: mensaje.hoja,
+        filaEncabezado,
+        encabezados,
+        filas,
+      };
       self.postMessage(respuesta);
       return;
     }
   } catch (err) {
-    const respuesta: MensajeSalida = { tipo: "error", mensaje: err instanceof Error ? err.message : "Error desconocido." };
+    const respuesta: MensajeSalida = {
+      tipo: "error",
+      mensaje: err instanceof Error ? err.message : "Error desconocido.",
+    };
     self.postMessage(respuesta);
   }
 };

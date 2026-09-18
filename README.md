@@ -59,14 +59,15 @@ actual está en [`docs/diagnostico-excel.md`](docs/diagnostico-excel.md).
 | 10. Generador de PDF       | `src/pdf/templates/prefactura/`, `POST/GET /api/prefacturas/:id/pdf`                                                                        | ✅ Hecho, generación real verificada fuera del proyecto (ver sección Generación de PDF)                              |
 | 11. Repositorio documental | `/repositorio` (filtros, ver/descargar con auditoría, historial de versiones, reenviar)                                                     | ✅ Hecho                                                                                                             |
 | 12. Sistema de correo      | `EmailProvider`/SMTP, envío individual y masivo, `/api/jobs/email`, pg_cron, progreso en tiempo real                                        | ✅ Hecho, ver sección Correo y sus limitaciones abajo                                                                |
-| 13. Dashboard              | `/dashboard` (indicadores reales, avance de envío, gráficos por centro de costo/regional/top placas)                                       | ✅ Hecho, RPC `dashboard_*` con `security invoker` (respeta RLS por rol)                                             |
-| 13. Buscador dinámico      | `/buscador` (ODT por guía, placa, transportista, período, estado, fecha; paginación por cursor)                                            | ✅ Hecho                                                                                                             |
-| 13. Reportes               | `/reportes` (prefacturas, enviadas, pendientes, errores de envío, resumen por centro de costo, rezagos) exportables a Excel                | ✅ Hecho; "costo por pieza" fuera de alcance (el modelo no tiene datos de pieza), ver limitaciones abajo             |
+| 13. Dashboard              | `/dashboard` (indicadores reales, avance de envío, gráficos por centro de costo/regional/top placas)                                        | ✅ Hecho, RPC `dashboard_*` con `security invoker` (respeta RLS por rol)                                             |
+| 13. Buscador dinámico      | `/buscador` (ODT por guía, placa, transportista, período, estado, fecha; paginación por cursor)                                             | ✅ Hecho                                                                                                             |
+| 13. Reportes               | `/reportes` (prefacturas, enviadas, pendientes, errores de envío, resumen por centro de costo, rezagos) exportables a Excel                 | ✅ Hecho; "costo por pieza" fuera de alcance (el modelo no tiene datos de pieza), ver limitaciones abajo             |
 | 14. Log de ejecuciones     | `/historial` (estado por ODT en importación/validación/PDF/correo)                                                                          | ✅ Hecho; importación ya lo poblaba, se agregó el registro por ODT en generación de PDF y envío de correo            |
 | 14. Cierre de período      | `/configuracion` → "Cerrar período" (solo ADMIN, bloquea si hay novedades ERROR abiertas)                                                   | ✅ Hecho                                                                                                             |
 | 14. Archivo de período     | `/configuracion` → "Archivar" (snapshot .xlsx en bucket `archivo` + `odt_indice_historico`) y "Restaurar"                                   | ✅ Hecho; no borra `odt`/`prefactura` (queda como mejora incremental), ver limitaciones abajo                        |
-| 14. Duplicados/rezagos     | Resolución vía Control por placa (`resolverNovedadAction`, texto libre) y reporte de Rezagos                                               | ✅ Hecho tal como está en fase 9/13; sin un enum dedicado por alternativa, ver limitaciones abajo                    |
-| 15–16. Módulos restantes   | Pruebas E2E (Playwright), despliegue                                                                                                        | ⏳ Pendiente                                                                                                         |
+| 14. Duplicados/rezagos     | Resolución vía Control por placa (`resolverNovedadAction`, texto libre) y reporte de Rezagos                                                | ✅ Hecho tal como está en fase 9/13; sin un enum dedicado por alternativa, ver limitaciones abajo                    |
+| 15. Pruebas                | `tests/unit/*` (38 tests), `tests/e2e/*` (16 tests Playwright), `scripts/verificar-migraciones.ts`, CI                                      | ✅ Hecho, ver sección Pruebas abajo (qué corre de verdad en CI y qué sigue sin poder probarse en este entorno)       |
+| 16. Despliegue             | Guía de despliegue a Vercel/Supabase                                                                                                        | ⏳ Pendiente (la sección Despliegue de este README ya cubre lo esencial; falta profundizarla como fase dedicada)     |
 
 Cada fase, al completarse, se documenta con: qué se implementó, qué archivos
 se crearon, qué decisiones técnicas se tomaron, cómo probarlo y qué falta —
@@ -262,15 +263,50 @@ npm run dev
 ```bash
 npm test            # Vitest (unitarias/integración)
 npm run test:watch  # Vitest en modo watch
-npm run test:e2e     # Playwright (requiere `npm run dev` o webServer automático)
+npm run test:e2e    # Playwright (levanta su propio webServer)
+npm run db:lint     # Verifica que todas las migraciones parseen como SQL válido (sin ejecutar nada)
 ```
 
-Las pruebas de Vitest actuales cubren las funciones puras ya implementadas:
-normalización de placa (`src/lib/validation/placa.ts`), limpieza de texto
-oculto y parseo de fecha `dd/mm/aaaa` (`src/lib/validation/texto.ts`), y
-asignación de período 13→12 (`src/lib/validation/periodo.ts`). El resto del
-plan de pruebas (importación, correlativo concurrente, PDF, correo, RLS,
-etc.) se agrega junto con cada módulo funcional.
+**Vitest (38 tests, `tests/unit/`):** funciones puras — normalización de
+placa, limpieza de texto oculto y parseo de fecha `dd/mm/aaaa`, asignación
+de período 13→12, validación de filas del importador (duplicados, placa
+fuera de Vehículos, fecha fuera de rango, etc.), interpolación de
+plantillas de correo, esquema Zod de transportista y el armado de filas de
+los reportes Excel. No dependen de una base de datos: son las reglas de
+negocio aisladas de la capa de persistencia.
+
+**Playwright (16 tests, `tests/e2e/`):** a diferencia de las piezas de
+navegador de otras fases (Web Worker, escaneo por cámara, Realtime), estos
+sí corren de verdad en este entorno — hay un Chromium preinstalado — y se
+verificaron con `npx playwright test` antes de commitear:
+
+- `login.spec.ts`: `/dashboard` sin sesión redirige a `/login`, el
+  formulario de acceso se ve, y un correo con formato inválido no llega a
+  enviarse (validación nativa del navegador, sin tocar el Server Action).
+- `rutas-protegidas.spec.ts`: cada módulo entregado (dashboard, buscador,
+  prefacturas, importar, control por placa, validación ODT, transportistas,
+  vehículos, repositorio, historial, reportes, usuarios, configuración)
+  redirige a `/login` sin sesión.
+
+Ninguno de estos tests requiere un proyecto Supabase real: verifican
+middleware y renderizado, no flujos autenticados contra datos reales. El
+config (`playwright.config.ts`) sirve `next dev` en local y, en CI
+(`CI=true`), el build de producción (`next build && next start`) — se
+detectó que `next dev` compilando rutas al vuelo bajo tests en paralelo
+producía flakes reales en este entorno; con el build de producción los 16
+tests pasan de forma consistente.
+
+**`npm run db:lint`:** parsea las 23 migraciones con la gramática real de
+Postgres (`libpg-query`) sin conectarse a ninguna base de datos, para
+atajar errores de sintaxis SQL antes de aplicarlas contra un Supabase real.
+
+**Lo que sigue sin poder probarse en este entorno** (requiere un proyecto
+Supabase real o un navegador con hardware, no solo el sandbox): flujos
+autenticados end-to-end (importar → validar → generar prefacturas → PDF →
+enviar), políticas de RLS ejecutándose de verdad, el Web Worker del
+importador, el escaneo por cámara, Realtime, y el envío de correo/pg_cron
+contra servicios reales. Ver "Limitaciones conocidas" para el detalle de
+cada uno.
 
 ## Generación de PDF
 
@@ -421,11 +457,12 @@ Mitigaciones aplicadas mientras tanto:
 
 ## Solución de problemas
 
-| Problema                                       | Causa probable                                                                                          | Solución                                                                                                                                                                                     |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SMTP rechaza la conexión o el puerto           | Firewall de Zimbra o puerto equivocado                                                                  | Confirmar con TI si es `587` (STARTTLS, `SMTP_SECURE=false`) o `465` (SSL, `SMTP_SECURE=true`). Nunca probar desde una Supabase Edge Function: usar un Route Handler (`runtime = "nodejs"`). |
-| Correos llegan a spam                          | Falta SPF/DKIM/DMARC para `grupolaar.com`, o `EMAIL_FROM` no coincide con el dominio autenticado        | Pedir a TI que valide los registros DNS; considerar un proveedor transaccional (`EMAIL_PROVIDER=brevo/resend/ses`) como plan B.                                                              |
-| Error 413 / límite de Vercel al subir el Excel | El archivo se está enviando por el body de la API en vez de subirse directo a Storage                   | Verificar que la subida use la URL firmada (`createSignedUploadUrl`), nunca un `POST` con el archivo en el body.                                                                             |
-| "Storage lleno" o cuota excedida               | Bucket sin política de archivo o PDFs duplicados sin versionar                                          | Revisar `documento_pdf.estado = REEMPLAZADO` y la política de archivo de períodos; no se borran versiones, se archivan.                                                                      |
-| "Período no encontrado" al importar            | El corte cae en un período que no existe en la tabla `periodo` (equivalente a que falte en `DATA LIST`) | Crear el período desde Configuración → Catálogos antes de reintentar la importación.                                                                                                         |
-| "Placa inválida" persistente                   | La placa no cumple `^[A-Z]{3}[0-9]{4}$` ni se pudo extraer de `Chofer` con el patrón configurado        | Corregir manualmente la fila en el asistente de importación (paso Validar) o ajustar el patrón en Configuración si el formato de placas cambió.                                              |
+| Problema                                                                | Causa probable                                                                                                | Solución                                                                                                                                                                                                             |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SMTP rechaza la conexión o el puerto                                    | Firewall de Zimbra o puerto equivocado                                                                        | Confirmar con TI si es `587` (STARTTLS, `SMTP_SECURE=false`) o `465` (SSL, `SMTP_SECURE=true`). Nunca probar desde una Supabase Edge Function: usar un Route Handler (`runtime = "nodejs"`).                         |
+| Correos llegan a spam                                                   | Falta SPF/DKIM/DMARC para `grupolaar.com`, o `EMAIL_FROM` no coincide con el dominio autenticado              | Pedir a TI que valide los registros DNS; considerar un proveedor transaccional (`EMAIL_PROVIDER=brevo/resend/ses`) como plan B.                                                                                      |
+| Error 413 / límite de Vercel al subir el Excel                          | El archivo se está enviando por el body de la API en vez de subirse directo a Storage                         | Verificar que la subida use la URL firmada (`createSignedUploadUrl`), nunca un `POST` con el archivo en el body.                                                                                                     |
+| "Storage lleno" o cuota excedida                                        | Bucket sin política de archivo o PDFs duplicados sin versionar                                                | Revisar `documento_pdf.estado = REEMPLAZADO` y la política de archivo de períodos; no se borran versiones, se archivan.                                                                                              |
+| "Período no encontrado" al importar                                     | El corte cae en un período que no existe en la tabla `periodo` (equivalente a que falte en `DATA LIST`)       | Crear el período desde Configuración → Catálogos antes de reintentar la importación.                                                                                                                                 |
+| "Placa inválida" persistente                                            | La placa no cumple `^[A-Z]{3}[0-9]{4}$` ni se pudo extraer de `Chofer` con el patrón configurado              | Corregir manualmente la fila en el asistente de importación (paso Validar) o ajustar el patrón en Configuración si el formato de placas cambió.                                                                      |
+| Playwright: `Executable doesn't exist at .../chromium_headless_shell-…` | El Chromium ya preinstalado en el entorno no coincide con la versión que `@playwright/test` intenta descargar | Definir `PLAYWRIGHT_CHROMIUM_PATH` apuntando al binario ya instalado (por ejemplo `/opt/pw-browsers/chromium`); `playwright.config.ts` lo usa si está presente, y si no, deja que Playwright use su propia descarga. |

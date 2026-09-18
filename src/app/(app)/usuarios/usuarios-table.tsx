@@ -3,11 +3,7 @@
 import { useActionState, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  cambiarActivoUsuario,
-  cambiarRolUsuario,
-  type EstadoAccionUsuario,
-} from "@/lib/usuarios/actions";
+import { cambiarActivoUsuario, cambiarRolUsuario, type EstadoAccionUsuario } from "@/lib/usuarios/actions";
 import type { UsuarioConPerfil } from "@/lib/usuarios/queries";
 
 const ROLES = ["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"] as const;

@@ -68,7 +68,9 @@ export function TablaHistorial({
                   <td className="px-4 py-3">{f.guia ?? "—"}</td>
                   <td className="px-4 py-3">{ETIQUETA_ETAPA[f.etapa] ?? f.etapa}</td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ESTILO_ESTADO[f.estado] ?? ""}`}>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${ESTILO_ESTADO[f.estado] ?? ""}`}
+                    >
                       {f.estado}
                     </span>
                   </td>

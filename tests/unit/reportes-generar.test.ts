@@ -106,7 +106,9 @@ describe("filasRezagos", () => {
   });
 
   it("usa el texto de la resolución cuando ya fue resuelta", () => {
-    const filas = filasRezagos([novedad({ estado: "RESUELTA", resolucion: "Se dejó como rezago.", facturado: true })]);
+    const filas = filasRezagos([
+      novedad({ estado: "RESUELTA", resolucion: "Se dejó como rezago.", facturado: true }),
+    ]);
     expect(filas[0]?.["Diferencias"]).toBe("Se dejó como rezago.");
     expect(filas[0]?.["FACTURADO"]).toBe("Sí");
   });

@@ -12,7 +12,8 @@ const REPORTES = [
   {
     tipo: "prefacturas",
     titulo: "Prefacturas del período",
-    descripcion: "Todas las prefacturas del período (o de un transportista), con el total facturado por fila.",
+    descripcion:
+      "Todas las prefacturas del período (o de un transportista), con el total facturado por fila.",
     usaTransportista: true,
   },
   {
@@ -24,7 +25,8 @@ const REPORTES = [
   {
     tipo: "pendientes",
     titulo: "Prefacturas pendientes de envío",
-    descripcion: "Prefacturas que todavía no llegan a estado Enviada (borrador, con novedades, lista, PDF, en cola).",
+    descripcion:
+      "Prefacturas que todavía no llegan a estado Enviada (borrador, con novedades, lista, PDF, en cola).",
     usaTransportista: true,
   },
   {

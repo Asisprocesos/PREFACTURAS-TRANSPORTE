@@ -7,7 +7,10 @@ export type Periodo = Database["public"]["Tables"]["periodo"]["Row"];
 
 export async function listarPeriodosAdmin(): Promise<Periodo[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("periodo").select("*").order("fecha_inicio", { ascending: false });
+  const { data, error } = await supabase
+    .from("periodo")
+    .select("*")
+    .order("fecha_inicio", { ascending: false });
   if (error) throw error;
   return data ?? [];
 }

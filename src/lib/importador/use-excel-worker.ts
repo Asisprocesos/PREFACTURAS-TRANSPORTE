@@ -46,13 +46,17 @@ export function useExcelWorker() {
   }, []);
 
   const analizar = useCallback(
-    (archivo: File) => enviar<Extract<MensajeSalida, { tipo: "hojas" }>>({ tipo: "analizar", archivo }, "hojas"),
+    (archivo: File) =>
+      enviar<Extract<MensajeSalida, { tipo: "hojas" }>>({ tipo: "analizar", archivo }, "hojas"),
     [enviar],
   );
 
   const previsualizar = useCallback(
     (hoja: string) =>
-      enviar<Extract<MensajeSalida, { tipo: "previsualizacion" }>>({ tipo: "previsualizar", hoja }, "previsualizacion"),
+      enviar<Extract<MensajeSalida, { tipo: "previsualizacion" }>>(
+        { tipo: "previsualizar", hoja },
+        "previsualizacion",
+      ),
     [enviar],
   );
 

@@ -36,7 +36,9 @@ export default async function DashboardPage({
   ]);
 
   const novedadesAbiertas =
-    indicadores.novedadesAbiertasError + indicadores.novedadesAbiertasAdvertencia + indicadores.novedadesAbiertasInfo;
+    indicadores.novedadesAbiertasError +
+    indicadores.novedadesAbiertasAdvertencia +
+    indicadores.novedadesAbiertasInfo;
 
   const indicadoresPrincipales = [
     { titulo: "Total de prefacturas", valor: formatoEntero.format(indicadores.totalPrefacturas) },
@@ -91,8 +93,8 @@ export default async function DashboardPage({
 
           {indicadores.novedadesAbiertasError > 0 ? (
             <p className="text-sm text-muted-foreground">
-              Hay {formatoEntero.format(indicadores.novedadesAbiertasError)} novedad(es) de severidad error sin
-              resolver.{" "}
+              Hay {formatoEntero.format(indicadores.novedadesAbiertasError)} novedad(es) de severidad error
+              sin resolver.{" "}
               <Link href="/control-placa" className="text-primary hover:underline">
                 Ver en Control por placa
               </Link>

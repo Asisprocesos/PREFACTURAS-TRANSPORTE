@@ -7,7 +7,9 @@ const formatoFecha = new Intl.DateTimeFormat("es-EC", { dateStyle: "medium" });
 
 export function ResultadosBuscador({ filas }: { filas: OdtConRelaciones[] }) {
   if (filas.length === 0) {
-    return <p className="py-10 text-center text-sm text-muted-foreground">Sin resultados para estos filtros.</p>;
+    return (
+      <p className="py-10 text-center text-sm text-muted-foreground">Sin resultados para estos filtros.</p>
+    );
   }
 
   return (
@@ -37,7 +39,10 @@ export function ResultadosBuscador({ filas }: { filas: OdtConRelaciones[] }) {
               </td>
               <td className="px-4 py-3">
                 {odt.placa_normalizada ? (
-                  <Link href={`/control-placa/${odt.placa_normalizada}`} className="text-primary hover:underline">
+                  <Link
+                    href={`/control-placa/${odt.placa_normalizada}`}
+                    className="text-primary hover:underline"
+                  >
                     {odt.placa_normalizada}
                   </Link>
                 ) : (

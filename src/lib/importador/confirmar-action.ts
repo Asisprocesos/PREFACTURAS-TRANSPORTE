@@ -23,7 +23,11 @@ export async function confirmarImportacionAction(importacionId: string): Promise
   revalidatePath(`/importar/${importacionId}`);
   revalidatePath("/importar");
   const resumen = data?.[0];
-  return { ok: true, odtInsertadas: resumen?.odt_insertadas, novedadesGeneradas: resumen?.novedades_generadas };
+  return {
+    ok: true,
+    odtInsertadas: resumen?.odt_insertadas,
+    novedadesGeneradas: resumen?.novedades_generadas,
+  };
 }
 
 export async function revertirImportacionAction(importacionId: string): Promise<ResultadoAccion> {

@@ -68,7 +68,9 @@ export interface PuntoPrefacturasPorEstado {
   cantidad: number;
 }
 
-export async function obtenerPrefacturasPorEstado(periodoId: string | null): Promise<PuntoPrefacturasPorEstado[]> {
+export async function obtenerPrefacturasPorEstado(
+  periodoId: string | null,
+): Promise<PuntoPrefacturasPorEstado[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("dashboard_prefacturas_por_estado", { p_periodo_id: periodoId });
   if (error) throw error;
@@ -81,7 +83,10 @@ export interface PuntoMonto {
   cantidad: number;
 }
 
-export async function obtenerMontoPorCentroCosto(periodoId: string | null, limite = 12): Promise<PuntoMonto[]> {
+export async function obtenerMontoPorCentroCosto(
+  periodoId: string | null,
+  limite = 12,
+): Promise<PuntoMonto[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("dashboard_monto_por_centro_costo", {
     p_periodo_id: periodoId,

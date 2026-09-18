@@ -34,10 +34,7 @@ export type EstadoLogEjecucion = "OK" | "ADVERTENCIA" | "ERROR";
 export type TipoContactoCorreo = "PRINCIPAL" | "ADICIONAL";
 export type MacroNegocio = "CORE" | "TEMU";
 export type ResultadoMatchEscaneo =
-  | "ESCANEADA_Y_CARGADA"
-  | "ESCANEADA_NO_CARGADA"
-  | "CARGADA_SIN_FISICA"
-  | "OTRA_PLACA_O_PERIODO";
+  "ESCANEADA_Y_CARGADA" | "ESCANEADA_NO_CARGADA" | "CARGADA_SIN_FISICA" | "OTRA_PLACA_O_PERIODO";
 
 // `type`, no `interface`: TypeScript solo infiere una firma de índice
 // implícita compatible con `Record<string, unknown>` para alias de tipo

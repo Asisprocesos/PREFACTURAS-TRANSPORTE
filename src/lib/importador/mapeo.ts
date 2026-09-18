@@ -6,11 +6,7 @@ export interface AliasMapeo {
 }
 
 function normalizar(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .trim();
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 }
 
 /**
@@ -35,7 +31,10 @@ export function sugerirMapeo(
   const resultado: Record<string, CampoOdt | null> = {};
   for (const encabezado of encabezados) {
     const norm = normalizar(encabezado);
-    resultado[encabezado] = aliasPorEncabezado.get(norm) ?? (CAMPOS_ODT as readonly string[]).find((c) => normalizar(c) === norm) as CampoOdt | undefined ?? null;
+    resultado[encabezado] =
+      aliasPorEncabezado.get(norm) ??
+      ((CAMPOS_ODT as readonly string[]).find((c) => normalizar(c) === norm) as CampoOdt | undefined) ??
+      null;
   }
   return resultado;
 }

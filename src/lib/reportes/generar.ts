@@ -29,7 +29,10 @@ export function filasPrefacturas(prefacturas: PrefacturaReporte[]): FilaExcel[] 
   }));
 }
 
-export function filasErroresEnvio(prefacturas: PrefacturaReporte[], errores: Map<string, string>): FilaExcel[] {
+export function filasErroresEnvio(
+  prefacturas: PrefacturaReporte[],
+  errores: Map<string, string>,
+): FilaExcel[] {
   return prefacturas
     .filter((p) => p.estado === "ERROR_ENVIO")
     .map((p) => ({

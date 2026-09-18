@@ -16,7 +16,12 @@ interface CorreosContactoProps {
 }
 
 /** Gestión de correos de contacto, reutilizada por Transportistas y Vehículos. */
-export function CorreosContacto({ correos, soloLectura, agregarAction, eliminarAction }: CorreosContactoProps) {
+export function CorreosContacto({
+  correos,
+  soloLectura,
+  agregarAction,
+  eliminarAction,
+}: CorreosContactoProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [tipo, setTipo] = useState<"PRINCIPAL" | "ADICIONAL">("ADICIONAL");

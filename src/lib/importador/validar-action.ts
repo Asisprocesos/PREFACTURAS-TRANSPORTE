@@ -58,7 +58,9 @@ export async function validarImportacionAction(datos: {
   const todasLasFilas: unknown[][] = XLSX.utils.sheet_to_json(hoja, { header: 1, raw: false, defval: "" });
   const filaEncabezado = detectarFilaEncabezado(todasLasFilas);
   const encabezados = (todasLasFilas[filaEncabezado] ?? []).map((h) => String(h ?? "").trim());
-  const cuerpo = todasLasFilas.slice(filaEncabezado + 1).filter((f) => f.some((c) => String(c ?? "").trim() !== ""));
+  const cuerpo = todasLasFilas
+    .slice(filaEncabezado + 1)
+    .filter((f) => f.some((c) => String(c ?? "").trim() !== ""));
 
   const filasCrudas = cuerpo.map((fila) => {
     const obj: Record<string, unknown> = {};
@@ -77,7 +79,10 @@ export async function validarImportacionAction(datos: {
     supabase.from("vehiculo").select("placa, contacto_correo(id)").is("deleted_at", null),
     supabase.from("tipo_ruta_centro_costo").select("tipo_ruta, centro_costo, requiere_revision"),
     guiasEnArchivo.size > 0
-      ? supabase.from("odt").select("guia").in("guia", [...guiasEnArchivo])
+      ? supabase
+          .from("odt")
+          .select("guia")
+          .in("guia", [...guiasEnArchivo])
       : Promise.resolve({ data: [] as { guia: string }[] }),
   ]);
 

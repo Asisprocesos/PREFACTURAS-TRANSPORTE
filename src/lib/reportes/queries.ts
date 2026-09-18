@@ -71,9 +71,7 @@ export async function obtenerNovedadesFueraDePeriodo(periodoId: string): Promise
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("novedad")
-    .select(
-      "id, placa, mensaje, resolucion, estado, periodo:periodo_id(nombre), entidad, entidad_id",
-    )
+    .select("id, placa, mensaje, resolucion, estado, periodo:periodo_id(nombre), entidad, entidad_id")
     .eq("periodo_id", periodoId)
     .ilike("mensaje", "%fuera del rango del período%")
     .order("created_at", { ascending: true });
@@ -92,7 +90,11 @@ export async function obtenerNovedadesFueraDePeriodo(periodoId: string): Promise
   const odtIds = filas.filter((f) => f.entidad === "odt" && f.entidad_id).map((f) => f.entidad_id!);
   const odtPorId = new Map<
     string,
-    { valor_final: number | null; valor: number; vehiculo: { transportista: { razon_social: string } | null } | null }
+    {
+      valor_final: number | null;
+      valor: number;
+      vehiculo: { transportista: { razon_social: string } | null } | null;
+    }
   >();
   if (odtIds.length > 0) {
     const { data: odtData } = await supabase
@@ -111,7 +113,10 @@ export async function obtenerNovedadesFueraDePeriodo(periodoId: string): Promise
 
   const prefacturadas = new Set<string>();
   if (odtIds.length > 0) {
-    const { data: detalles } = await supabase.from("prefactura_detalle").select("odt_id").in("odt_id", odtIds);
+    const { data: detalles } = await supabase
+      .from("prefactura_detalle")
+      .select("odt_id")
+      .in("odt_id", odtIds);
     for (const d of detalles ?? []) prefacturadas.add(d.odt_id);
   }
 

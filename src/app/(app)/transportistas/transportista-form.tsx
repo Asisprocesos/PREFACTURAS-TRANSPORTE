@@ -55,7 +55,9 @@ export function TransportistaForm({ transportista }: { transportista?: Transport
         <div className="space-y-2">
           <Label htmlFor="razonSocial">Razón social</Label>
           <Input id="razonSocial" {...register("razonSocial")} />
-          {errors.razonSocial ? <p className="text-sm text-destructive">{errors.razonSocial.message}</p> : null}
+          {errors.razonSocial ? (
+            <p className="text-sm text-destructive">{errors.razonSocial.message}</p>
+          ) : null}
         </div>
         <div className="space-y-2">
           <Label htmlFor="tipoTransportista">Tipo de transportista</Label>

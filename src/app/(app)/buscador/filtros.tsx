@@ -51,7 +51,12 @@ export function FiltrosBuscador({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="space-y-1">
           <Label htmlFor="texto">Guía / número</Label>
-          <Input id="texto" value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Buscar guía..." />
+          <Input
+            id="texto"
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder="Buscar guía..."
+          />
         </div>
         <div className="space-y-1">
           <Label htmlFor="placa">Placa</Label>
@@ -59,7 +64,12 @@ export function FiltrosBuscador({
         </div>
         <div className="space-y-1">
           <Label htmlFor="estadoFenix">Estado (Fénix)</Label>
-          <Input id="estadoFenix" value={estado} onChange={(e) => setEstado(e.target.value)} placeholder="Entregado" />
+          <Input
+            id="estadoFenix"
+            value={estado}
+            onChange={(e) => setEstado(e.target.value)}
+            placeholder="Entregado"
+          />
         </div>
         <div className="space-y-1">
           <Label>Período</Label>
@@ -94,11 +104,21 @@ export function FiltrosBuscador({
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
             <Label htmlFor="desde">Desde</Label>
-            <Input id="desde" type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
+            <Input
+              id="desde"
+              type="date"
+              value={fechaDesde}
+              onChange={(e) => setFechaDesde(e.target.value)}
+            />
           </div>
           <div className="space-y-1">
             <Label htmlFor="hasta">Hasta</Label>
-            <Input id="hasta" type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
+            <Input
+              id="hasta"
+              type="date"
+              value={fechaHasta}
+              onChange={(e) => setFechaHasta(e.target.value)}
+            />
           </div>
         </div>
       </div>

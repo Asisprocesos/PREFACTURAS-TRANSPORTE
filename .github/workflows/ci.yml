@@ -29,5 +29,52 @@ jobs:
       - name: Format check
         run: npm run format:check
 
+      - name: Verificar sintaxis de migraciones SQL
+        run: npm run db:lint
+
       - name: Pruebas unitarias
         run: npm test
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar navegadores de Playwright
+        run: npx playwright install --with-deps chromium
+
+      # Smoke tests de middleware/rutas protegidas y validación de
+      # formulario: no requieren un proyecto Supabase real (ver
+      # tests/e2e/*.spec.ts). El webServer del config sirve el build de
+      # producción en CI (`next build && next start`), no `next dev`.
+      - name: Pruebas E2E (Playwright)
+        run: npm run test:e2e
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: dummy-service-role-key
+          EMAIL_PROVIDER: smtp
+          SMTP_HOST: smtp.example.com
+          SMTP_PORT: "587"
+          SMTP_SECURE: "false"
+          SMTP_USER: user
+          SMTP_PASSWORD: pass
+          EMAIL_FROM: no-reply@grupolaar.com
+          CRON_SECRET: dummy-cron-secret
+          ALLOWED_EMAIL_DOMAIN: grupolaar.com
+
+      - name: Subir reporte de Playwright
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

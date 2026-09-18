@@ -124,12 +124,11 @@ export function validarFila(
     valor = 0;
   }
 
-  const { placa: placaNormalizada, origen: origenPlaca, valida: placaValida } = normalizarPlaca(
-    fila.placa,
-    fila.chofer,
-    contexto.patronPlaca,
-    contexto.patronExtraccionChofer,
-  );
+  const {
+    placa: placaNormalizada,
+    origen: origenPlaca,
+    valida: placaValida,
+  } = normalizarPlaca(fila.placa, fila.chofer, contexto.patronPlaca, contexto.patronExtraccionChofer);
   const corregida = origenPlaca === "chofer";
 
   if (!placaValida) {

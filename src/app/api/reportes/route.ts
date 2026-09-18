@@ -17,7 +17,14 @@ import {
 
 export const runtime = "nodejs";
 
-const TIPOS_VALIDOS = ["prefacturas", "enviadas", "pendientes", "errores-envio", "centro-costo", "rezagos"] as const;
+const TIPOS_VALIDOS = [
+  "prefacturas",
+  "enviadas",
+  "pendientes",
+  "errores-envio",
+  "centro-costo",
+  "rezagos",
+] as const;
 type TipoReporte = (typeof TIPOS_VALIDOS)[number];
 
 function construirLibro(hojas: { nombre: string; filas: FilaExcel[] }[]): Buffer {
@@ -66,7 +73,9 @@ export async function GET(request: Request) {
       buffer = construirLibro([{ nombre: "Pendientes de envío", filas: filasPrefacturas(pendientes) }]);
     } else {
       const errores = await obtenerUltimosErroresEnvio(prefacturas.map((p) => p.id));
-      buffer = construirLibro([{ nombre: "Errores de envío", filas: filasErroresEnvio(prefacturas, errores) }]);
+      buffer = construirLibro([
+        { nombre: "Errores de envío", filas: filasErroresEnvio(prefacturas, errores) },
+      ]);
     }
   }
 

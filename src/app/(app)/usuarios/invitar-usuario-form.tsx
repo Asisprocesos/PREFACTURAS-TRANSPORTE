@@ -18,8 +18,8 @@ export function InvitarUsuarioForm() {
       <CardHeader>
         <CardTitle className="text-lg">Invitar usuario</CardTitle>
         <CardDescription>
-          Se envía un correo de invitación a la dirección @grupolaar.com. El usuario queda con rol
-          CONSULTA hasta que lo promuevas en la tabla de abajo.
+          Se envía un correo de invitación a la dirección @grupolaar.com. El usuario queda con rol CONSULTA
+          hasta que lo promuevas en la tabla de abajo.
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -28,7 +28,10 @@ export async function cambiarRolUsuario(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("perfil_usuario").update({ rol: parsedRol.data }).eq("user_id", userId);
+  const { error } = await supabase
+    .from("perfil_usuario")
+    .update({ rol: parsedRol.data })
+    .eq("user_id", userId);
   if (error) {
     return { error: "No se pudo cambiar el rol." };
   }

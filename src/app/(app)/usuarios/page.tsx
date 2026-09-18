@@ -13,8 +13,8 @@ export default async function UsuariosPage() {
       <div>
         <h1 className="titulo-marca text-2xl">Usuarios</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Gestiona quién puede acceder al sistema y con qué rol: ADMIN (todo), OPERADOR_TRANSPORTE
-          (importar, corregir, generar y enviar) o CONSULTA (ver y descargar).
+          Gestiona quién puede acceder al sistema y con qué rol: ADMIN (todo), OPERADOR_TRANSPORTE (importar,
+          corregir, generar y enviar) o CONSULTA (ver y descargar).
         </p>
       </div>
       <InvitarUsuarioForm />

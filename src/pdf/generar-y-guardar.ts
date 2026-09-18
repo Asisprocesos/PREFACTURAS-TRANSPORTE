@@ -24,7 +24,10 @@ export interface ResultadoGeneracionPdf {
  * al vuelo si todavía no existe uno vigente), para no duplicar la lógica
  * de validación/versionado en dos lugares.
  */
-export async function generarYGuardarPdf(prefacturaId: string, generadoPor: string): Promise<ResultadoGeneracionPdf> {
+export async function generarYGuardarPdf(
+  prefacturaId: string,
+  generadoPor: string,
+): Promise<ResultadoGeneracionPdf> {
   const validacion = await validarPrefacturaParaPdf(prefacturaId);
   if (!validacion.ok) return { ok: false, error: validacion.motivo };
   const { prefactura } = validacion;
