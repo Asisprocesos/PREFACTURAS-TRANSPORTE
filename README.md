@@ -67,7 +67,7 @@ actual está en [`docs/diagnostico-excel.md`](docs/diagnostico-excel.md).
 | 14. Archivo de período     | `/configuracion` → "Archivar" (snapshot .xlsx en bucket `archivo` + `odt_indice_historico`) y "Restaurar"                                   | ✅ Hecho; no borra `odt`/`prefactura` (queda como mejora incremental), ver limitaciones abajo                        |
 | 14. Duplicados/rezagos     | Resolución vía Control por placa (`resolverNovedadAction`, texto libre) y reporte de Rezagos                                                | ✅ Hecho tal como está en fase 9/13; sin un enum dedicado por alternativa, ver limitaciones abajo                    |
 | 15. Pruebas                | `tests/unit/*` (38 tests), `tests/e2e/*` (16 tests Playwright), `scripts/verificar-migraciones.ts`, CI                                      | ✅ Hecho, ver sección Pruebas abajo (qué corre de verdad en CI y qué sigue sin poder probarse en este entorno)       |
-| 16. Despliegue             | Guía de despliegue a Vercel/Supabase                                                                                                        | ⏳ Pendiente (la sección Despliegue de este README ya cubre lo esencial; falta profundizarla como fase dedicada)     |
+| 16. Despliegue             | Guía de despliegue paso a paso, `.github/workflows/supabase-migrations.yml`                                                                 | ✅ Hecho, ver sección Despliegue abajo; el Action de migraciones no se probó contra un proyecto real (sin secrets)   |
 
 Cada fase, al completarse, se documenta con: qué se implementó, qué archivos
 se crearon, qué decisiones técnicas se tomaron, cómo probarlo y qué falta —
@@ -159,6 +159,12 @@ ver el historial de commits (`git log`) y los mensajes de cada commit.
   `novedad.resolucion` como texto. El reporte de Rezagos y el Log de
   ejecuciones muestran ese texto tal cual, en vez de filtrar por una
   alternativa específica.
+- **`.github/workflows/supabase-migrations.yml` no se probó contra un
+  proyecto real.** Se verificó que el YAML parsea correctamente y que la
+  lógica de "saltar sin fallar si faltan secrets" es correcta por
+  inspección, pero no hay forma de ejecutar `supabase db push` de verdad
+  sin un proyecto Supabase y sus credenciales, que no existen en este
+  entorno.
 
 ## Instalación
 
@@ -423,18 +429,78 @@ ejecutándolo.
 
 ## Despliegue
 
-Vercel conectado a este repositorio de GitHub: preview automático por PR,
-producción en `main`. GitHub Actions (`.github/workflows/ci.yml`) corre
-lint, typecheck, format check y pruebas unitarias en cada PR. `supabase db
-push` a producción se ejecuta manualmente (o vía Action dedicada, fase 16)
-solo desde `main`.
+Ninguno de estos pasos se ejecutó en este entorno (no hay proyecto Supabase
+ni cuenta Vercel disponibles aquí, y el alcance de esta fase fue dejar el
+código y la guía listos, no desplegar de verdad). Orden recomendado para
+un despliegue real:
+
+### 1. Crear el proyecto Supabase
+
+1. Crear un proyecto nuevo en [supabase.com](https://supabase.com) (región
+   cercana a Ecuador, por ejemplo `us-east-1`).
+2. Instalar la CLI (`npm install -g supabase`) y enlazar el proyecto:
+   `supabase login && supabase link --project-ref <ref>`.
+3. Aplicar las migraciones: `supabase db push`. Esto crea las 32 tablas,
+   RLS, triggers, funciones RPC, vistas y los 4 buckets de Storage
+   (`imports`, `prefacturas`, `archivo`, `brand`) con sus políticas —
+   nada de Storage se configura a mano en el dashboard.
+4. Habilitar `pg_cron`/`pg_net` (Database → Extensions en el dashboard;
+   requiere plan Pro o superior) y correr **una vez** el snippet de
+   `app.settings.cron_url`/`cron_secret` de la sección [pg_cron](#pg_cron)
+   de este README — las migraciones de cron son defensivas y no fallan si
+   las extensiones no están habilitadas todavía, pero tampoco activan el
+   job solas.
+5. (Opcional) cargar `supabase/seed.sql` si se quiere partir con los
+   catálogos base (regionales, tipos de ruta) precargados.
+6. Crear el primer usuario ADMIN: invitarlo desde `/usuarios` requiere que
+   ya exista un ADMIN, así que el primero se crea a mano — invitar por
+   Auth → Users → Invite en el dashboard de Supabase con un correo
+   `@grupolaar.com`, y luego `update perfil_usuario set rol = 'ADMIN'
+where email = '...'` una sola vez.
+
+### 2. Desplegar en Vercel
+
+1. Conectar este repositorio de GitHub en Vercel (detecta Next.js 15
+   automáticamente, sin configuración adicional de build).
+2. Cargar todas las variables de `.env.example` en Project Settings →
+   Environment Variables, para Production **y** Preview.
+3. Confirmar que las rutas con `runtime = "nodejs"` (PDF, correo,
+   `/api/jobs/email`, reportes, exports) no queden marcadas como Edge —
+   ya están explícitas en cada Route Handler, pero vale la pena revisarlo
+   en el primer deploy porque el SMTP de Zimbra no funciona desde Edge.
+
+### 3. CI/CD
+
+`.github/workflows/ci.yml` corre en cada PR y en `main`: lint, typecheck,
+format check, verificación estática de sintaxis SQL de las migraciones
+(`db:lint`, sin tocar ninguna base de datos), pruebas unitarias, y un job
+de Playwright E2E (build de producción + smoke tests que no requieren
+Supabase real). `.github/workflows/supabase-migrations.yml` aplica
+`supabase db push` a producción cuando cambia `supabase/migrations/**` en
+`main`; necesita los secrets `SUPABASE_ACCESS_TOKEN`,
+`SUPABASE_DB_PASSWORD` y `SUPABASE_PROJECT_REF` en el repositorio — sin
+ellos, el job termina temprano sin fallar (para no bloquear `main` antes
+de que exista un proyecto Supabase real).
+
+### 4. Smoke test post-deploy
+
+Entrar con el ADMIN creado en el paso 1, confirmar que `/dashboard` carga
+indicadores en cero (base vacía es un estado válido), importar un Excel de
+prueba pequeño y seguir el flujo completo hasta generar un PDF, antes de
+anunciar el sistema como disponible.
 
 ## Política de archivo de períodos
 
-Pendiente (fase 14/16). Un job archivará los períodos que excedan
-`periodo.periodosCalientes` (configurable, por defecto 3) moviendo su
-respaldo a `supabase/storage` bucket `archivo` y marcando `periodo.estado =
-ARCHIVADO`; "Restaurar período" lo vuelve a dejar en modo consulta.
+Implementada en la fase 14 (`/configuracion`, ver `src/lib/periodos/`):
+"Cerrar período" bloquea la edición operativa (falla si quedan novedades
+de severidad error abiertas); "Archivar" solo está disponible para
+períodos cerrados, sube un snapshot `.xlsx` al bucket `archivo`, registra
+`archivo_periodo` y construye el índice liviano `odt_indice_historico` —
+sin borrar `odt`/`prefactura`, así que "Restaurar" simplemente vuelve el
+período a `CERRADO` (modo consulta). El botón "Archivar períodos
+antiguos" en la misma pantalla archiva todo lo que quede más allá de
+`periodo.periodosCalientes` (configurable, por defecto 3) de un solo
+click; no hay un `pg_cron` para esto, ver "Limitaciones conocidas".
 
 ## Nota de seguridad: `xlsx` (SheetJS)
 
