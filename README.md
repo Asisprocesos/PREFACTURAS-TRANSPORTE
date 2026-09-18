@@ -57,8 +57,9 @@ actual está en [`docs/diagnostico-excel.md`](docs/diagnostico-excel.md).
 | 9. Escaneo de ODT          | `/validacion-odt/escaneo` (lector USB, pegar lista, match de 4 resultados, exportar Excel)                                                  | ✅ Hecho vía lector USB/teclado y lista pegada; **cámara (@zxing/browser) no implementada**, ver limitaciones abajo  |
 | 9. Corrección manual       | `/odt/[guia]/corregir` (individual) y `/control-placa/correccion-masiva` (masiva)                                                           | ✅ Hecho                                                                                                             |
 | 10. Generador de PDF       | `src/pdf/templates/prefactura/`, `POST/GET /api/prefacturas/:id/pdf`                                                                        | ✅ Hecho, generación real verificada fuera del proyecto (ver sección Generación de PDF)                              |
-| 11. Repositorio documental | `/repositorio` (filtros, ver/descargar con auditoría, historial de versiones)                                                               | ✅ Hecho (Reenviar queda deshabilitado hasta la fase 12)                                                             |
-| 12–16. Módulos restantes   | Correo, Dashboard, Reportes, procesamiento masivo/log, cierre de período                                                                    | ⏳ Pendiente                                                                                                         |
+| 11. Repositorio documental | `/repositorio` (filtros, ver/descargar con auditoría, historial de versiones, reenviar)                                                     | ✅ Hecho                                                                                                             |
+| 12. Sistema de correo      | `EmailProvider`/SMTP, envío individual y masivo, `/api/jobs/email`, pg_cron, progreso en tiempo real                                        | ✅ Hecho, ver sección Correo y sus limitaciones abajo                                                                |
+| 13–16. Módulos restantes   | Dashboard, buscador, Reportes, procesamiento masivo/log, cierre de período                                                                  | ⏳ Pendiente                                                                                                         |
 
 Cada fase, al completarse, se documenta con: qué se implementó, qué archivos
 se crearon, qué decisiones técnicas se tomaron, cómo probarlo y qué falta —
@@ -66,6 +67,21 @@ ver el historial de commits (`git log`) y los mensajes de cada commit.
 
 ## Limitaciones conocidas
 
+- **Correo (SMTP y pg_cron) sin probar contra servicios reales.** No hay
+  credenciales de Zimbra ni un proyecto Supabase con `pg_cron`/`pg_net`
+  disponibles en este entorno. Se validó: el módulo compila y tipa
+  correctamente (`next build`), la lógica de reintentos/backoff y la
+  clasificación error permanente/temporal están implementadas, y las
+  migraciones de `pg_cron` pasan el parser estático de Postgres — pero
+  falta una prueba real de extremo a extremo (enviar un correo de verdad,
+  ver que `pg_cron` dispare el worker). Usa `EMAIL_TEST_MODE=true` (activo
+  por defecto) y Mailpit/`smtp-server` en local antes de un envío real.
+- **Progreso en tiempo real (Supabase Realtime) sin probar en navegador
+  real**, por la misma razón que el resto de las piezas de navegador de
+  este proyecto (ver el punto del Web Worker más abajo). La página
+  `/prefacturas/lotes/:id` también renderiza el estado inicial desde el
+  servidor, así que sigue siendo útil aunque el canal de Realtime no
+  conecte.
 - **Escaneo de ODT solo por lector USB (teclado) y lista pegada.** La
   captura por cámara del navegador (`@zxing/browser`, ya en
   `package.json`) no se implementó todavía: requiere probarse con una
@@ -250,27 +266,81 @@ Ver el flujo completo en
 
 ## Correo (Zimbra y plan B transaccional)
 
-Pendiente (fase 12). El envío SMTP se hará desde Route Handlers con
-`export const runtime = "nodejs"` (las Edge Functions de Supabase bloquean
-los puertos 25/587/465). En la primera prueba de conexión real contra
-Zimbra se debe documentar aquí qué puerto funcionó: `587` (STARTTLS) o
-`465` (SSL). `EmailProvider` es una interfaz intercambiable
-(`smtp` | `brevo` | `resend` | `ses`, ver `EMAIL_PROVIDER`).
+Implementado. `EmailProvider` (`src/lib/email/tipos.ts`) es una interfaz
+intercambiable; hoy solo el adaptador `smtp` (`src/lib/email/providers/smtp.ts`,
+Nodemailer) está implementado — `brevo`/`resend`/`ses` quedan como
+adaptadores futuros y `EMAIL_PROVIDER` con cualquier otro valor falla con un
+mensaje claro en vez de simular un envío. El envío corre en Route Handlers
+y Server Actions con runtime Node.js por defecto (nunca en una Supabase
+Edge Function, que bloquea los puertos 25/587/465).
+
+**Qué puerto usar**: no se ha probado la conexión real contra Zimbra en
+este entorno (no hay credenciales SMTP disponibles aquí). Al conectar por
+primera vez contra el servidor real, probar `587` (STARTTLS,
+`SMTP_SECURE=false`) primero y `465` (SSL, `SMTP_SECURE=true`) si el 587
+no responde; documentar aquí cuál funcionó.
+
+- **Envío individual**: formulario en `/prefacturas/:id` (correo principal
+  precargado desde `contacto_correo`, agregar adicionales, asunto/cuerpo
+  editable con variables `{PLACA} {RAZON_SOCIAL} {PERIODO} {NUMERO}
+{TOTAL}`). Si la prefactura no tiene un PDF vigente, se genera antes de
+  enviar (`src/pdf/generar-y-guardar.ts`, compartido con el botón
+  "Generar PDF").
+- **Envío masivo**: "Enviar seleccionados" en `/prefacturas` crea un
+  `lote_proceso` y encola un `envio_correo` por prefactura (solo las que
+  ya tienen PDF vigente y al menos un correo; el resto se cuenta como
+  "omitidas"). `/prefacturas/lotes/:id` muestra el progreso en tiempo real
+  vía Supabase Realtime (canal sobre `lote_proceso`/`envio_correo`; se
+  habilitó la publicación `supabase_realtime` para ambas tablas en la
+  migración `20260918090022`), con "Reintentar fallidos" y descarga del
+  reporte de errores en Excel.
+- **Cola**: `POST /api/jobs/email`, protegido con `CRON_SECRET`, reclama un
+  lote con `tomar_lote_envio_correo()` (`FOR UPDATE SKIP LOCKED` dentro de
+  una función Postgres, porque PostgREST no puede expresar ese patrón
+  directo), respeta `EMAIL_RATE_PER_MINUTE` espaciando los envíos dentro
+  del lote, y distingue errores permanentes (5xx SMTP) de temporales
+  (reintenta con backoff exponencial hasta `EMAIL_MAX_RETRIES`).
+- **Repositorio → Reenviar**: reutiliza el mismo encolado masivo (de-facto
+  un lote de una sola prefactura) para no duplicar la lógica de envío.
 
 ## Modo prueba de correo
 
-`EMAIL_TEST_MODE=true` (valor por defecto en `config/app.config.ts`)
-redirige todos los correos a `EMAIL_TEST_RECIPIENT` en lugar del
-destinatario real. Debe estar activo hasta validar el flujo completo antes
-del primer envío en producción.
+`EMAIL_TEST_MODE` (por defecto `true`, ver `src/lib/email/provider.ts` y
+`.env.example`) redirige TODOS los correos a `EMAIL_TEST_RECIPIENT` y
+antepone el destinatario real al asunto (`[PRUEBA → correo@real] ...`), sin
+tocar el proveedor real. Debe estar activo hasta validar el flujo completo
+antes del primer envío en producción.
 
 ## pg_cron
 
-Pendiente (fase 12/14). Se configurará con una migración SQL
-(`cron.schedule`) que invoca `pg_net.http_post` hacia `/api/jobs/email` cada
-minuto, con el header `Authorization: Bearer ${CRON_SECRET}`. Se documentará
-aquí el nombre exacto del job y cómo pausarlo/reanudarlo desde Supabase
-Studio.
+Migración `20260918090020_pg_cron_envio_correo.sql`: programa el job
+`procesar-envio-correo` (cada minuto) que llama a `POST /api/jobs/email`
+vía `pg_net.http_post`. Es un `DO $$ ... $$` defensivo: si `pg_cron`/`pg_net`
+no están habilitados en el proyecto, no falla, solo avisa con
+`raise notice`. **Antes de que tenga efecto real** hace falta, una sola vez
+por proyecto:
+
+```sql
+-- 1. Habilitar extensiones (Database → Extensions en Supabase Studio, o):
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+-- 2. Configurar la URL pública de despliegue y el secreto compartido
+--    (el mismo valor que CRON_SECRET en Vercel):
+alter database postgres set app.settings.cron_url = 'https://tu-dominio.vercel.app';
+alter database postgres set app.settings.cron_secret = 'el-mismo-valor-que-CRON_SECRET-en-Vercel';
+
+-- 3. Volver a aplicar la migración (o ejecutar su bloque a mano) para que
+--    cron.schedule() se registre con esos valores.
+```
+
+Para pausar/reanudar el job desde Supabase Studio: `select
+cron.unschedule('procesar-envio-correo');` / volver a correr el bloque de
+la migración. Ver el estado de ejecuciones en la tabla `cron.job_run_details`.
+
+No se ha probado contra un proyecto Supabase real (no hay uno disponible en
+este entorno); el SQL se verificó con un parser estático de Postgres, no
+ejecutándolo.
 
 ## Despliegue
 

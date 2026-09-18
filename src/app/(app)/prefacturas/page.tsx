@@ -40,7 +40,13 @@ export default async function PrefacturasPage({
         {puedeGenerar ? <GenerarPrefacturasButton periodoId={periodoSeleccionado} /> : null}
       </div>
       <FiltrosPrefacturas periodos={periodos} />
-      <PrefacturasTable filas={filas} total={total} pagina={pagina} tamanoPagina={TAMANO_PAGINA} />
+      <PrefacturasTable
+        filas={filas}
+        total={total}
+        pagina={pagina}
+        tamanoPagina={TAMANO_PAGINA}
+        puedeEnviar={puedeGenerar}
+      />
     </div>
   );
 }

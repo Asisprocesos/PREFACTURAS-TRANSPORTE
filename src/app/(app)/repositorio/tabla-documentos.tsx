@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { encolarEnviosAction } from "@/lib/correo/actions";
 import { obtenerUrlDocumentoAction } from "@/lib/repositorio/actions";
 import type { DocumentoConRelaciones } from "@/lib/repositorio/queries";
 
@@ -26,6 +27,13 @@ export function TablaDocumentos({
     const resultado = await obtenerUrlDocumentoAction(documentoId, accion);
     if (resultado.ok && resultado.url) {
       window.open(resultado.url, "_blank");
+    }
+  }
+
+  async function reenviar(prefacturaId: string) {
+    const resultado = await encolarEnviosAction([prefacturaId]);
+    if (resultado.ok && resultado.loteId) {
+      router.push(`/prefacturas/lotes/${resultado.loteId}`);
     }
   }
 
@@ -91,8 +99,8 @@ export function TablaDocumentos({
                           <Link href={`/repositorio/${d.prefactura.id}/versiones`}>Versiones</Link>
                         </Button>
                       ) : null}
-                      {d.estado === "VIGENTE" ? (
-                        <Button variant="ghost" size="sm" disabled title="Disponible en la fase de Correo">
+                      {d.estado === "VIGENTE" && d.prefactura ? (
+                        <Button variant="ghost" size="sm" onClick={() => reenviar(d.prefactura!.id)}>
                           Reenviar
                         </Button>
                       ) : null}

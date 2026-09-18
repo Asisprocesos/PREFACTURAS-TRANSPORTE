@@ -897,6 +897,11 @@ export interface Database {
         Args: { p_periodo_id: string };
         Returns: { prefacturas_creadas: number; prefacturas_actualizadas: number }[];
       };
+      tomar_lote_envio_correo: {
+        Args: { p_limite: number };
+        Returns: Database["public"]["Tables"]["envio_correo"]["Row"][];
+      };
+      incrementar_progreso_lote: { Args: { p_lote_id: string; p_exitoso: boolean }; Returns: undefined };
     };
     Enums: {
       rol_usuario: RolUsuario;

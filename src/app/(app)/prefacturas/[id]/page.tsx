@@ -2,6 +2,10 @@ import { notFound } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireRole } from "@/lib/auth/roles";
+import { defaultAppConfig } from "@/config/app.config";
+import { construirVariablesPlantilla } from "@/lib/correo/plantilla-variables";
+import { obtenerContactosPrefactura } from "@/lib/correo/queries";
+import { interpolarPlantilla } from "@/lib/email/plantilla";
 import {
   obtenerDetalleOdt,
   obtenerNovedadesPrefactura,
@@ -10,6 +14,7 @@ import {
 } from "@/lib/prefacturas/queries";
 
 import { AccionesPdf } from "./acciones-pdf";
+import { EnviarCorreoForm } from "./enviar-correo-form";
 
 const formatoMoneda = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD" });
 
@@ -20,11 +25,16 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
   const prefactura = await obtenerPrefactura(id);
   if (!prefactura) notFound();
 
-  const [resumen, detalleOdt, novedades] = await Promise.all([
+  const [resumen, detalleOdt, novedades, contactos] = await Promise.all([
     obtenerResumenFacturacion(id),
     obtenerDetalleOdt(id),
     obtenerNovedadesPrefactura(prefactura.vehiculo?.placa ?? null, prefactura.periodo_id),
+    obtenerContactosPrefactura(prefactura.vehiculo?.id ?? null, prefactura.transportista?.id ?? null),
   ]);
+
+  const variables = construirVariablesPlantilla(prefactura);
+  const asuntoInicial = interpolarPlantilla(defaultAppConfig.correo.plantillaIndividual.asunto, variables);
+  const cuerpoInicial = interpolarPlantilla(defaultAppConfig.correo.plantillaIndividual.cuerpo, variables);
 
   return (
     <div className="space-y-6">
@@ -37,10 +47,16 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <AccionesPdf prefacturaId={id} tieneVigente={prefactura.version_actual > 0} />
-          <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-            Enviar por correo — próxima fase
-          </span>
+          <div className="flex gap-2">
+            <AccionesPdf prefacturaId={id} tieneVigente={prefactura.version_actual > 0} />
+          </div>
+          <EnviarCorreoForm
+            prefacturaId={id}
+            correoPrincipal={contactos.principal}
+            correosAdicionales={contactos.adicionales}
+            asuntoInicial={asuntoInicial}
+            cuerpoInicial={cuerpoInicial}
+          />
         </div>
       </div>
 
