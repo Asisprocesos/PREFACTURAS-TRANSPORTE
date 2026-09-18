@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { defaultAppConfig } from "@/config/app.config";
 import { obtenerEmailProvider } from "@/lib/email/provider";
+import { obtenerGuiasPrefactura, registrarLogEjecucion } from "@/lib/log-ejecucion/registrar";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -110,6 +111,20 @@ export async function POST(request: Request) {
         p_exitoso: resultado.ok,
       });
     }
+
+    const guias = await obtenerGuiasPrefactura(supabase, envio.prefactura_id);
+    await registrarLogEjecucion(
+      supabase,
+      envio.id,
+      "CORREO",
+      guias.map((guia) => ({
+        guia,
+        estado: resultado.ok ? "OK" : "ERROR",
+        detalle: resultado.ok
+          ? { prefacturaId: envio.prefactura_id }
+          : { prefacturaId: envio.prefactura_id, error: resultado.error },
+      })),
+    );
   }
 
   return NextResponse.json({ procesados: lote.length, exitosos, fallidos });

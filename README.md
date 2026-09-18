@@ -62,7 +62,11 @@ actual está en [`docs/diagnostico-excel.md`](docs/diagnostico-excel.md).
 | 13. Dashboard              | `/dashboard` (indicadores reales, avance de envío, gráficos por centro de costo/regional/top placas)                                       | ✅ Hecho, RPC `dashboard_*` con `security invoker` (respeta RLS por rol)                                             |
 | 13. Buscador dinámico      | `/buscador` (ODT por guía, placa, transportista, período, estado, fecha; paginación por cursor)                                            | ✅ Hecho                                                                                                             |
 | 13. Reportes               | `/reportes` (prefacturas, enviadas, pendientes, errores de envío, resumen por centro de costo, rezagos) exportables a Excel                | ✅ Hecho; "costo por pieza" fuera de alcance (el modelo no tiene datos de pieza), ver limitaciones abajo             |
-| 14–16. Módulos restantes   | Procesamiento masivo/log de ejecuciones, cierre y archivo de período, pruebas E2E, despliegue                                              | ⏳ Pendiente                                                                                                         |
+| 14. Log de ejecuciones     | `/historial` (estado por ODT en importación/validación/PDF/correo)                                                                          | ✅ Hecho; importación ya lo poblaba, se agregó el registro por ODT en generación de PDF y envío de correo            |
+| 14. Cierre de período      | `/configuracion` → "Cerrar período" (solo ADMIN, bloquea si hay novedades ERROR abiertas)                                                   | ✅ Hecho                                                                                                             |
+| 14. Archivo de período     | `/configuracion` → "Archivar" (snapshot .xlsx en bucket `archivo` + `odt_indice_historico`) y "Restaurar"                                   | ✅ Hecho; no borra `odt`/`prefactura` (queda como mejora incremental), ver limitaciones abajo                        |
+| 14. Duplicados/rezagos     | Resolución vía Control por placa (`resolverNovedadAction`, texto libre) y reporte de Rezagos                                               | ✅ Hecho tal como está en fase 9/13; sin un enum dedicado por alternativa, ver limitaciones abajo                    |
+| 15–16. Módulos restantes   | Pruebas E2E (Playwright), despliegue                                                                                                        | ⏳ Pendiente                                                                                                         |
 
 Cada fase, al completarse, se documenta con: qué se implementó, qué archivos
 se crearon, qué decisiones técnicas se tomaron, cómo probarlo y qué falta —
@@ -134,6 +138,26 @@ ver el historial de commits (`git log`) y los mensajes de cada commit.
   período, estado Fénix, fecha), no prefacturas ni otras entidades; para
   buscar por número de prefactura ya existe el filtro dedicado en
   `/prefacturas`.
+- **Archivar período no borra `odt`/`prefactura`.** Genera el snapshot
+  .xlsx, lo sube a `archivo` y construye `odt_indice_historico`, pero deja
+  las tablas operativas intactas — una decisión deliberada para que
+  archivar/restaurar sea reversible sin lógica de restore de datos. La
+  poda física de las tablas operativas (para el caso de uso real de
+  "aligerar la base tras archivar") queda como mejora incremental.
+- **Sin pg_cron para el archivo automático de períodos.** A diferencia del
+  worker de correo, "archivar períodos más allá de `periodosCalientes`" es
+  un botón manual en `/configuracion` (`archivarPeriodosAntiguosAction`),
+  no un job programado: archivar sube un snapshot y toca varias tablas, y
+  se prefirió dejarlo a criterio explícito de un ADMIN antes que un job
+  silencioso a medianoche sin poder probarse contra un Supabase real en
+  este entorno.
+- **"Rezago" en duplicados/fecha-fuera-de-corte es texto libre, no un
+  enum.** El modelo no distingue estructuralmente cuál de las 4
+  alternativas (mover, rezago, excluir, corregir / conservar, reemplazar,
+  reasignar, marcar revisión) eligió el operador — vive en
+  `novedad.resolucion` como texto. El reporte de Rezagos y el Log de
+  ejecuciones muestran ese texto tal cual, en vez de filtrar por una
+  alternativa específica.
 
 ## Instalación
 

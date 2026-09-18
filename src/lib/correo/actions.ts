@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { defaultAppConfig } from "@/config/app.config";
 import { interpolarPlantilla } from "@/lib/email/plantilla";
 import { requireRole } from "@/lib/auth/roles";
+import { obtenerGuiasPrefactura, registrarLogEjecucion } from "@/lib/log-ejecucion/registrar";
 import { createClient } from "@/lib/supabase/server";
 import type { ResultadoAccion } from "@/lib/types/acciones";
 import { obtenerPrefactura } from "@/lib/prefacturas/queries";
@@ -63,23 +64,41 @@ export async function enviarCorreoIndividualAction(
   });
 
   const supabase = await createClient();
-  await supabase.from("envio_correo").insert({
-    prefactura_id: prefacturaId,
-    destinatarios_to: datos.to,
-    destinatarios_cc: datos.cc,
-    asunto: datos.asunto,
-    cuerpo: datos.cuerpo,
-    estado: resultado.ok ? "ENVIADO" : "ERROR",
-    message_id: resultado.ok ? resultado.messageId : null,
-    error: resultado.ok ? null : resultado.error,
-    enviado_por: perfil.userId,
-    enviado_en: resultado.ok ? new Date().toISOString() : null,
-  });
+  const { data: envio } = await supabase
+    .from("envio_correo")
+    .insert({
+      prefactura_id: prefacturaId,
+      destinatarios_to: datos.to,
+      destinatarios_cc: datos.cc,
+      asunto: datos.asunto,
+      cuerpo: datos.cuerpo,
+      estado: resultado.ok ? "ENVIADO" : "ERROR",
+      message_id: resultado.ok ? resultado.messageId : null,
+      error: resultado.ok ? null : resultado.error,
+      enviado_por: perfil.userId,
+      enviado_en: resultado.ok ? new Date().toISOString() : null,
+    })
+    .select("id")
+    .single();
 
   await supabase
     .from("prefactura")
     .update({ estado: resultado.ok ? "ENVIADA" : "ERROR_ENVIO" })
     .eq("id", prefacturaId);
+
+  if (envio) {
+    const guias = await obtenerGuiasPrefactura(supabase, prefacturaId);
+    await registrarLogEjecucion(
+      supabase,
+      envio.id,
+      "CORREO",
+      guias.map((guia) => ({
+        guia,
+        estado: resultado.ok ? "OK" : "ERROR",
+        detalle: resultado.ok ? { prefacturaId } : { prefacturaId, error: resultado.error },
+      })),
+    );
+  }
 
   revalidatePath(`/prefacturas/${prefacturaId}`);
   if (!resultado.ok) return { ok: false, error: resultado.error };

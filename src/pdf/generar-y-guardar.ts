@@ -2,6 +2,8 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 
+import { registrarLogEjecucion } from "@/lib/log-ejecucion/registrar";
+import { obtenerDetalleOdt } from "@/lib/prefacturas/queries";
 import { createClient } from "@/lib/supabase/server";
 
 import { generarBufferPdf, nombreArchivoPdf, validarPrefacturaParaPdf } from "./generar";
@@ -81,6 +83,14 @@ export async function generarYGuardarPdf(prefacturaId: string, generadoPor: stri
     .from("prefactura")
     .update({ estado: "PDF_GENERADO", version_actual: version })
     .eq("id", prefacturaId);
+
+  const detalleOdt = await obtenerDetalleOdt(prefacturaId);
+  await registrarLogEjecucion(
+    supabase,
+    documento.id,
+    "PDF",
+    detalleOdt.map((o) => ({ guia: o.guia, estado: "OK", detalle: { prefacturaId, version } })),
+  );
 
   return { ok: true, documentoId: documento.id, storageKey, buffer, nombreArchivo };
 }
