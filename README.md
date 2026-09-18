@@ -59,7 +59,10 @@ actual está en [`docs/diagnostico-excel.md`](docs/diagnostico-excel.md).
 | 10. Generador de PDF       | `src/pdf/templates/prefactura/`, `POST/GET /api/prefacturas/:id/pdf`                                                                        | ✅ Hecho, generación real verificada fuera del proyecto (ver sección Generación de PDF)                              |
 | 11. Repositorio documental | `/repositorio` (filtros, ver/descargar con auditoría, historial de versiones, reenviar)                                                     | ✅ Hecho                                                                                                             |
 | 12. Sistema de correo      | `EmailProvider`/SMTP, envío individual y masivo, `/api/jobs/email`, pg_cron, progreso en tiempo real                                        | ✅ Hecho, ver sección Correo y sus limitaciones abajo                                                                |
-| 13–16. Módulos restantes   | Dashboard, buscador, Reportes, procesamiento masivo/log, cierre de período                                                                  | ⏳ Pendiente                                                                                                         |
+| 13. Dashboard              | `/dashboard` (indicadores reales, avance de envío, gráficos por centro de costo/regional/top placas)                                       | ✅ Hecho, RPC `dashboard_*` con `security invoker` (respeta RLS por rol)                                             |
+| 13. Buscador dinámico      | `/buscador` (ODT por guía, placa, transportista, período, estado, fecha; paginación por cursor)                                            | ✅ Hecho                                                                                                             |
+| 13. Reportes               | `/reportes` (prefacturas, enviadas, pendientes, errores de envío, resumen por centro de costo, rezagos) exportables a Excel                | ✅ Hecho; "costo por pieza" fuera de alcance (el modelo no tiene datos de pieza), ver limitaciones abajo             |
+| 14–16. Módulos restantes   | Procesamiento masivo/log de ejecuciones, cierre y archivo de período, pruebas E2E, despliegue                                              | ⏳ Pendiente                                                                                                         |
 
 Cada fase, al completarse, se documenta con: qué se implementó, qué archivos
 se crearon, qué decisiones técnicas se tomaron, cómo probarlo y qué falta —
@@ -115,6 +118,22 @@ ver el historial de commits (`git log`) y los mensajes de cada commit.
   Storage, RPC `confirmar_importacion`) se verificaron con `next build` y
   revisión manual del SQL, pero no se han probado end-to-end contra una
   base de datos real.
+- **Reporte de Rezagos: aproximación, no un campo dedicado.** El modelo no
+  tiene un enum para "el operador eligió rezago" entre las 4 alternativas
+  de resolución de una novedad de fecha fuera de corte (mover, rezago,
+  excluir, corregir); `novedad.resolucion` es texto libre. El reporte
+  `/reportes?tipo=rezagos` lista **todas** las novedades de ese tipo en el
+  período (con su columna "Diferencias" mostrando la resolución tal cual
+  la escribió el operador, o "Pendiente de resolución" si sigue abierta),
+  en vez de filtrar solo las marcadas como rezago.
+- **Reporte "costo por pieza" no implementado.** El modelo de datos no
+  tiene una unidad de pieza/cantidad transportada, solo `valor`/`valor_final`
+  por ODT; el criterio de aceptación original permite omitirlo si no hay
+  datos de pieza disponibles.
+- **Buscador dinámico busca solo ODT** (guía, placa, transportista,
+  período, estado Fénix, fecha), no prefacturas ni otras entidades; para
+  buscar por número de prefactura ya existe el filtro dedicado en
+  `/prefacturas`.
 
 ## Instalación
 
