@@ -9,6 +9,8 @@ import {
   obtenerResumenFacturacion,
 } from "@/lib/prefacturas/queries";
 
+import { AccionesPdf } from "./acciones-pdf";
+
 const formatoMoneda = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD" });
 
 export default async function DetallePrefacturaPage({ params }: { params: Promise<{ id: string }> }) {
@@ -34,9 +36,11 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
             {prefactura.periodo?.nombre}
           </p>
         </div>
-        <div className="flex gap-2 text-xs text-muted-foreground">
-          <span className="rounded-full bg-muted px-3 py-1">Generar PDF — próxima fase</span>
-          <span className="rounded-full bg-muted px-3 py-1">Enviar por correo — próxima fase</span>
+        <div className="flex flex-col items-end gap-2">
+          <AccionesPdf prefacturaId={id} tieneVigente={prefactura.version_actual > 0} />
+          <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+            Enviar por correo — próxima fase
+          </span>
         </div>
       </div>
 

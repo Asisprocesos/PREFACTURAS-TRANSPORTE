@@ -51,12 +51,13 @@ actual está en [`docs/diagnostico-excel.md`](docs/diagnostico-excel.md).
 | 6. Transportistas          | `/transportistas` (CRUD, búsqueda, correos de contacto)                                                                                     | ✅ Hecho                                                                                                             |
 | 7. Vehículos               | `/vehiculos` (CRUD, correos, historial), `scripts/migrar-maestros.ts`                                                                       | ✅ Hecho (migración de maestros lista, dry-run por defecto; pendiente correr contra el `.xlsb` real)                 |
 | 8. Importador Excel        | `/importar` (asistente 5 pasos), Web Worker de previsualización, validación server-side, RPC `confirmar_importacion`/`revertir_importacion` | ✅ Hecho, ver limitaciones conocidas abajo                                                                           |
-| 9. Prefacturas             | `/prefacturas` (listado, generación, detalle con resumen y ODT)                                                                             | ✅ Hecho (Generar PDF / Enviar por correo quedan como placeholder hasta las fases 10 y 12)                           |
+| 9. Prefacturas             | `/prefacturas` (listado, generación, detalle con resumen y ODT)                                                                             | ✅ Hecho (Enviar por correo queda como placeholder hasta la fase 12)                                                 |
 | 9. Control por placa       | `/control-placa` (semáforo, resolución de novedades)                                                                                        | ✅ Hecho                                                                                                             |
 | 9. Validación ODT          | `/validacion-odt` (buscador → reusa el detalle de prefactura)                                                                               | ✅ Hecho (falta el cruce ODT MANUAL, que depende de `factura_transportista`, fuera de alcance por ahora)             |
 | 9. Escaneo de ODT          | `/validacion-odt/escaneo` (lector USB, pegar lista, match de 4 resultados, exportar Excel)                                                  | ✅ Hecho vía lector USB/teclado y lista pegada; **cámara (@zxing/browser) no implementada**, ver limitaciones abajo  |
 | 9. Corrección manual       | `/odt/[guia]/corregir` (individual) y `/control-placa/correccion-masiva` (masiva)                                                           | ✅ Hecho                                                                                                             |
-| 10–16. Módulos restantes   | PDF, Correo, Dashboard, Reportes, procesamiento masivo/log, usuarios avanzado, cierre de período                                            | ⏳ Pendiente                                                                                                         |
+| 10. Generador de PDF       | `src/pdf/templates/prefactura/`, `POST/GET /api/prefacturas/:id/pdf`                                                                        | ✅ Hecho, generación real verificada fuera del proyecto (ver sección Generación de PDF)                              |
+| 11–16. Módulos restantes   | Repositorio documental, Correo, Dashboard, Reportes, procesamiento masivo/log, cierre de período                                            | ⏳ Pendiente                                                                                                         |
 
 Cada fase, al completarse, se documenta con: qué se implementó, qué archivos
 se crearon, qué decisiones técnicas se tomaron, cómo probarlo y qué falta —
@@ -213,9 +214,37 @@ etc.) se agrega junto con cada módulo funcional.
 
 ## Generación de PDF
 
-Pendiente (fase 10). Se implementará con `@react-pdf/renderer` (sin
-Chromium) en `src/pdf/templates/prefactura/`, separada de la lógica de
-negocio y parametrizada por `config/app.config.ts`. Ver el flujo completo en
+Implementado con `@react-pdf/renderer` (sin Chromium). La plantilla vive en
+`src/pdf/templates/prefactura/` (`documento.tsx` + `estilos.ts` + `tipos.ts`),
+separada de la lógica de negocio (`src/pdf/generar.ts`) y parametrizada por
+`config/app.config.ts` (colores, contacto, leyenda, patrón de nombre de
+archivo). `POST /api/prefacturas/:id/pdf` valida (RUC, razón social, al
+menos 1 ODT, sin novedades ERROR abiertas), genera el PDF, lo sube a
+Storage versionado (`prefacturas/{AAAA}/{MM}/{RUC}/{NUMERO}_v{version}.pdf`,
+marcando la versión anterior `REEMPLAZADO`) y actualiza `documento_pdf` /
+`prefactura`. `GET` del mismo endpoint devuelve una URL firmada de 5
+minutos para ver/descargar el PDF vigente. Botones "Generar/Regenerar PDF"
+y "Ver/descargar PDF" en `/prefacturas/:id`.
+
+Sin fuente Metropolis autoalojada todavía (ver `public/brand/README.md`):
+la plantilla usa Helvetica. Sin logo vectorial todavía: el encabezado usa
+el nombre de la empresa en texto con la barra amarilla del brandbook, no
+la imagen del logo — reemplazar por `Image` de `@react-pdf/renderer` en
+cuanto `public/brand/logo-positivo.svg` exista.
+
+**Verificación real de la librería**: se generó un PDF de prueba fuera del
+proyecto (Document con 2 páginas, tabla de 40 filas, numeración de página
+dinámica) usando exactamente la misma API que la plantilla real
+(`Document`/`Page`/`View`/`Text`, `StyleSheet`, `fixed`, `render`
+callback), ejecutado con Node ESM puro — el resultado fueron bytes de PDF
+válidos (cabecera `%PDF-1.3`, trailer `%%EOF` correcto). Nota: la primera
+prueba con `tsx` falló por una incompatibilidad de resolución de módulos
+específica de esa herramienta con `@react-pdf/hyphenate` (un import ESM
+estático que `tsx` resuelve mal); `next build` compila el mismo import sin
+problema y Node ESM puro también, así que no afecta al build real de
+Next.js/Vercel — se deja documentado por si vuelve a aparecer.
+
+Ver el flujo completo en
 [`docs/arquitectura.md`](docs/arquitectura.md#5-flujo-de-generación-de-pdf).
 
 ## Correo (Zimbra y plan B transaccional)
