@@ -1,0 +1,139 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+import { requireRole } from "@/lib/auth/roles";
+import { correoFormSchema } from "@/lib/contactos/schema";
+import { createClient } from "@/lib/supabase/server";
+import type { ResultadoAccion } from "@/lib/types/acciones";
+
+import { vehiculoFormSchema, type VehiculoFormValues } from "./schema";
+
+function aFilaVehiculo(valores: VehiculoFormValues) {
+  return {
+    placa: valores.placa,
+    transportista_id: valores.transportistaId || null,
+    propietario: valores.propietario || null,
+    marca: valores.marca || null,
+    modelo: valores.modelo || null,
+    anio: valores.anio ?? null,
+    tonelaje: valores.tonelaje ?? null,
+    tipo_vehiculo: valores.tipoVehiculo || null,
+    largo: valores.largo ?? null,
+    alto: valores.alto ?? null,
+    ancho: valores.ancho ?? null,
+    cubicaje: valores.cubicaje ?? null,
+    regional_id: valores.regionalId || null,
+    activo: valores.activo,
+  };
+}
+
+export async function crearVehiculo(valores: VehiculoFormValues): Promise<ResultadoAccion> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+
+  const parsed = vehiculoFormSchema.safeParse(valores);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("vehiculo")
+    .insert(aFilaVehiculo(parsed.data))
+    .select("id")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      return { ok: false, error: "Ya existe un vehículo con esa placa." };
+    }
+    return { ok: false, error: "No se pudo crear el vehículo." };
+  }
+
+  revalidatePath("/vehiculos");
+  return { ok: true, id: data.id };
+}
+
+export async function actualizarVehiculo(id: string, valores: VehiculoFormValues): Promise<ResultadoAccion> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+
+  const parsed = vehiculoFormSchema.safeParse(valores);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("vehiculo").update(aFilaVehiculo(parsed.data)).eq("id", id);
+
+  if (error) {
+    if (error.code === "23505") {
+      return { ok: false, error: "Ya existe otro vehículo con esa placa." };
+    }
+    return { ok: false, error: "No se pudo actualizar el vehículo." };
+  }
+
+  revalidatePath("/vehiculos");
+  revalidatePath(`/vehiculos/${id}`);
+  return { ok: true, id };
+}
+
+export async function cambiarActivoVehiculo(id: string, activo: boolean): Promise<ResultadoAccion> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("vehiculo").update({ activo }).eq("id", id);
+  if (error) return { ok: false, error: "No se pudo actualizar el estado." };
+
+  revalidatePath("/vehiculos");
+  revalidatePath(`/vehiculos/${id}`);
+  return { ok: true, id };
+}
+
+export async function agregarCorreoVehiculo(
+  vehiculoId: string,
+  valores: { email: string; tipo: "PRINCIPAL" | "ADICIONAL" },
+): Promise<ResultadoAccion> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+
+  const parsed = correoFormSchema.safeParse(valores);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Correo inválido." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("contacto_correo").insert({
+    vehiculo_id: vehiculoId,
+    email: parsed.data.email,
+    tipo: parsed.data.tipo,
+  });
+
+  if (error) {
+    if (error.code === "23505") {
+      return { ok: false, error: "Ese correo ya está registrado para esta placa." };
+    }
+    return { ok: false, error: "No se pudo agregar el correo." };
+  }
+
+  revalidatePath(`/vehiculos/${vehiculoId}`);
+  return { ok: true };
+}
+
+export async function eliminarCorreoVehiculo(vehiculoId: string, correoId: string): Promise<ResultadoAccion> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("contacto_correo").delete().eq("id", correoId);
+  if (error) return { ok: false, error: "No se pudo eliminar el correo." };
+
+  revalidatePath(`/vehiculos/${vehiculoId}`);
+  return { ok: true };
+}
+
+export async function crearVehiculoYRedirigir(valores: VehiculoFormValues) {
+  const resultado = await crearVehiculo(valores);
+  if (resultado.ok && resultado.id) {
+    redirect(`/vehiculos/${resultado.id}`);
+  }
+  return resultado;
+}

@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
 
+import { CorreosContacto } from "@/components/contactos/correos-contacto";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireRole } from "@/lib/auth/roles";
+import { agregarCorreoTransportista, eliminarCorreoTransportista } from "@/lib/transportistas/actions";
 import { listarCorreosTransportista, obtenerTransportista } from "@/lib/transportistas/queries";
 
-import { CorreosTransportista } from "../correos-transportista";
 import { TransportistaForm } from "../transportista-form";
 
 export default async function DetalleTransportistaPage({ params }: { params: Promise<{ id: string }> }) {
@@ -51,7 +52,12 @@ export default async function DetalleTransportistaPage({ params }: { params: Pro
           <CardTitle className="text-lg">Correos de contacto</CardTitle>
         </CardHeader>
         <CardContent>
-          <CorreosTransportista transportistaId={id} correos={correos} soloLectura={soloLectura} />
+          <CorreosContacto
+            correos={correos}
+            soloLectura={soloLectura}
+            agregarAction={agregarCorreoTransportista.bind(null, id)}
+            eliminarAction={eliminarCorreoTransportista.bind(null, id)}
+          />
         </CardContent>
       </Card>
     </div>

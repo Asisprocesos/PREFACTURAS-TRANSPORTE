@@ -1,10 +1,12 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import type { ContactoCorreo } from "@/lib/contactos/types";
 import type { Database } from "@/types/database.types";
 
+export type { ContactoCorreo };
+
 export type Transportista = Database["public"]["Tables"]["transportista"]["Row"];
-export type ContactoCorreo = Database["public"]["Tables"]["contacto_correo"]["Row"];
 
 export interface ListarTransportistasParams {
   pagina: number; // 1-indexado

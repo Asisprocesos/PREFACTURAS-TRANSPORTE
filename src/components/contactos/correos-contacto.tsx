@@ -5,18 +5,18 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { agregarCorreoTransportista, eliminarCorreoTransportista } from "@/lib/transportistas/actions";
-import type { ContactoCorreo } from "@/lib/transportistas/queries";
+import type { ContactoCorreo } from "@/lib/contactos/types";
+import type { ResultadoAccion } from "@/lib/types/acciones";
 
-export function CorreosTransportista({
-  transportistaId,
-  correos,
-  soloLectura,
-}: {
-  transportistaId: string;
+interface CorreosContactoProps {
   correos: ContactoCorreo[];
   soloLectura: boolean;
-}) {
+  agregarAction: (valores: { email: string; tipo: "PRINCIPAL" | "ADICIONAL" }) => Promise<ResultadoAccion>;
+  eliminarAction: (correoId: string) => Promise<ResultadoAccion>;
+}
+
+/** Gestión de correos de contacto, reutilizada por Transportistas y Vehículos. */
+export function CorreosContacto({ correos, soloLectura, agregarAction, eliminarAction }: CorreosContactoProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [tipo, setTipo] = useState<"PRINCIPAL" | "ADICIONAL">("ADICIONAL");
@@ -27,7 +27,7 @@ export function CorreosTransportista({
     e.preventDefault();
     setError(null);
     setEnviando(true);
-    const resultado = await agregarCorreoTransportista(transportistaId, { email, tipo });
+    const resultado = await agregarAction({ email, tipo });
     setEnviando(false);
     if (!resultado.ok) {
       setError(resultado.error ?? "No se pudo agregar el correo.");
@@ -38,7 +38,7 @@ export function CorreosTransportista({
   }
 
   async function eliminar(correoId: string) {
-    await eliminarCorreoTransportista(transportistaId, correoId);
+    await eliminarAction(correoId);
     router.refresh();
   }
 
@@ -72,7 +72,7 @@ export function CorreosTransportista({
         <form onSubmit={agregar} className="flex flex-wrap items-end gap-2">
           <Input
             type="email"
-            placeholder="correo@transportista.com"
+            placeholder="correo@ejemplo.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
