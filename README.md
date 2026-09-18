@@ -57,7 +57,8 @@ actual está en [`docs/diagnostico-excel.md`](docs/diagnostico-excel.md).
 | 9. Escaneo de ODT          | `/validacion-odt/escaneo` (lector USB, pegar lista, match de 4 resultados, exportar Excel)                                                  | ✅ Hecho vía lector USB/teclado y lista pegada; **cámara (@zxing/browser) no implementada**, ver limitaciones abajo  |
 | 9. Corrección manual       | `/odt/[guia]/corregir` (individual) y `/control-placa/correccion-masiva` (masiva)                                                           | ✅ Hecho                                                                                                             |
 | 10. Generador de PDF       | `src/pdf/templates/prefactura/`, `POST/GET /api/prefacturas/:id/pdf`                                                                        | ✅ Hecho, generación real verificada fuera del proyecto (ver sección Generación de PDF)                              |
-| 11–16. Módulos restantes   | Repositorio documental, Correo, Dashboard, Reportes, procesamiento masivo/log, cierre de período                                            | ⏳ Pendiente                                                                                                         |
+| 11. Repositorio documental | `/repositorio` (filtros, ver/descargar con auditoría, historial de versiones)                                                               | ✅ Hecho (Reenviar queda deshabilitado hasta la fase 12)                                                             |
+| 12–16. Módulos restantes   | Correo, Dashboard, Reportes, procesamiento masivo/log, cierre de período                                                                    | ⏳ Pendiente                                                                                                         |
 
 Cada fase, al completarse, se documenta con: qué se implementó, qué archivos
 se crearon, qué decisiones técnicas se tomaron, cómo probarlo y qué falta —
