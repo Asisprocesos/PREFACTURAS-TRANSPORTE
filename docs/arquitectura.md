@@ -241,12 +241,12 @@ sequenceDiagram
 
 ## 7. Almacenamiento (Supabase Storage)
 
-| Bucket | Contenido | Acceso |
-|---|---|---|
-| `imports` | Excel/CSV originales subidos por el usuario | Privado, URL firmada 5 min, solo lectura server-side para validar hash/reprocesar |
+| Bucket        | Contenido                                                      | Acceso                                                                                                           |
+| ------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `imports`     | Excel/CSV originales subidos por el usuario                    | Privado, URL firmada 5 min, solo lectura server-side para validar hash/reprocesar                                |
 | `prefacturas` | PDFs versionados (`{AAAA}/{MM}/{RUC}/{NUMERO}_v{version}.pdf`) | Privado, URL firmada 5 min para visor/descarga; la fuente de verdad es `documento_pdf`, no el listado de carpeta |
-| `archivo` | Exportes de períodos archivados (`archivo_periodo`) | Privado, solo ADMIN/CONSULTA con período archivado |
-| `brand` | Logos y fuentes autoalojadas | Público de solo lectura (assets estáticos de marca) |
+| `archivo`     | Exportes de períodos archivados (`archivo_periodo`)            | Privado, solo ADMIN/CONSULTA con período archivado                                                               |
+| `brand`       | Logos y fuentes autoalojadas                                   | Público de solo lectura (assets estáticos de marca)                                                              |
 
 ## 8. Seguridad
 

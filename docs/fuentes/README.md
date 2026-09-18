@@ -4,13 +4,13 @@ Esta carpeta debe contener los archivos originales que sirven de base para el
 diagnóstico y las pruebas del importador. **Todavía no se han subido al
 repositorio.** Coloca aquí, exactamente con estos nombres:
 
-| Archivo | Descripción | Usado por |
-|---|---|---|
-| `CORTE_AL_12_DE_SEPTIEMBRE_2026.xlsx` | Reporte operativo de choferes exportado de Fénix (Reportes → Reporte Operativo → Choferes). ~15.170 filas × 15 columnas. | `scripts/analizar-excel.ts`, fixtures de importación, pruebas E2E. |
-| `MACRO_CORTE_13_JUL_-_12_AGO.xlsb` | Archivo macro actual (~39 MB) con la lógica de negocio (hojas DATA LIST, BD, VEHICULOS, BD CORREOS, VALIDACION ODT, TD FACTURA, etc.). | `scripts/analizar-excel.ts`, `scripts/migrar-maestros.ts`, seeds de catálogos. |
-| `IO-20304C_PREFACTURACION.pdf` | Instructivo del proceso actual de prefacturación. | Referencia de reglas de negocio; no se procesa por script. |
-| `LAARCOURIER_BRANDBOOK_DE_MARCA_2023.pdf` | Brandbook: colores, tipografía, uso del logo, membrete. | Referencia de diseño (`docs/arquitectura.md`, plantilla PDF, tema Tailwind). |
-| `LAARCOURIER_Aplicaciones_Logo.pdf` | Aplicaciones permitidas del logotipo. | Referencia de diseño. |
+| Archivo                                   | Descripción                                                                                                                            | Usado por                                                                      |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `CORTE_AL_12_DE_SEPTIEMBRE_2026.xlsx`     | Reporte operativo de choferes exportado de Fénix (Reportes → Reporte Operativo → Choferes). ~15.170 filas × 15 columnas.               | `scripts/analizar-excel.ts`, fixtures de importación, pruebas E2E.             |
+| `MACRO_CORTE_13_JUL_-_12_AGO.xlsb`        | Archivo macro actual (~39 MB) con la lógica de negocio (hojas DATA LIST, BD, VEHICULOS, BD CORREOS, VALIDACION ODT, TD FACTURA, etc.). | `scripts/analizar-excel.ts`, `scripts/migrar-maestros.ts`, seeds de catálogos. |
+| `IO-20304C_PREFACTURACION.pdf`            | Instructivo del proceso actual de prefacturación.                                                                                      | Referencia de reglas de negocio; no se procesa por script.                     |
+| `LAARCOURIER_BRANDBOOK_DE_MARCA_2023.pdf` | Brandbook: colores, tipografía, uso del logo, membrete.                                                                                | Referencia de diseño (`docs/arquitectura.md`, plantilla PDF, tema Tailwind).   |
+| `LAARCOURIER_Aplicaciones_Logo.pdf`       | Aplicaciones permitidas del logotipo.                                                                                                  | Referencia de diseño.                                                          |
 
 ## Estado actual
 

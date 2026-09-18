@@ -23,23 +23,23 @@ título).
 
 ### Columnas
 
-| # | Columna | Tipo | Notas |
-|---|---|---|---|
-| 1 | Chofer | texto | Incluye la placa con guion al final, ej. `"ABEL VELEZ GSG-9141"`. Fuente de respaldo para extraer placa cuando `Placa` es inválida. |
-| 2 | Ruta | texto | Contiene retornos de carro ocultos `_x000D_\n` / `\r\n` (ej. `"MCH CT2_x000D_\n TON 4.5"`). Requiere limpieza. |
-| 3 | Regional Origen | texto | Catálogo `regional`. |
-| 4 | Guía | texto/numérico | **Clave única de ODT** (`odt.guia`). |
-| 5 | Estado | texto | Solo se importan filas con `Estado = Entregado`; el resto se reporta como advertencia y no se inserta. |
-| 6 | Fecha Recepción | texto `dd/mm/aaaa` | Parsear a `date`. |
-| 7 | Valor | numérico | 41 filas en `0` en este corte → advertencia, no error bloqueante. |
-| 8 | Tipo de Costo | texto | 31 filas vacías en este corte → advertencia. |
-| 9 | Tipo de Ruta | texto | Se cruza contra `tipo_ruta_centro_costo`. 4 filas con `REEMPLAZO TRANSPORTE` requieren reclasificación manual/asistida. |
-| 10 | Ruta/Zona | texto | **Alias de `Ruta-Zona`** (nombre usado en el `.xlsb`). Caso de prueba obligatorio del mapeo de columnas (`mapeo_columna`). También puede traer `_x000D_`/`\r\n`. |
-| 11 | Placa | texto | Sin guion, ej. `GSG9141`. 1 fila vacía en este corte. Si no cumple `^[A-Z]{3}[0-9]{4}$` tras normalizar, se extrae de `Chofer`. |
-| 12 | Regional Destino | texto | Catálogo `regional`. |
-| 13 | Fecha Creación | texto `dd/mm/aaaa` | Determina el período (13→12) de la ODT. 9 filas en este corte caen fuera del rango 13/08–12/09 (desde el 07/08) → novedad "fecha fuera de corte" con las 4 alternativas de resolución (mover, rezago, excluir, corregir). |
-| 14 | Usuario | texto | Usuario Fénix que creó el registro (`odt.usuario_fenix`), solo trazabilidad. |
-| 15 | Detalle de la Ruta | texto | Texto libre adicional. |
+| #   | Columna            | Tipo               | Notas                                                                                                                                                                                                                     |
+| --- | ------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Chofer             | texto              | Incluye la placa con guion al final, ej. `"ABEL VELEZ GSG-9141"`. Fuente de respaldo para extraer placa cuando `Placa` es inválida.                                                                                       |
+| 2   | Ruta               | texto              | Contiene retornos de carro ocultos `_x000D_\n` / `\r\n` (ej. `"MCH CT2_x000D_\n TON 4.5"`). Requiere limpieza.                                                                                                            |
+| 3   | Regional Origen    | texto              | Catálogo `regional`.                                                                                                                                                                                                      |
+| 4   | Guía               | texto/numérico     | **Clave única de ODT** (`odt.guia`).                                                                                                                                                                                      |
+| 5   | Estado             | texto              | Solo se importan filas con `Estado = Entregado`; el resto se reporta como advertencia y no se inserta.                                                                                                                    |
+| 6   | Fecha Recepción    | texto `dd/mm/aaaa` | Parsear a `date`.                                                                                                                                                                                                         |
+| 7   | Valor              | numérico           | 41 filas en `0` en este corte → advertencia, no error bloqueante.                                                                                                                                                         |
+| 8   | Tipo de Costo      | texto              | 31 filas vacías en este corte → advertencia.                                                                                                                                                                              |
+| 9   | Tipo de Ruta       | texto              | Se cruza contra `tipo_ruta_centro_costo`. 4 filas con `REEMPLAZO TRANSPORTE` requieren reclasificación manual/asistida.                                                                                                   |
+| 10  | Ruta/Zona          | texto              | **Alias de `Ruta-Zona`** (nombre usado en el `.xlsb`). Caso de prueba obligatorio del mapeo de columnas (`mapeo_columna`). También puede traer `_x000D_`/`\r\n`.                                                          |
+| 11  | Placa              | texto              | Sin guion, ej. `GSG9141`. 1 fila vacía en este corte. Si no cumple `^[A-Z]{3}[0-9]{4}$` tras normalizar, se extrae de `Chofer`.                                                                                           |
+| 12  | Regional Destino   | texto              | Catálogo `regional`.                                                                                                                                                                                                      |
+| 13  | Fecha Creación     | texto `dd/mm/aaaa` | Determina el período (13→12) de la ODT. 9 filas en este corte caen fuera del rango 13/08–12/09 (desde el 07/08) → novedad "fecha fuera de corte" con las 4 alternativas de resolución (mover, rezago, excluir, corregir). |
+| 14  | Usuario            | texto              | Usuario Fénix que creó el registro (`odt.usuario_fenix`), solo trazabilidad.                                                                                                                                              |
+| 15  | Detalle de la Ruta | texto              | Texto libre adicional.                                                                                                                                                                                                    |
 
 ### Novedades confirmadas en el corte de referencia
 
@@ -58,22 +58,22 @@ por Fénix al exportar celdas con salto de línea. El normalizador debe:
 
 ## 2. Archivo macro — `MACRO_CORTE_13_JUL_-_12_AGO.xlsb` (~39 MB)
 
-| Hoja | Función | Tablas/objetos destino |
-|---|---|---|
-| **DATA LIST** | Catálogos: períodos (`#`, INICIO, FIN, nombre `20-13-Jul-12-Aug`); rutas principales → RUTA MACRO, TARIFA, KM, HORAS VIAJE; Tipo de Ruta → MACRO (CORE/TEMU) → CENTRO DE COSTOS; calendario FECHA → DÍA TEXTO → LABORABLE. | `periodo`, `ruta_macro`, `tipo_ruta_centro_costo`, `calendario` |
-| **BD** | Base acumulada de ODT + columnas calculadas P:AJ (RUTA MACRO, Placa real, REGISTRO, CONDUCTOR, PROVEEDOR, FACTURADO, # FACTURA, DESCUENTO, TIPO DE RUTA 3, Tipo V. SIS, CORE-TEMU, PERIODO DE FAC, DÍA/MES/AÑO/SEMANA, LABORABLE, VAL COSTO, DIFERENCIA, FECHA). | `odt` + derivaciones calculadas en servidor al importar |
-| **VEHICULOS** | Maestro de placas: PlacasVehículo, Contratista, Propietario, Conductor, Marca, Modelo, Año, Tonelaje, Tipo Vehículo, Largo/Alto/Ancho, Cubicaje, Regional, Tipo Transportista, RUC, CORREO. | `vehiculo`, `transportista`, `conductor` |
-| **BD CORREOS** | Placa → ESTADO (SI/NO TIENE CORREO) → CORREOS separados por `;` (con duplicados) → CONTRATISTA. | `contacto_correo` (1 fila por correo, deduplicado) |
-| **REG / REGIONAL** | Catálogo de regionales. | `regional` |
-| **PREFACTURA** | Placas únicas del período + validador + botones de envío/PDF. | Módulo Prefacturas + Control por placa |
-| **VALIDACION ODT** | Por placa: cabecera (PLACA, RAZÓN SOCIAL, RUC, FACTURA, VALOR FACTURA, VALIDACIÓN, VALOR ODTs), matriz RESUMEN CENTRO DE COSTO × REGIONAL, detalle de ODT, cruce ODT MANUAL. | Pantalla "Validación ODT" + escaneo de ODT físicas |
-| **ODT VARIAS PLACAS** | ODT asociadas a más de una placa o sin placa. | Regla de duplicado "ODT en varias placas" |
-| **DETALLE POR PLACAS / REPORTE DET. X PLACA** | Filtro período+placa, con subtotal. | Vista detalle de prefactura + reporte exportable |
-| **TD FACTURA** | "RESUMEN FACTURACIÓN": CENTRO DE COSTO FINAL, REGIONAL, RUTA, VALOR FINAL, CANTIDAD, SUMA, Total general. | Página 2 del PDF (`v_resumen_facturacion`) |
-| **REZAGOS** | PROVEEDOR, Placa, PERIODO DE FAC, Valor, FACTURADO, Diferencias. | Reporte de rezagos |
-| **BD VAL FACT / ENTR. FACT.** | Conciliación con factura real del transportista. | `factura_transportista` (fase posterior) |
-| **DESCUENTOS** | ITEM, FECHA, descuentos aplicados. | `descuento` |
-| Hoja1–7, TD, TD V PLAC, TD PIEZA, BD PC | Tablas dinámicas de análisis. | No se replican como hojas; se cubren con Reportes y Dashboard. |
+| Hoja                                          | Función                                                                                                                                                                                                                                                          | Tablas/objetos destino                                          |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| **DATA LIST**                                 | Catálogos: períodos (`#`, INICIO, FIN, nombre `20-13-Jul-12-Aug`); rutas principales → RUTA MACRO, TARIFA, KM, HORAS VIAJE; Tipo de Ruta → MACRO (CORE/TEMU) → CENTRO DE COSTOS; calendario FECHA → DÍA TEXTO → LABORABLE.                                       | `periodo`, `ruta_macro`, `tipo_ruta_centro_costo`, `calendario` |
+| **BD**                                        | Base acumulada de ODT + columnas calculadas P:AJ (RUTA MACRO, Placa real, REGISTRO, CONDUCTOR, PROVEEDOR, FACTURADO, # FACTURA, DESCUENTO, TIPO DE RUTA 3, Tipo V. SIS, CORE-TEMU, PERIODO DE FAC, DÍA/MES/AÑO/SEMANA, LABORABLE, VAL COSTO, DIFERENCIA, FECHA). | `odt` + derivaciones calculadas en servidor al importar         |
+| **VEHICULOS**                                 | Maestro de placas: PlacasVehículo, Contratista, Propietario, Conductor, Marca, Modelo, Año, Tonelaje, Tipo Vehículo, Largo/Alto/Ancho, Cubicaje, Regional, Tipo Transportista, RUC, CORREO.                                                                      | `vehiculo`, `transportista`, `conductor`                        |
+| **BD CORREOS**                                | Placa → ESTADO (SI/NO TIENE CORREO) → CORREOS separados por `;` (con duplicados) → CONTRATISTA.                                                                                                                                                                  | `contacto_correo` (1 fila por correo, deduplicado)              |
+| **REG / REGIONAL**                            | Catálogo de regionales.                                                                                                                                                                                                                                          | `regional`                                                      |
+| **PREFACTURA**                                | Placas únicas del período + validador + botones de envío/PDF.                                                                                                                                                                                                    | Módulo Prefacturas + Control por placa                          |
+| **VALIDACION ODT**                            | Por placa: cabecera (PLACA, RAZÓN SOCIAL, RUC, FACTURA, VALOR FACTURA, VALIDACIÓN, VALOR ODTs), matriz RESUMEN CENTRO DE COSTO × REGIONAL, detalle de ODT, cruce ODT MANUAL.                                                                                     | Pantalla "Validación ODT" + escaneo de ODT físicas              |
+| **ODT VARIAS PLACAS**                         | ODT asociadas a más de una placa o sin placa.                                                                                                                                                                                                                    | Regla de duplicado "ODT en varias placas"                       |
+| **DETALLE POR PLACAS / REPORTE DET. X PLACA** | Filtro período+placa, con subtotal.                                                                                                                                                                                                                              | Vista detalle de prefactura + reporte exportable                |
+| **TD FACTURA**                                | "RESUMEN FACTURACIÓN": CENTRO DE COSTO FINAL, REGIONAL, RUTA, VALOR FINAL, CANTIDAD, SUMA, Total general.                                                                                                                                                        | Página 2 del PDF (`v_resumen_facturacion`)                      |
+| **REZAGOS**                                   | PROVEEDOR, Placa, PERIODO DE FAC, Valor, FACTURADO, Diferencias.                                                                                                                                                                                                 | Reporte de rezagos                                              |
+| **BD VAL FACT / ENTR. FACT.**                 | Conciliación con factura real del transportista.                                                                                                                                                                                                                 | `factura_transportista` (fase posterior)                        |
+| **DESCUENTOS**                                | ITEM, FECHA, descuentos aplicados.                                                                                                                                                                                                                               | `descuento`                                                     |
+| Hoja1–7, TD, TD V PLAC, TD PIEZA, BD PC       | Tablas dinámicas de análisis.                                                                                                                                                                                                                                    | No se replican como hojas; se cubren con Reportes y Dashboard.  |
 
 ### Inconsistencia de nombres de columna confirmada
 

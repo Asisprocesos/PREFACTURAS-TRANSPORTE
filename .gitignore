@@ -1,0 +1,40 @@
+# Dependencias
+node_modules/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# Build
+dist/
+build/
+*.tsbuildinfo
+
+# Variables de entorno (nunca commitear secretos)
+.env
+.env.local
+.env.*.local
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+
+# Pruebas
+/coverage
+/playwright-report/
+/test-results/
+
+# Archivos fuente pesados (se suben aparte, ver docs/fuentes/README.md)
+docs/fuentes/*.xlsx
+docs/fuentes/*.xls
+docs/fuentes/*.xlsb
+docs/fuentes/*.pdf
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.log
+npm-debug.log*

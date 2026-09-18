@@ -3,14 +3,14 @@
 Coloca aquí los archivos oficiales de marca de LAARCOURIER. **No redibujes el
 logotipo**: usa únicamente los archivos entregados por Grupo LAAR.
 
-| Archivo esperado | Uso |
-|---|---|
-| `logo-positivo.svg` | Logo negro sobre amarillo / fondo claro. Encabezado del PDF, pantallas con fondo claro. |
-| `logo-negativo.svg` | Logo blanco con barrido amarillo sobre negro. Barra lateral (fondo `#1D1D1B`). |
-| `logo-gris.svg` | Logo negro sobre gris claro (`#E1E1E1`). Fondos de tarjeta. |
-| `icono-lce.svg` | Ícono "LCE". Favicon y PWA. |
-| `favicon.ico` | Generado desde `icono-lce.svg` (múltiples tamaños: 16, 32, 48). |
-| `apple-touch-icon.png` | 180×180, generado desde `icono-lce.svg` sobre fondo negro. |
+| Archivo esperado       | Uso                                                                                     |
+| ---------------------- | --------------------------------------------------------------------------------------- |
+| `logo-positivo.svg`    | Logo negro sobre amarillo / fondo claro. Encabezado del PDF, pantallas con fondo claro. |
+| `logo-negativo.svg`    | Logo blanco con barrido amarillo sobre negro. Barra lateral (fondo `#1D1D1B`).          |
+| `logo-gris.svg`        | Logo negro sobre gris claro (`#E1E1E1`). Fondos de tarjeta.                             |
+| `icono-lce.svg`        | Ícono "LCE". Favicon y PWA.                                                             |
+| `favicon.ico`          | Generado desde `icono-lce.svg` (múltiples tamaños: 16, 32, 48).                         |
+| `apple-touch-icon.png` | 180×180, generado desde `icono-lce.svg` sobre fondo negro.                              |
 
 ## Tipografía
 

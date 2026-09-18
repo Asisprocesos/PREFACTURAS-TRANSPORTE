@@ -22,10 +22,7 @@ import * as XLSX from "xlsx";
 const FUENTES_DIR = join(process.cwd(), "docs", "fuentes");
 const SALIDA = join(process.cwd(), "docs", "diagnostico-excel.md");
 
-const ARCHIVOS = [
-  "CORTE_AL_12_DE_SEPTIEMBRE_2026.xlsx",
-  "MACRO_CORTE_13_JUL_-_12_AGO.xlsb",
-] as const;
+const ARCHIVOS = ["CORTE_AL_12_DE_SEPTIEMBRE_2026.xlsx", "MACRO_CORTE_13_JUL_-_12_AGO.xlsb"] as const;
 
 const RE_OCULTO = /(_x000d_|\r|\n)/i;
 
@@ -60,7 +57,9 @@ function detectarFilaEncabezado(filas: unknown[][]): number {
     const noVacias = fila.filter((c) => c !== undefined && c !== null && String(c).trim() !== "");
     if (noVacias.length >= 3) {
       const siguiente = filas[i + 1] ?? [];
-      const siguienteNoVacia = siguiente.some((c) => c !== undefined && c !== null && String(c).trim() !== "");
+      const siguienteNoVacia = siguiente.some(
+        (c) => c !== undefined && c !== null && String(c).trim() !== "",
+      );
       if (siguienteNoVacia) return i;
     }
   }
@@ -79,6 +78,9 @@ function inferirTipo(valor: unknown): Tipo {
 
 function analizarHoja(wb: XLSX.WorkBook, nombreHoja: string): DiagnosticoHoja {
   const hoja = wb.Sheets[nombreHoja];
+  if (!hoja) {
+    throw new Error(`La hoja "${nombreHoja}" no existe en el libro.`);
+  }
   const filas: unknown[][] = XLSX.utils.sheet_to_json(hoja, { header: 1, raw: false, defval: "" });
   const filaEncabezado = detectarFilaEncabezado(filas);
   const encabezados = (filas[filaEncabezado] ?? []).map((h) => String(h ?? "").trim());
@@ -88,8 +90,9 @@ function analizarHoja(wb: XLSX.WorkBook, nombreHoja: string): DiagnosticoHoja {
     const valores = cuerpo.map((fila) => fila[indice]);
     const tipos = valores.map(inferirTipo);
     const tiposNoVacios = tipos.filter((t) => t !== "vacio");
-    const distintos = new Set(tiposNoVacios);
-    const tipoDominante: Tipo = distintos.size === 0 ? "vacio" : distintos.size === 1 ? [...distintos][0] : "mixto";
+    const distintos = [...new Set(tiposNoVacios)];
+    const tipoDominante: Tipo =
+      distintos.length === 0 ? "vacio" : distintos.length === 1 ? distintos[0]! : "mixto";
     const vacios = tipos.filter((t) => t === "vacio").length;
     const ocultos = valores.filter((v) => typeof v === "string" && RE_OCULTO.test(v)).length;
     const formatosFecha = new Set<string>();
@@ -100,7 +103,10 @@ function analizarHoja(wb: XLSX.WorkBook, nombreHoja: string): DiagnosticoHoja {
         formatosFecha.add("fecha nativa (serial Excel)");
       }
     }
-    const ejemplos = [...new Set(valores.map((v) => String(v ?? "").trim()).filter((v) => v !== ""))].slice(0, 3);
+    const ejemplos = [...new Set(valores.map((v) => String(v ?? "").trim()).filter((v) => v !== ""))].slice(
+      0,
+      3,
+    );
     return { nombre, indice, tipoDominante, vacios, ocultos, ejemplos, formatosFecha };
   });
 
@@ -137,10 +143,16 @@ function renderHoja(h: DiagnosticoHoja): string {
   lineas.push(`- Filas de datos: ${h.filasTotales}`);
   lineas.push(`- Celdas combinadas: ${h.celdasCombinadas}`);
   lineas.push(`- Filas vacías: ${h.filasVacias}`);
-  lineas.push(`- Filas que parecen subtotal/total: ${h.filasSubtotal.length ? h.filasSubtotal.join(", ") : "ninguna"}`);
-  lineas.push(`- Filas con encabezados repetidos en el cuerpo: ${h.encabezadosRepetidos.length ? h.encabezadosRepetidos.join(", ") : "ninguna"}`);
+  lineas.push(
+    `- Filas que parecen subtotal/total: ${h.filasSubtotal.length ? h.filasSubtotal.join(", ") : "ninguna"}`,
+  );
+  lineas.push(
+    `- Filas con encabezados repetidos en el cuerpo: ${h.encabezadosRepetidos.length ? h.encabezadosRepetidos.join(", ") : "ninguna"}`,
+  );
   lineas.push("");
-  lineas.push("| # | Columna | Tipo dominante | Vacíos | Con `_x000D_`/`\\r`/`\\n` | Formatos de fecha | Ejemplos |");
+  lineas.push(
+    "| # | Columna | Tipo dominante | Vacíos | Con `_x000D_`/`\\r`/`\\n` | Formatos de fecha | Ejemplos |",
+  );
   lineas.push("|---|---|---|---|---|---|---|");
   for (const c of h.columnas) {
     lineas.push(
