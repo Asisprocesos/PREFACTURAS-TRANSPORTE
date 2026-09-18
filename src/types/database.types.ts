@@ -902,6 +902,42 @@ export interface Database {
         Returns: Database["public"]["Tables"]["envio_correo"]["Row"][];
       };
       incrementar_progreso_lote: { Args: { p_lote_id: string; p_exitoso: boolean }; Returns: undefined };
+      dashboard_indicadores: {
+        Args: { p_periodo_id: string | null };
+        Returns: {
+          total_prefacturas: number;
+          prefacturas_borrador: number;
+          prefacturas_con_novedades: number;
+          prefacturas_listas: number;
+          prefacturas_pdf_generado: number;
+          prefacturas_en_cola_envio: number;
+          prefacturas_enviadas: number;
+          prefacturas_error_envio: number;
+          monto_total_prefacturado: number;
+          total_odt: number;
+          total_transportistas_activos: number;
+          total_vehiculos_activos: number;
+          novedades_abiertas_error: number;
+          novedades_abiertas_advertencia: number;
+          novedades_abiertas_info: number;
+        }[];
+      };
+      dashboard_prefacturas_por_estado: {
+        Args: { p_periodo_id: string | null };
+        Returns: { estado: EstadoPrefactura; cantidad: number }[];
+      };
+      dashboard_monto_por_centro_costo: {
+        Args: { p_periodo_id: string | null; p_limite?: number };
+        Returns: { centro_costo: string; monto: number; cantidad: number }[];
+      };
+      dashboard_monto_por_regional: {
+        Args: { p_periodo_id: string | null };
+        Returns: { regional: string; monto: number; cantidad: number }[];
+      };
+      dashboard_top_placas: {
+        Args: { p_periodo_id: string | null; p_limite?: number };
+        Returns: { placa: string; transportista: string | null; monto: number; cantidad: number }[];
+      };
     };
     Enums: {
       rol_usuario: RolUsuario;
