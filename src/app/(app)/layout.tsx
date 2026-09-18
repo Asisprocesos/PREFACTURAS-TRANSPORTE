@@ -2,6 +2,7 @@ import Link from "next/link";
 
 const MENU = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/buscador", label: "Buscador" },
   { href: "/prefacturas", label: "Prefacturas" },
   { href: "/importar", label: "Importar" },
   { href: "/control-placa", label: "Control por placa" },

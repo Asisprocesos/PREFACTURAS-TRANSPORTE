@@ -46,6 +46,17 @@ export async function listarTransportistas({
   return { filas: data ?? [], total: count ?? 0 };
 }
 
+export async function listarTransportistasParaSelect(): Promise<{ id: string; razon_social: string }[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("transportista")
+    .select("id, razon_social")
+    .is("deleted_at", null)
+    .order("razon_social", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function obtenerTransportista(id: string): Promise<Transportista | null> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("transportista").select("*").eq("id", id).maybeSingle();
