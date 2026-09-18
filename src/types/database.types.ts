@@ -888,6 +888,11 @@ export interface Database {
         Args: { p_sesion_id: string };
         Returns: { guia: string; resultado: ResultadoMatchEscaneo; odt_id: string | null }[];
       };
+      confirmar_importacion: {
+        Args: { p_importacion_id: string };
+        Returns: { odt_insertadas: number; novedades_generadas: number }[];
+      };
+      revertir_importacion: { Args: { p_importacion_id: string }; Returns: undefined };
     };
     Enums: {
       rol_usuario: RolUsuario;

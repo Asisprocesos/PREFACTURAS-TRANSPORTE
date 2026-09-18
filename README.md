@@ -12,6 +12,7 @@ macros `MACRO CORTE 13 – 12` (instructivo IO-20304C).
 
 - [Arquitectura](#arquitectura)
 - [Estado actual](#estado-actual)
+- [Limitaciones conocidas](#limitaciones-conocidas)
 - [Instalación](#instalación)
 - [Variables de entorno](#variables-de-entorno)
 - [Configuración de la aplicación](#configuración-de-la-aplicación)
@@ -40,18 +41,45 @@ actual está en [`docs/diagnostico-excel.md`](docs/diagnostico-excel.md).
 
 ## Estado actual
 
-| Fase                       | Contenido                                                                                  | Estado                                                                                                                             |
-| -------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Diagnóstico             | `docs/diagnostico-excel.md`, `scripts/analizar-excel.ts`                                   | ✅ Hecho (basado en diagnóstico preliminar; falta re-ejecutar con los archivos reales, ver `docs/fuentes/README.md`)               |
-| 2. Arquitectura            | `docs/arquitectura.md`                                                                     | ✅ Hecho                                                                                                                           |
-| 3. Estructura del proyecto | Next.js 15, Tailwind, shadcn/ui-style, Vitest, Playwright, ESLint, Prettier, CI            | ✅ Hecho                                                                                                                           |
-| 4. Base de datos           | `supabase/migrations/`, RLS, índices, triggers, seeds                                      | ✅ Hecho (migraciones y seeds versionados; **no aplicadas** contra ningún proyecto Supabase real todavía)                          |
-| 5. Autenticación y roles   | Supabase Auth, restricción `@grupolaar.com`, `perfil_usuario`, `rol_actual()`              | ✅ Esquema, trigger de dominio, auto-creación de perfil y RLS por rol en migraciones; falta la UI de gestión de usuarios (fase 15) |
-| 6–16. Módulos funcionales  | Transportistas, Vehículos, Importador, Prefacturas, PDF, Correo, Dashboard, Reportes, etc. | ⏳ Pendiente                                                                                                                       |
+| Fase                       | Contenido                                                                                                                                   | Estado                                                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 1. Diagnóstico             | `docs/diagnostico-excel.md`, `scripts/analizar-excel.ts`                                                                                    | ✅ Hecho (basado en diagnóstico preliminar; falta re-ejecutar con los archivos reales, ver `docs/fuentes/README.md`) |
+| 2. Arquitectura            | `docs/arquitectura.md`                                                                                                                      | ✅ Hecho                                                                                                             |
+| 3. Estructura del proyecto | Next.js 15, Tailwind, shadcn/ui-style, Vitest, Playwright, ESLint, Prettier, CI                                                             | ✅ Hecho                                                                                                             |
+| 4. Base de datos           | `supabase/migrations/`, RLS, índices, triggers, seeds                                                                                       | ✅ Hecho (migraciones y seeds versionados; **no aplicadas** contra ningún proyecto Supabase real todavía)            |
+| 5. Autenticación y roles   | Supabase Auth, restricción `@grupolaar.com`, `perfil_usuario`, `rol_actual()`, UI de Usuarios (`/usuarios`)                                 | ✅ Hecho: invitar, listar, cambiar rol y activar/desactivar (solo ADMIN)                                             |
+| 6. Transportistas          | `/transportistas` (CRUD, búsqueda, correos de contacto)                                                                                     | ✅ Hecho                                                                                                             |
+| 7. Vehículos               | `/vehiculos` (CRUD, correos, historial), `scripts/migrar-maestros.ts`                                                                       | ✅ Hecho (migración de maestros lista, dry-run por defecto; pendiente correr contra el `.xlsb` real)                 |
+| 8. Importador Excel        | `/importar` (asistente 5 pasos), Web Worker de previsualización, validación server-side, RPC `confirmar_importacion`/`revertir_importacion` | ✅ Hecho, ver limitaciones conocidas abajo                                                                           |
+| 9–16. Módulos restantes    | Prefacturas, Control por placa, Validación ODT, Escaneo, Corrección, PDF, Correo, Dashboard, Reportes, cierre de período                    | ⏳ Pendiente                                                                                                         |
 
 Cada fase, al completarse, se documenta con: qué se implementó, qué archivos
 se crearon, qué decisiones técnicas se tomaron, cómo probarlo y qué falta —
 ver el historial de commits (`git log`) y los mensajes de cada commit.
+
+## Limitaciones conocidas
+
+- **Web Worker del importador no probado en un navegador real.** Este
+  entorno de desarrollo no tiene navegador disponible para hacer clic a
+  través del asistente de importación. Se verificó que `next build`
+  compila `src/workers/excel-parser.worker.ts` como un chunk separado y
+  que `new Worker(new URL(...))` queda correctamente reescrito hacia ese
+  chunk (inspeccionado en `.next/static/chunks/`), pero falta una prueba
+  manual end-to-end con un archivo real antes de usarlo en producción.
+- **Validación de importación en una sola pasada, no por lotes reanudables.**
+  `validarImportacionAction` (fase 8) descarga y valida el archivo completo
+  en una sola ejecución del servidor. Funciona bien para archivos de hasta
+  unos pocos miles de filas; para el corte completo (~15.000 filas) en
+  Vercel, conviene partirlo en lotes idempotentes como se describe en
+  `docs/arquitectura.md`, sección de decisiones técnicas (punto 6). Se deja
+  como mejora incremental, no bloquea el uso del importador.
+- **`scripts/migrar-maestros.ts` y `scripts/analizar-excel.ts` no se han
+  ejecutado contra archivos reales** (no están disponibles en este
+  entorno). Ver `docs/fuentes/README.md`.
+- Los flujos que dependen de un proyecto Supabase real (login, RLS,
+  Storage, RPC `confirmar_importacion`) se verificaron con `next build` y
+  revisión manual del SQL, pero no se han probado end-to-end contra una
+  base de datos real.
 
 ## Instalación
 
