@@ -893,6 +893,10 @@ export interface Database {
         Returns: { odt_insertadas: number; novedades_generadas: number }[];
       };
       revertir_importacion: { Args: { p_importacion_id: string }; Returns: undefined };
+      generar_prefacturas_periodo: {
+        Args: { p_periodo_id: string };
+        Returns: { prefacturas_creadas: number; prefacturas_actualizadas: number }[];
+      };
     };
     Enums: {
       rol_usuario: RolUsuario;
