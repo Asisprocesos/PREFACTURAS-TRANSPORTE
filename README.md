@@ -51,7 +51,12 @@ actual está en [`docs/diagnostico-excel.md`](docs/diagnostico-excel.md).
 | 6. Transportistas          | `/transportistas` (CRUD, búsqueda, correos de contacto)                                                                                     | ✅ Hecho                                                                                                             |
 | 7. Vehículos               | `/vehiculos` (CRUD, correos, historial), `scripts/migrar-maestros.ts`                                                                       | ✅ Hecho (migración de maestros lista, dry-run por defecto; pendiente correr contra el `.xlsb` real)                 |
 | 8. Importador Excel        | `/importar` (asistente 5 pasos), Web Worker de previsualización, validación server-side, RPC `confirmar_importacion`/`revertir_importacion` | ✅ Hecho, ver limitaciones conocidas abajo                                                                           |
-| 9–16. Módulos restantes    | Prefacturas, Control por placa, Validación ODT, Escaneo, Corrección, PDF, Correo, Dashboard, Reportes, cierre de período                    | ⏳ Pendiente                                                                                                         |
+| 9. Prefacturas             | `/prefacturas` (listado, generación, detalle con resumen y ODT)                                                                             | ✅ Hecho (Generar PDF / Enviar por correo quedan como placeholder hasta las fases 10 y 12)                           |
+| 9. Control por placa       | `/control-placa` (semáforo, resolución de novedades)                                                                                        | ✅ Hecho                                                                                                             |
+| 9. Validación ODT          | `/validacion-odt` (buscador → reusa el detalle de prefactura)                                                                               | ✅ Hecho (falta el cruce ODT MANUAL, que depende de `factura_transportista`, fuera de alcance por ahora)             |
+| 9. Escaneo de ODT          | `/validacion-odt/escaneo` (lector USB, pegar lista, match de 4 resultados, exportar Excel)                                                  | ✅ Hecho vía lector USB/teclado y lista pegada; **cámara (@zxing/browser) no implementada**, ver limitaciones abajo  |
+| 9. Corrección manual       | `/odt/[guia]/corregir` (individual) y `/control-placa/correccion-masiva` (masiva)                                                           | ✅ Hecho                                                                                                             |
+| 10–16. Módulos restantes   | PDF, Correo, Dashboard, Reportes, procesamiento masivo/log, usuarios avanzado, cierre de período                                            | ⏳ Pendiente                                                                                                         |
 
 Cada fase, al completarse, se documenta con: qué se implementó, qué archivos
 se crearon, qué decisiones técnicas se tomaron, cómo probarlo y qué falta —
@@ -59,6 +64,18 @@ ver el historial de commits (`git log`) y los mensajes de cada commit.
 
 ## Limitaciones conocidas
 
+- **Escaneo de ODT solo por lector USB (teclado) y lista pegada.** La
+  captura por cámara del navegador (`@zxing/browser`, ya en
+  `package.json`) no se implementó todavía: requiere probarse con una
+  cámara real y no hay forma de verificarlo en este entorno sin
+  navegador. El lector USB (que se comporta como teclado + Enter) y
+  "pegar una lista" sí están implementados y cubren el caso de uso
+  principal.
+- **Cruce "ODT MANUAL" de Validación ODT no implementado.** Esa sección
+  del Excel original depende de cargar la factura física del
+  transportista (`factura_transportista`, tabla ya creada en las
+  migraciones); la UI para registrar esos datos es una fase posterior
+  no cubierta todavía.
 - **Web Worker del importador no probado en un navegador real.** Este
   entorno de desarrollo no tiene navegador disponible para hacer clic a
   través del asistente de importación. Se verificó que `next build`

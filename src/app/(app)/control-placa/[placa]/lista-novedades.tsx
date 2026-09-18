@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -62,9 +63,16 @@ function FilaNovedad({ novedad, soloLectura }: { novedad: Novedad; soloLectura: 
           ) : null}
         </div>
         {!soloLectura && !resuelta ? (
-          <Button variant="outline" size="sm" onClick={() => setMostrarForm((v) => !v)}>
-            Resolver
-          </Button>
+          <div className="flex shrink-0 gap-2">
+            {novedad.guia ? (
+              <Button asChild variant="ghost" size="sm">
+                <Link href={`/odt/${encodeURIComponent(novedad.guia)}/corregir`}>Corregir ODT</Link>
+              </Button>
+            ) : null}
+            <Button variant="outline" size="sm" onClick={() => setMostrarForm((v) => !v)}>
+              Resolver
+            </Button>
+          </div>
         ) : null}
       </div>
 

@@ -23,11 +23,16 @@ export default async function ControlPlacaPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="titulo-marca text-2xl">Control por placa</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Semáforo de novedades por placa del período: total, ODT y novedades abiertas.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="titulo-marca text-2xl">Control por placa</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Semáforo de novedades por placa del período: total, ODT y novedades abiertas.
+          </p>
+        </div>
+        <Link href="/control-placa/correccion-masiva" className="text-sm text-primary hover:underline">
+          Corrección masiva →
+        </Link>
       </div>
 
       <SelectorPeriodo periodos={periodos} periodoActual={periodoId} />
