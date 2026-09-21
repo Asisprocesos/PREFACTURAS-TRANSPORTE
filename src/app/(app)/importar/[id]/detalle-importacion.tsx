@@ -20,6 +20,9 @@ export function DetalleImportacion({ importacion }: { importacion: Importacion }
     filasConError: importacion.filas_con_error,
     filasAdvertencias: importacion.filas_advertencias,
     filasExcluidas: 0,
+    // Solo se usa para las etiquetas de esta vista de solo lectura (no hay
+    // botón "Continuar" aquí); aproxima con las filas sin error al validar.
+    filasParaInsertar: importacion.filas_validas + importacion.filas_advertencias,
   };
 
   async function confirmar() {

@@ -19,7 +19,7 @@ export async function recalcularResumenImportacion(importacionId: string): Promi
   const supabase = await createClient();
   const { data: filas, error } = await supabase
     .from("importacion_fila")
-    .select("errores, advertencias, datos_normalizados")
+    .select("errores, advertencias, datos_normalizados, decision")
     .eq("importacion_id", importacionId);
   if (error) throw error;
 
@@ -29,6 +29,7 @@ export async function recalcularResumenImportacion(importacionId: string): Promi
     filasConError: 0,
     filasAdvertencias: 0,
     filasExcluidas: 0,
+    filasParaInsertar: 0,
   };
 
   for (const f of filas ?? []) {
@@ -41,6 +42,8 @@ export async function recalcularResumenImportacion(importacionId: string): Promi
     else if (errores.length > 0) resumen.filasConError++;
     else if (advertencias.length > 0) resumen.filasAdvertencias++;
     else resumen.filasValidas++;
+
+    if (f.decision === "INSERTAR") resumen.filasParaInsertar++;
   }
 
   await supabase

@@ -17,6 +17,8 @@ export interface ResumenValidacion {
   filasConError: number;
   filasAdvertencias: number;
   filasExcluidas: number;
+  /** Filas con decision = INSERTAR ahora mismo: las que confirmar_importacion insertará. */
+  filasParaInsertar: number;
 }
 
 const TAMANO_LOTE_INSERT = 500;
@@ -139,9 +141,10 @@ export async function validarImportacionAction(datos: {
     filasConError: 0,
     filasAdvertencias: 0,
     filasExcluidas: 0,
+    filasParaInsertar: 0,
   };
 
-  const filasParaInsertar = filasCrudas.map((filaCruda, i) => {
+  const filasParaInsertarEnBD = filasCrudas.map((filaCruda, i) => {
     const mapeada = aplicarMapeo(filaCruda, datos.mapeo);
     const resultado = validarFila(i + 1, mapeada, contexto, guiasVistasEnArchivo);
 
@@ -150,6 +153,13 @@ export async function validarImportacionAction(datos: {
     else if (resultado.advertencias.length > 0) resumen.filasAdvertencias++;
     else resumen.filasValidas++;
 
+    const decision: DecisionFila | null = resultado.excluida
+      ? "OMITIR"
+      : resultado.errores.length > 0
+        ? null
+        : "INSERTAR";
+    if (decision === "INSERTAR") resumen.filasParaInsertar++;
+
     return {
       importacion_id: datos.importacionId,
       numero_fila: resultado.numeroFila,
@@ -157,18 +167,14 @@ export async function validarImportacionAction(datos: {
       datos_normalizados: resultado.datosNormalizados as unknown as Json,
       errores: resultado.errores as unknown as Json,
       advertencias: resultado.advertencias as unknown as Json,
-      decision: (resultado.excluida
-        ? "OMITIR"
-        : resultado.errores.length > 0
-          ? null
-          : "INSERTAR") as DecisionFila | null,
+      decision,
     };
   });
 
   // 4. Reemplazar el staging previo (revalidación) e insertar por lotes.
   await supabase.from("importacion_fila").delete().eq("importacion_id", datos.importacionId);
-  for (let i = 0; i < filasParaInsertar.length; i += TAMANO_LOTE_INSERT) {
-    const lote = filasParaInsertar.slice(i, i + TAMANO_LOTE_INSERT);
+  for (let i = 0; i < filasParaInsertarEnBD.length; i += TAMANO_LOTE_INSERT) {
+    const lote = filasParaInsertarEnBD.slice(i, i + TAMANO_LOTE_INSERT);
     const { error } = await supabase.from("importacion_fila").insert(lote);
     if (error) throw new Error(`Error guardando el staging (lote ${i}): ${error.message}`);
   }

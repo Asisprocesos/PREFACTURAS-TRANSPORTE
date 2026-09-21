@@ -294,11 +294,19 @@ export function ImportarWizard({ periodos }: { periodos: PeriodoOpcion[] }) {
               resumen={estado.resumen}
               onResumenActualizado={(resumen) => actualizar({ resumen })}
             />
+            <p className="text-sm text-muted-foreground">
+              {estado.resumen.filasParaInsertar} de {estado.resumen.filasLeidas} filas se insertarán al
+              confirmar (las marcadas &quot;Se insertará&quot; en Errores/Advertencias, más las de la pestaña
+              Válidas). Usa Omitir/Insertar/Corregir en las pestañas de arriba para ajustar cuáles.
+            </p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => actualizar({ paso: 3 })}>
                 Corregir mapeo y revalidar
               </Button>
-              <Button onClick={() => actualizar({ paso: 5 })} disabled={estado.resumen.filasValidas === 0}>
+              <Button
+                onClick={() => actualizar({ paso: 5 })}
+                disabled={estado.resumen.filasParaInsertar === 0}
+              >
                 Continuar a confirmar
               </Button>
             </div>
