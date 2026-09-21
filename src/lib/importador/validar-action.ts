@@ -21,6 +21,55 @@ export interface ResumenValidacion {
 
 const TAMANO_LOTE_INSERT = 500;
 
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * Parte del contexto de validación que no depende del lote de filas que se
+ * está procesando (catálogos + rango del período). `guiasExistentesBD` se
+ * arma aparte porque depende de qué guías se están validando: el lote
+ * completo en `validarImportacionAction`, o una sola en la revalidación de
+ * `corregirFilaImportacionAction`.
+ */
+export async function construirContextoBase(
+  supabase: SupabaseServerClient,
+  periodoId: string,
+): Promise<Omit<ContextoValidacion, "guiasExistentesBD">> {
+  const { data: periodo, error: errorPeriodo } = await supabase
+    .from("periodo")
+    .select("id, fecha_inicio, fecha_fin")
+    .eq("id", periodoId)
+    .single();
+  if (errorPeriodo || !periodo) throw new Error("El período seleccionado no existe.");
+
+  const [{ data: vehiculos }, { data: tiposRuta }] = await Promise.all([
+    supabase.from("vehiculo").select("placa, contacto_correo(id)").is("deleted_at", null),
+    supabase.from("tipo_ruta_centro_costo").select("tipo_ruta, centro_costo, requiere_revision"),
+  ]);
+
+  const placasConocidas = new Set((vehiculos ?? []).map((v) => v.placa));
+  const placasConCorreo = new Set(
+    (vehiculos ?? [])
+      .filter((v) => Array.isArray(v.contacto_correo) && v.contacto_correo.length > 0)
+      .map((v) => v.placa),
+  );
+  const tiposRutaMapa = new Map(
+    (tiposRuta ?? []).map((t) => [
+      t.tipo_ruta.toUpperCase(),
+      { requiereRevision: t.requiere_revision, centroCosto: t.centro_costo },
+    ]),
+  );
+
+  return {
+    periodoInicio: new Date(`${periodo.fecha_inicio}T00:00:00Z`),
+    periodoFin: new Date(`${periodo.fecha_fin}T00:00:00Z`),
+    placasConocidas,
+    placasConCorreo,
+    tiposRuta: tiposRutaMapa,
+    patronPlaca: defaultAppConfig.patrones.placa,
+    patronExtraccionChofer: defaultAppConfig.patrones.extraccionPlacaDesdeChofer,
+  };
+}
+
 export async function validarImportacionAction(datos: {
   importacionId: string;
   periodoId: string;
@@ -36,13 +85,6 @@ export async function validarImportacionAction(datos: {
     .eq("id", datos.importacionId)
     .single();
   if (errorImportacion || !importacion) throw new Error("Importación no encontrada.");
-
-  const { data: periodo, error: errorPeriodo } = await supabase
-    .from("periodo")
-    .select("id, fecha_inicio, fecha_fin")
-    .eq("id", datos.periodoId)
-    .single();
-  if (errorPeriodo || !periodo) throw new Error("El período seleccionado no existe.");
 
   // 1. Descargar el archivo (server-side) y parsear la hoja elegida.
   const { data: archivoBlob, error: errorDescarga } = await supabase.storage
@@ -75,9 +117,8 @@ export async function validarImportacionAction(datos: {
     if (mapeada.guia) guiasEnArchivo.add(mapeada.guia.trim().toUpperCase());
   }
 
-  const [{ data: vehiculos }, { data: tiposRuta }, { data: guiasExistentes }] = await Promise.all([
-    supabase.from("vehiculo").select("placa, contacto_correo(id)").is("deleted_at", null),
-    supabase.from("tipo_ruta_centro_costo").select("tipo_ruta, centro_costo, requiere_revision"),
+  const [contextoBase, { data: guiasExistentes }] = await Promise.all([
+    construirContextoBase(supabase, datos.periodoId),
     guiasEnArchivo.size > 0
       ? supabase
           .from("odt")
@@ -86,30 +127,9 @@ export async function validarImportacionAction(datos: {
       : Promise.resolve({ data: [] as { guia: string }[] }),
   ]);
 
-  const placasConocidas = new Set((vehiculos ?? []).map((v) => v.placa));
-  const placasConCorreo = new Set(
-    (vehiculos ?? [])
-      .filter((v) => Array.isArray(v.contacto_correo) && v.contacto_correo.length > 0)
-      .map((v) => v.placa),
-  );
-  const tiposRutaMapa = new Map(
-    (tiposRuta ?? []).map((t) => [
-      t.tipo_ruta.toUpperCase(),
-      { requiereRevision: t.requiere_revision, centroCosto: t.centro_costo },
-    ]),
-  );
   const guiasExistentesBD = new Set((guiasExistentes ?? []).map((g) => g.guia.toUpperCase()));
 
-  const contexto: ContextoValidacion = {
-    periodoInicio: new Date(`${periodo.fecha_inicio}T00:00:00Z`),
-    periodoFin: new Date(`${periodo.fecha_fin}T00:00:00Z`),
-    placasConocidas,
-    placasConCorreo,
-    tiposRuta: tiposRutaMapa,
-    guiasExistentesBD,
-    patronPlaca: defaultAppConfig.patrones.placa,
-    patronExtraccionChofer: defaultAppConfig.patrones.extraccionPlacaDesdeChofer,
-  };
+  const contexto: ContextoValidacion = { ...contextoBase, guiasExistentesBD };
 
   // 3. Validar fila por fila y preparar el staging.
   const guiasVistasEnArchivo = new Set<string>();

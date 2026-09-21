@@ -44,7 +44,11 @@ export function DetalleImportacion({ importacion }: { importacion: Importacion }
   return (
     <div className="space-y-4">
       {importacion.estado === "VALIDADA" || importacion.estado === "CONFIRMADA" ? (
-        <ResultadosValidacion importacionId={importacion.id} resumen={resumen} />
+        <ResultadosValidacion
+          importacionId={importacion.id}
+          resumen={resumen}
+          soloLectura={importacion.estado !== "VALIDADA"}
+        />
       ) : (
         <p className="text-sm text-muted-foreground">
           Esta importación todavía no tiene resultados de validación.

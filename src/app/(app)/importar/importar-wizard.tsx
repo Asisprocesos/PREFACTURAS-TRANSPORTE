@@ -289,7 +289,11 @@ export function ImportarWizard({ periodos }: { periodos: PeriodoOpcion[] }) {
 
         {estado.paso === 4 && estado.resumen && estado.importacionId ? (
           <div className="space-y-4">
-            <ResultadosValidacion importacionId={estado.importacionId} resumen={estado.resumen} />
+            <ResultadosValidacion
+              importacionId={estado.importacionId}
+              resumen={estado.resumen}
+              onResumenActualizado={(resumen) => actualizar({ resumen })}
+            />
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => actualizar({ paso: 3 })}>
                 Corregir mapeo y revalidar
