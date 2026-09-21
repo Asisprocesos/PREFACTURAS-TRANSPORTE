@@ -102,6 +102,13 @@ export function PrefacturasTable({
   const [seleccion, setSeleccion] = useState<RowSelectionState>({});
   const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
+  const [generandoPdf, setGenerandoPdf] = useState(false);
+  const [progresoPdf, setProgresoPdf] = useState<{
+    total: number;
+    hechos: number;
+    exitosos: number;
+    errores: { numero: string; error: string }[];
+  } | null>(null);
 
   const columnas = crearColumnas(puedeEnviar);
   const table = useReactTable({
@@ -140,18 +147,75 @@ export function PrefacturasTable({
     else router.refresh();
   }
 
+  async function generarPdfSeleccionados() {
+    const seleccionadas = filas.filter((f) => seleccion[f.id]);
+    if (seleccionadas.length === 0) return;
+    setGenerandoPdf(true);
+    setMensaje(null);
+    const errores: { numero: string; error: string }[] = [];
+    let exitosos = 0;
+
+    for (let i = 0; i < seleccionadas.length; i++) {
+      const prefactura = seleccionadas[i]!;
+      setProgresoPdf({ total: seleccionadas.length, hechos: i, exitosos, errores });
+      try {
+        const respuesta = await fetch(`/api/prefacturas/${prefactura.id}/pdf`, { method: "POST" });
+        const cuerpo = await respuesta.json().catch(() => null);
+        if (!respuesta.ok) {
+          errores.push({
+            numero: prefactura.numero ?? prefactura.id,
+            error: cuerpo?.error ?? `HTTP ${respuesta.status}`,
+          });
+        } else {
+          exitosos++;
+        }
+      } catch {
+        errores.push({
+          numero: prefactura.numero ?? prefactura.id,
+          error: "Se perdió la conexión con el servidor.",
+        });
+      }
+    }
+
+    setProgresoPdf({ total: seleccionadas.length, hechos: seleccionadas.length, exitosos, errores });
+    setGenerandoPdf(false);
+    router.refresh();
+  }
+
   const totalPaginas = Math.max(1, Math.ceil(total / tamanoPagina));
   const cantidadSeleccionada = Object.keys(seleccion).length;
 
   return (
     <div className="space-y-4">
       {puedeEnviar && cantidadSeleccionada > 0 ? (
-        <div className="flex items-center gap-3 rounded-md border bg-muted/50 px-4 py-2 text-sm">
-          <span>{cantidadSeleccionada} seleccionadas</span>
-          <Button size="sm" onClick={enviarSeleccionados} disabled={enviando}>
-            {enviando ? "Encolando..." : "Enviar seleccionados"}
-          </Button>
-          {mensaje ? <span className="text-muted-foreground">{mensaje}</span> : null}
+        <div className="space-y-2 rounded-md border bg-muted/50 px-4 py-2 text-sm">
+          <div className="flex flex-wrap items-center gap-3">
+            <span>{cantidadSeleccionada} seleccionadas</span>
+            <Button size="sm" variant="outline" onClick={generarPdfSeleccionados} disabled={generandoPdf}>
+              {generandoPdf ? "Generando PDFs..." : "Generar PDFs seleccionados"}
+            </Button>
+            <Button size="sm" onClick={enviarSeleccionados} disabled={enviando}>
+              {enviando ? "Encolando..." : "Enviar seleccionados"}
+            </Button>
+            {mensaje ? <span className="text-muted-foreground">{mensaje}</span> : null}
+          </div>
+          {progresoPdf ? (
+            <div className="text-xs text-muted-foreground">
+              <p>
+                {progresoPdf.hechos} / {progresoPdf.total} procesadas · {progresoPdf.exitosos} generados
+                {progresoPdf.errores.length > 0 ? ` · ${progresoPdf.errores.length} con error` : ""}
+              </p>
+              {!generandoPdf && progresoPdf.errores.length > 0 ? (
+                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-destructive">
+                  {progresoPdf.errores.map((e, i) => (
+                    <li key={i}>
+                      {e.numero}: {e.error}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
