@@ -33,9 +33,14 @@ export default async function TransportistasPage({
           <p className="mt-2 text-sm text-muted-foreground">Maestro de transportistas (contratista/RUC).</p>
         </div>
         {puedeCrear ? (
-          <Button asChild>
-            <Link href="/transportistas/nuevo">Nuevo transportista</Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild variant="outline">
+              <Link href="/transportistas/importar">Carga masiva</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/transportistas/nuevo">Nuevo transportista</Link>
+            </Button>
+          </div>
         ) : null}
       </div>
       <TransportistasTable filas={filas} total={total} pagina={pagina} tamanoPagina={TAMANO_PAGINA} />

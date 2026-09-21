@@ -33,9 +33,14 @@ export default async function VehiculosPage({
           <p className="mt-2 text-sm text-muted-foreground">Maestro de placas (hoja VEHICULOS).</p>
         </div>
         {puedeCrear ? (
-          <Button asChild>
-            <Link href="/vehiculos/nuevo">Nuevo vehículo</Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild variant="outline">
+              <Link href="/transportistas/importar">Carga masiva</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/vehiculos/nuevo">Nuevo vehículo</Link>
+            </Button>
+          </div>
         ) : null}
       </div>
       <VehiculosTable filas={filas} total={total} pagina={pagina} tamanoPagina={TAMANO_PAGINA} />
