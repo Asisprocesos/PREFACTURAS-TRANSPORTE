@@ -272,6 +272,7 @@ function FormularioCorreccion({
   const [fechaCreacion, setFechaCreacion] = useState((normalizados?.fechaCreacion as string) ?? "");
   const [valor, setValor] = useState(normalizados?.valor != null ? String(normalizados.valor) : "");
   const [tipoRuta, setTipoRuta] = useState((normalizados?.tipoRuta as string) ?? "");
+  const [tipoCosto, setTipoCosto] = useState((normalizados?.tipoCosto as string) ?? "");
   const [estado, setEstado] = useState((normalizados?.estadoFenix as string) ?? "");
   const [guardando, setGuardando] = useState(false);
   const [resultado, setResultado] = useState<{
@@ -283,7 +284,7 @@ function FormularioCorreccion({
   async function guardar() {
     setGuardando(true);
     setResultado(null);
-    const r = await onGuardar(filaId, { guia, placa, fechaCreacion, valor, tipoRuta, estado });
+    const r = await onGuardar(filaId, { guia, placa, fechaCreacion, valor, tipoRuta, tipoCosto, estado });
     setGuardando(false);
     if (!r.ok) setResultado({ error: r.error ?? "No se pudo corregir la fila." });
     else if ((r.errores?.length ?? 0) > 0) {
@@ -294,7 +295,7 @@ function FormularioCorreccion({
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
         <Campo etiqueta="Guía">
           <Input value={guia} onChange={(e) => setGuia(e.target.value)} />
         </Campo>
@@ -309,6 +310,9 @@ function FormularioCorreccion({
         </Campo>
         <Campo etiqueta="Tipo de Ruta">
           <Input value={tipoRuta} onChange={(e) => setTipoRuta(e.target.value)} />
+        </Campo>
+        <Campo etiqueta="Tipo de Costo">
+          <Input value={tipoCosto} onChange={(e) => setTipoCosto(e.target.value)} />
         </Campo>
         <Campo etiqueta="Estado">
           <Input value={estado} onChange={(e) => setEstado(e.target.value)} />

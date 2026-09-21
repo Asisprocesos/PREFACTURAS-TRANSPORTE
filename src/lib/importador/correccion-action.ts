@@ -16,6 +16,7 @@ export interface CorreccionFila {
   fechaCreacion?: string;
   valor?: string;
   tipoRuta?: string;
+  tipoCosto?: string;
   estado?: string;
 }
 
@@ -102,7 +103,7 @@ export async function corregirFilaImportacionAction(
     estado: (correccion.estado ?? normActual?.estadoFenix ?? "").trim(),
     fecha_recepcion: ddMmAaaaDesdeIso(normActual?.fechaRecepcion),
     valor: correccion.valor ?? (normActual?.valor != null ? String(normActual.valor) : ""),
-    tipo_costo: normActual?.tipoCosto ?? "",
+    tipo_costo: (correccion.tipoCosto ?? normActual?.tipoCosto ?? "").trim(),
     tipo_ruta: (correccion.tipoRuta ?? normActual?.tipoRuta ?? "").trim(),
     ruta_zona: normActual?.rutaZona ?? "",
     placa: (correccion.placa ?? normActual?.placaNormalizada ?? normActual?.placaOriginal ?? "").trim(),

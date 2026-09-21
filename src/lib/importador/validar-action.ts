@@ -45,7 +45,11 @@ export async function construirContextoBase(
 
   const [{ data: vehiculos }, { data: tiposRuta }] = await Promise.all([
     supabase.from("vehiculo").select("placa, contacto_correo(id)").is("deleted_at", null),
-    supabase.from("tipo_ruta_centro_costo").select("tipo_ruta, centro_costo, requiere_revision"),
+    supabase
+      .from("tipo_ruta_centro_costo")
+      .select("tipo_ruta, centro_costo, requiere_revision")
+      .is("deleted_at", null)
+      .eq("activo", true),
   ]);
 
   const placasConocidas = new Set((vehiculos ?? []).map((v) => v.placa));

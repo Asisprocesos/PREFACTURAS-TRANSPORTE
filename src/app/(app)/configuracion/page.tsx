@@ -1,13 +1,18 @@
 import { defaultAppConfig } from "@/config/app.config";
+import { listarTipoRutaCentroCosto } from "@/lib/catalogos/tipo-ruta-centro-costo/queries";
 import { requireRole } from "@/lib/auth/roles";
 import { listarPeriodosAdmin } from "@/lib/periodos/queries";
 
 import { ArchivarAntiguosButton } from "./archivar-antiguos-button";
 import { PeriodosTabla } from "./periodos-tabla";
+import { TipoRutaCentroCostoTabla } from "./tipo-ruta-centro-costo-tabla";
 
 export default async function ConfiguracionPage() {
   await requireRole(["ADMIN"]);
-  const periodos = await listarPeriodosAdmin();
+  const [periodos, catalogoTipoRuta] = await Promise.all([
+    listarPeriodosAdmin(),
+    listarTipoRutaCentroCosto(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -33,6 +38,16 @@ export default async function ConfiguracionPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Archivo automático</h2>
         <ArchivarAntiguosButton periodosCalientes={defaultAppConfig.periodo.periodosCalientes} />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">Tipo de Ruta → Centro de Costo</h2>
+        <p className="text-sm text-muted-foreground">
+          Catálogo que usa el importador para asignar el centro de costo de cada ODT según su Tipo de Ruta
+          (columna &quot;Tipo de Ruta&quot; del corte). Una fila &quot;requiere revisión&quot; o sin centro de
+          costo queda como advertencia al validar, en vez de asignarse automáticamente.
+        </p>
+        <TipoRutaCentroCostoTabla filas={catalogoTipoRuta} />
       </section>
     </div>
   );
