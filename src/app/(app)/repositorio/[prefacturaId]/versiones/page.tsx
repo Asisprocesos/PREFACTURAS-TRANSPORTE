@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
 import { obtenerPrefactura } from "@/lib/prefacturas/queries";
 import { listarVersionesPrefactura } from "@/lib/repositorio/queries";
@@ -22,6 +23,7 @@ export default async function VersionesPrefacturaPage({
 
   return (
     <div className="space-y-6">
+      <BotonVolver fallbackHref="/repositorio" />
       <div>
         <h1 className="titulo-marca text-2xl">Versiones — {prefactura.numero}</h1>
         <p className="mt-1 text-sm text-muted-foreground">

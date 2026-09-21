@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
 import { listarEnviosLote, obtenerLoteProceso } from "@/lib/correo/queries";
 
@@ -16,6 +17,7 @@ export default async function LoteEnvioPage({ params }: { params: Promise<{ lote
 
   return (
     <div className="space-y-6">
+      <BotonVolver fallbackHref="/prefacturas" />
       <div>
         <h1 className="titulo-marca text-2xl">Progreso del envío masivo</h1>
         <p className="mt-2 text-sm text-muted-foreground">

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
 import { defaultAppConfig } from "@/config/app.config";
 import { construirVariablesPlantilla } from "@/lib/correo/plantilla-variables";
@@ -43,6 +44,7 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
 
   return (
     <div className="space-y-6">
+      <BotonVolver fallbackHref="/prefacturas" />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="titulo-marca text-2xl">{prefactura.numero ?? "(sin número)"}</h1>

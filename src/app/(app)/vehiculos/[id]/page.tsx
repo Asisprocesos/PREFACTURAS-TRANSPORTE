@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { CorreosContacto } from "@/components/contactos/correos-contacto";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
 import { agregarCorreoVehiculo, eliminarCorreoVehiculo } from "@/lib/vehiculos/actions";
 import {
@@ -38,6 +39,7 @@ export default async function DetalleVehiculoPage({ params }: { params: Promise<
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <BotonVolver fallbackHref="/vehiculos" />
       <div>
         <h1 className="titulo-marca text-2xl">{vehiculo.placa}</h1>
       </div>

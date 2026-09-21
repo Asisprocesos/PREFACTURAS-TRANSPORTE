@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { CorreosContacto } from "@/components/contactos/correos-contacto";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
 import { agregarCorreoTransportista, eliminarCorreoTransportista } from "@/lib/transportistas/actions";
 import { listarCorreosTransportista, obtenerTransportista } from "@/lib/transportistas/queries";
@@ -20,6 +21,7 @@ export default async function DetalleTransportistaPage({ params }: { params: Pro
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      <BotonVolver fallbackHref="/transportistas" />
       <div>
         <h1 className="titulo-marca text-2xl">{transportista.nombre || transportista.razon_social}</h1>
         <p className="mt-1 text-sm text-muted-foreground">

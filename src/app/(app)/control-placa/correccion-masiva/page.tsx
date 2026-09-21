@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
 import { listarPeriodosParaSelect } from "@/lib/importador/queries";
 
@@ -10,6 +11,7 @@ export default async function CorreccionMasivaPage() {
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
+      <BotonVolver fallbackHref="/control-placa" />
       <h1 className="titulo-marca text-2xl">Corrección masiva</h1>
       <Card>
         <CardHeader>

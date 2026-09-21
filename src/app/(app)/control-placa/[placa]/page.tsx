@@ -1,3 +1,4 @@
+import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
 import { obtenerNovedadesPrefactura } from "@/lib/prefacturas/queries";
 
@@ -18,6 +19,7 @@ export default async function DetalleControlPlacaPage({
 
   return (
     <div className="space-y-6">
+      <BotonVolver fallbackHref="/control-placa" />
       <div>
         <h1 className="titulo-marca text-2xl">{placa}</h1>
         <p className="mt-2 text-sm text-muted-foreground">Novedades del período.</p>

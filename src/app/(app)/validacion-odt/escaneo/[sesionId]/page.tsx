@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
 import { listarEscaneosSesion, obtenerMatchSesion, obtenerSesionEscaneo } from "@/lib/escaneo/queries";
 
@@ -16,6 +17,7 @@ export default async function SesionEscaneoPage({ params }: { params: Promise<{ 
 
   return (
     <div className="space-y-6">
+      <BotonVolver fallbackHref="/validacion-odt/escaneo" />
       <div>
         <h1 className="titulo-marca text-2xl">Sesión de escaneo</h1>
         <p className="mt-2 text-sm text-muted-foreground">

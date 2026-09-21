@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
 import { listarRegionalesParaSelect, listarTransportistasParaSelect } from "@/lib/vehiculos/queries";
 
@@ -13,6 +14,7 @@ export default async function NuevoVehiculoPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <BotonVolver fallbackHref="/vehiculos" />
       <h1 className="titulo-marca text-2xl">Nuevo vehículo</h1>
       <Card>
         <CardHeader>

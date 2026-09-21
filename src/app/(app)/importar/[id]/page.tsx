@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
 import { obtenerImportacion } from "@/lib/importador/queries";
 
@@ -14,6 +15,7 @@ export default async function DetalleImportacionPage({ params }: { params: Promi
 
   return (
     <div className="space-y-6">
+      <BotonVolver fallbackHref="/importar" />
       <div>
         <h1 className="titulo-marca text-2xl">{importacion.archivo}</h1>
         <p className="mt-1 text-sm text-muted-foreground">Estado: {importacion.estado}</p>

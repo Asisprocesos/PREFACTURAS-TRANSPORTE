@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { BotonVolver } from "@/components/ui/boton-volver";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +13,7 @@ export default async function EscaneoPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
+      <BotonVolver fallbackHref="/validacion-odt" />
       <h1 className="titulo-marca text-2xl">Escaneo de ODT físicas</h1>
       <Card>
         <CardHeader>

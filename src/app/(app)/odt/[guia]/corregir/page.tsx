@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
 import { listarCorreccionesOdt, obtenerOdtPorGuia } from "@/lib/odt/queries";
 
@@ -17,6 +18,7 @@ export default async function CorregirOdtPage({ params }: { params: Promise<{ gu
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      <BotonVolver fallbackHref="/validacion-odt" />
       <div>
         <h1 className="titulo-marca text-2xl">Corregir ODT {odt.guia}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
