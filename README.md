@@ -346,6 +346,21 @@ estático que `tsx` resuelve mal); `next build` compila el mismo import sin
 problema y Node ESM puro también, así que no afecta al build real de
 Next.js/Vercel — se deja documentado por si vuelve a aparecer.
 
+**Bug real encontrado en producción (Vercel) y corregido**: `@react-pdf/renderer`
+usa `pdfkit` por debajo, que carga las fuentes estándar (Helvetica, etc.)
+con `fs` en tiempo de ejecución, no con un `require()` estático — el file
+tracing de Next.js no lo detecta solo y las dejaba fuera del paquete que
+sube a la función serverless, con el error `Cannot find module
+.../pdfkit/js/standard-fonts/Helvetica.cjs` al generar el primer PDF real.
+Se corrigió con `outputFileTracingIncludes` en `next.config.ts` (incluye
+`node_modules/pdfkit/js/standard-fonts/` en el bundle de todas las rutas,
+192 KB); verificado leyendo los `.nft.json` que genera `next build` para
+confirmar que `Helvetica.cjs` queda incluido. Este bug **no** era
+reproducible ni en `next build` local ni con Node ESM puro (ver el punto
+de verificación anterior) — solo aparece en el empaquetado real de
+funciones serverless de Vercel, que es justamente lo que este entorno de
+desarrollo no puede simular sin desplegar de verdad.
+
 Ver el flujo completo en
 [`docs/arquitectura.md`](docs/arquitectura.md#5-flujo-de-generación-de-pdf).
 
