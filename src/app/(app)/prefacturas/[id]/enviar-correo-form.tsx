@@ -40,15 +40,26 @@ export function EnviarCorreoForm({
   async function enviar() {
     setCargando(true);
     setMensaje(null);
-    const resultado = await enviarCorreoIndividualAction(prefacturaId, {
-      to: principal ? [principal] : [],
-      cc: adicionales,
-      asunto,
-      cuerpo,
-    });
-    setCargando(false);
-    setMensaje({ texto: resultado.ok ? "Correo enviado." : (resultado.error ?? "Error"), ok: resultado.ok });
-    if (resultado.ok) router.refresh();
+    try {
+      const resultado = await enviarCorreoIndividualAction(prefacturaId, {
+        to: principal ? [principal] : [],
+        cc: adicionales,
+        asunto,
+        cuerpo,
+      });
+      setMensaje({
+        texto: resultado.ok ? "Correo enviado." : (resultado.error ?? "Error"),
+        ok: resultado.ok,
+      });
+      if (resultado.ok) router.refresh();
+    } catch (error) {
+      setMensaje({
+        texto: error instanceof Error ? error.message : "Error inesperado enviando el correo.",
+        ok: false,
+      });
+    } finally {
+      setCargando(false);
+    }
   }
 
   if (!abierto) {

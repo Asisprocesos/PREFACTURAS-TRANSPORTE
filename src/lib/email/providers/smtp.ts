@@ -27,6 +27,11 @@ export function crearProveedorSmtp(): EmailProvider {
     port,
     secure,
     auth: { user, pass },
+    // Sin timeouts, un host SMTP mal configurado o inalcanzable cuelga la
+    // conexión indefinidamente y el Server Action nunca resuelve.
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
   });
 
   return {

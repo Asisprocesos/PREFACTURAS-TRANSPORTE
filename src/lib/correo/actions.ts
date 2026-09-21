@@ -47,62 +47,72 @@ export async function enviarCorreoIndividualAction(
   const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
   if (datos.to.length === 0) return { ok: false, error: "Ingresa al menos un correo principal." };
 
-  const prefactura = await obtenerPrefactura(prefacturaId);
-  if (!prefactura) return { ok: false, error: "Prefactura no encontrada." };
+  try {
+    const prefactura = await obtenerPrefactura(prefacturaId);
+    if (!prefactura) return { ok: false, error: "Prefactura no encontrada." };
 
-  const pdf = await obtenerPdfVigenteOGenerar(prefacturaId, perfil.userId);
-  if (!pdf.ok) return { ok: false, error: pdf.error };
+    const pdf = await obtenerPdfVigenteOGenerar(prefacturaId, perfil.userId);
+    if (!pdf.ok) return { ok: false, error: pdf.error };
 
-  const { obtenerEmailProvider } = await import("@/lib/email/provider");
-  const proveedor = obtenerEmailProvider();
-  const resultado = await proveedor.enviar({
-    to: datos.to,
-    cc: datos.cc,
-    asunto: datos.asunto,
-    cuerpo: datos.cuerpo,
-    adjuntos: [{ nombreArchivo: pdf.nombreArchivo, contenido: pdf.buffer, contentType: "application/pdf" }],
-  });
-
-  const supabase = await createClient();
-  const { data: envio } = await supabase
-    .from("envio_correo")
-    .insert({
-      prefactura_id: prefacturaId,
-      destinatarios_to: datos.to,
-      destinatarios_cc: datos.cc,
+    // obtenerEmailProvider() lanza si faltan las variables SMTP_* o
+    // EMAIL_TEST_RECIPIENT — sin este try/catch esa excepción se propagaba
+    // sin capturar hasta el cliente, y el botón "Enviar" se quedaba en
+    // "Enviando..." para siempre porque nunca llegaba a limpiar su estado.
+    const { obtenerEmailProvider } = await import("@/lib/email/provider");
+    const proveedor = obtenerEmailProvider();
+    const resultado = await proveedor.enviar({
+      to: datos.to,
+      cc: datos.cc,
       asunto: datos.asunto,
       cuerpo: datos.cuerpo,
-      estado: resultado.ok ? "ENVIADO" : "ERROR",
-      message_id: resultado.ok ? resultado.messageId : null,
-      error: resultado.ok ? null : resultado.error,
-      enviado_por: perfil.userId,
-      enviado_en: resultado.ok ? new Date().toISOString() : null,
-    })
-    .select("id")
-    .single();
+      adjuntos: [{ nombreArchivo: pdf.nombreArchivo, contenido: pdf.buffer, contentType: "application/pdf" }],
+    });
 
-  await supabase
-    .from("prefactura")
-    .update({ estado: resultado.ok ? "ENVIADA" : "ERROR_ENVIO" })
-    .eq("id", prefacturaId);
+    const supabase = await createClient();
+    const { data: envio } = await supabase
+      .from("envio_correo")
+      .insert({
+        prefactura_id: prefacturaId,
+        destinatarios_to: datos.to,
+        destinatarios_cc: datos.cc,
+        asunto: datos.asunto,
+        cuerpo: datos.cuerpo,
+        estado: resultado.ok ? "ENVIADO" : "ERROR",
+        message_id: resultado.ok ? resultado.messageId : null,
+        error: resultado.ok ? null : resultado.error,
+        enviado_por: perfil.userId,
+        enviado_en: resultado.ok ? new Date().toISOString() : null,
+      })
+      .select("id")
+      .single();
 
-  if (envio) {
-    const guias = await obtenerGuiasPrefactura(supabase, prefacturaId);
-    await registrarLogEjecucion(
-      supabase,
-      envio.id,
-      "CORREO",
-      guias.map((guia) => ({
-        guia,
-        estado: resultado.ok ? "OK" : "ERROR",
-        detalle: resultado.ok ? { prefacturaId } : { prefacturaId, error: resultado.error },
-      })),
-    );
+    await supabase
+      .from("prefactura")
+      .update({ estado: resultado.ok ? "ENVIADA" : "ERROR_ENVIO" })
+      .eq("id", prefacturaId);
+
+    if (envio) {
+      const guias = await obtenerGuiasPrefactura(supabase, prefacturaId);
+      await registrarLogEjecucion(
+        supabase,
+        envio.id,
+        "CORREO",
+        guias.map((guia) => ({
+          guia,
+          estado: resultado.ok ? "OK" : "ERROR",
+          detalle: resultado.ok ? { prefacturaId } : { prefacturaId, error: resultado.error },
+        })),
+      );
+    }
+
+    revalidatePath(`/prefacturas/${prefacturaId}`);
+    if (!resultado.ok) return { ok: false, error: resultado.error };
+    return { ok: true };
+  } catch (error) {
+    console.error("Error enviando correo de prefactura", prefacturaId, error);
+    const mensaje = error instanceof Error ? error.message : "Error desconocido enviando el correo.";
+    return { ok: false, error: mensaje };
   }
-
-  revalidatePath(`/prefacturas/${prefacturaId}`);
-  if (!resultado.ok) return { ok: false, error: resultado.error };
-  return { ok: true };
 }
 
 export interface ResultadoEncolar extends ResultadoAccion {

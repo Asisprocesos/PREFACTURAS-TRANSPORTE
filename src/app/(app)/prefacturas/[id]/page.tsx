@@ -16,6 +16,10 @@ import {
 import { AccionesPdf } from "./acciones-pdf";
 import { EnviarCorreoForm } from "./enviar-correo-form";
 
+// Los Server Actions de esta página (generar PDF, enviar correo con SMTP)
+// heredan el límite de duración de la ruta que los invoca.
+export const maxDuration = 60;
+
 const formatoMoneda = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD" });
 
 export default async function DetallePrefacturaPage({ params }: { params: Promise<{ id: string }> }) {
