@@ -3,7 +3,6 @@ import "server-only";
 import { createHash } from "node:crypto";
 
 import { registrarLogEjecucion } from "@/lib/log-ejecucion/registrar";
-import { obtenerDetalleOdt } from "@/lib/prefacturas/queries";
 import { createClient } from "@/lib/supabase/server";
 
 import { generarBufferPdf, nombreArchivoPdf, validarPrefacturaParaPdf } from "./generar";
@@ -44,7 +43,7 @@ export async function generarYGuardarPdf(
     return { ok: false, error: "La placa tiene novedades de severidad ERROR abiertas." };
   }
 
-  const buffer = await generarBufferPdf(prefactura);
+  const { buffer, detalleOdt } = await generarBufferPdf(prefactura);
   const checksum = createHash("sha256").update(buffer).digest("hex");
   const version = prefactura.version_actual + 1;
 
@@ -55,16 +54,21 @@ export async function generarYGuardarPdf(
   const storageKey = `prefacturas/${anio}/${mes}/${ruc}/${prefactura.numero}_v${version}.pdf`;
   const nombreArchivo = nombreArchivoPdf(prefactura.vehiculo?.placa ?? "", ruc);
 
-  const { error: errorSubida } = await supabase.storage
-    .from("prefacturas")
-    .upload(storageKey, buffer, { contentType: "application/pdf", upsert: true });
+  // La subida a Storage y marcar la versión anterior como REEMPLAZADO son
+  // independientes entre sí: se corren en paralelo para no sumar otra
+  // ida y vuelta secuencial al tiempo total de la función.
+  const [{ error: errorSubida }] = await Promise.all([
+    supabase.storage.from("prefacturas").upload(storageKey, buffer, {
+      contentType: "application/pdf",
+      upsert: true,
+    }),
+    supabase
+      .from("documento_pdf")
+      .update({ estado: "REEMPLAZADO" })
+      .eq("prefactura_id", prefacturaId)
+      .eq("estado", "VIGENTE"),
+  ]);
   if (errorSubida) return { ok: false, error: `No se pudo guardar el PDF: ${errorSubida.message}` };
-
-  await supabase
-    .from("documento_pdf")
-    .update({ estado: "REEMPLAZADO" })
-    .eq("prefactura_id", prefacturaId)
-    .eq("estado", "VIGENTE");
 
   const { data: documento, error: errorDoc } = await supabase
     .from("documento_pdf")
@@ -82,18 +86,18 @@ export async function generarYGuardarPdf(
     .single();
   if (errorDoc || !documento) return { ok: false, error: "No se pudo registrar el documento generado." };
 
-  await supabase
-    .from("prefactura")
-    .update({ estado: "PDF_GENERADO", version_actual: version })
-    .eq("id", prefacturaId);
-
-  const detalleOdt = await obtenerDetalleOdt(prefacturaId);
-  await registrarLogEjecucion(
-    supabase,
-    documento.id,
-    "PDF",
-    detalleOdt.map((o) => ({ guia: o.guia, estado: "OK", detalle: { prefacturaId, version } })),
-  );
+  await Promise.all([
+    supabase
+      .from("prefactura")
+      .update({ estado: "PDF_GENERADO", version_actual: version })
+      .eq("id", prefacturaId),
+    registrarLogEjecucion(
+      supabase,
+      documento.id,
+      "PDF",
+      detalleOdt.map((o) => ({ guia: o.guia, estado: "OK", detalle: { prefacturaId, version } })),
+    ),
+  ]);
 
   return { ok: true, documentoId: documento.id, storageKey, buffer, nombreArchivo };
 }

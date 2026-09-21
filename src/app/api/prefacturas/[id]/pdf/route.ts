@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { generarYGuardarPdf } from "@/pdf/generar-y-guardar";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 /** Genera (o regenera con nueva versión) el PDF de una prefactura. */
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {

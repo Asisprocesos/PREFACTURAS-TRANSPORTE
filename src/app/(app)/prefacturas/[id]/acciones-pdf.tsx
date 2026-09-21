@@ -13,24 +13,34 @@ export function AccionesPdf({ prefacturaId, tieneVigente }: { prefacturaId: stri
   async function generar() {
     setCargando(true);
     setError(null);
-    const respuesta = await fetch(`/api/prefacturas/${prefacturaId}/pdf`, { method: "POST" });
-    const cuerpo = await respuesta.json();
-    setCargando(false);
-    if (!respuesta.ok) {
-      setError(cuerpo.error ?? "No se pudo generar el PDF.");
-      return;
+    try {
+      const respuesta = await fetch(`/api/prefacturas/${prefacturaId}/pdf`, { method: "POST" });
+      const cuerpo = await respuesta.json().catch(() => null);
+      if (!respuesta.ok) {
+        setError(cuerpo?.error ?? `No se pudo generar el PDF (HTTP ${respuesta.status}).`);
+        return;
+      }
+      router.refresh();
+    } catch {
+      setError("No se pudo generar el PDF: se perdió la conexión con el servidor o tardó demasiado.");
+    } finally {
+      setCargando(false);
     }
-    router.refresh();
   }
 
   async function descargar() {
-    const respuesta = await fetch(`/api/prefacturas/${prefacturaId}/pdf`);
-    const cuerpo = await respuesta.json();
-    if (!respuesta.ok) {
-      setError(cuerpo.error ?? "No se pudo obtener el PDF.");
-      return;
+    setError(null);
+    try {
+      const respuesta = await fetch(`/api/prefacturas/${prefacturaId}/pdf`);
+      const cuerpo = await respuesta.json().catch(() => null);
+      if (!respuesta.ok) {
+        setError(cuerpo?.error ?? `No se pudo obtener el PDF (HTTP ${respuesta.status}).`);
+        return;
+      }
+      window.open(cuerpo.url, "_blank");
+    } catch {
+      setError("No se pudo obtener el PDF: se perdió la conexión con el servidor.");
     }
-    window.open(cuerpo.url, "_blank");
   }
 
   return (

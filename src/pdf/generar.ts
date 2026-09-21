@@ -7,6 +7,7 @@ import {
   obtenerDetalleOdt,
   obtenerPrefactura,
   obtenerResumenFacturacion,
+  type Odt,
   type PrefacturaConRelaciones,
 } from "@/lib/prefacturas/queries";
 
@@ -45,7 +46,18 @@ export function nombreArchivoPdf(placa: string, ruc: string): string {
   return defaultAppConfig.pdf.nombreArchivo.replace("{PLACA}", placa).replace("{RUC}", ruc);
 }
 
-export async function generarBufferPdf(prefactura: PrefacturaConRelaciones): Promise<Buffer> {
+export interface ResultadoBufferPdf {
+  buffer: Buffer;
+  detalleOdt: Odt[];
+}
+
+/**
+ * Devuelve también `detalleOdt` (ya consultado internamente) para que
+ * `generarYGuardarPdf` no tenga que repetir la misma consulta después, solo
+ * para armar el log de ejecución — cada round-trip a Supabase de más pesa
+ * en el tiempo total contra el límite de la función serverless.
+ */
+export async function generarBufferPdf(prefactura: PrefacturaConRelaciones): Promise<ResultadoBufferPdf> {
   const [detalleOdt, resumen] = await Promise.all([
     obtenerDetalleOdt(prefactura.id),
     obtenerResumenFacturacion(prefactura.id),
@@ -86,5 +98,6 @@ export async function generarBufferPdf(prefactura: PrefacturaConRelaciones): Pro
     leyenda: defaultAppConfig.pdf.leyenda,
   };
 
-  return renderToBuffer(DocumentoPrefactura({ datos }));
+  const buffer = await renderToBuffer(DocumentoPrefactura({ datos }));
+  return { buffer, detalleOdt };
 }
