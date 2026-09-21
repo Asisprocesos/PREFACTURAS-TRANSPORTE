@@ -9,7 +9,7 @@ export interface OdtConRelaciones extends OdtRow {
   vehiculo: {
     id: string;
     placa: string;
-    transportista: { id: string; razon_social: string } | null;
+    transportista: { id: string; razon_social: string; nombre: string | null } | null;
   } | null;
 }
 
@@ -55,7 +55,7 @@ export async function buscarOdt(
 
   let query = supabase
     .from("odt")
-    .select("*, vehiculo:vehiculo_id(id, placa, transportista:transportista_id(id, razon_social))")
+    .select("*, vehiculo:vehiculo_id(id, placa, transportista:transportista_id(id, razon_social, nombre))")
     .order("fecha_creacion", { ascending: false })
     .order("id", { ascending: false })
     .limit(TAMANO_PAGINA);

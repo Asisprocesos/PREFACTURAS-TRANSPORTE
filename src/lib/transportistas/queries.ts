@@ -37,7 +37,7 @@ export async function listarTransportistas({
 
   if (busqueda && busqueda.trim() !== "") {
     const termino = busqueda.trim();
-    query = query.or(`razon_social.ilike.%${termino}%,ruc.ilike.%${termino}%`);
+    query = query.or(`razon_social.ilike.%${termino}%,nombre.ilike.%${termino}%,ruc.ilike.%${termino}%`);
   }
 
   const { data, error, count } = await query;
@@ -46,11 +46,13 @@ export async function listarTransportistas({
   return { filas: data ?? [], total: count ?? 0 };
 }
 
-export async function listarTransportistasParaSelect(): Promise<{ id: string; razon_social: string }[]> {
+export async function listarTransportistasParaSelect(): Promise<
+  { id: string; razon_social: string; nombre: string | null }[]
+> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("transportista")
-    .select("id, razon_social")
+    .select("id, razon_social, nombre")
     .is("deleted_at", null)
     .order("razon_social", { ascending: true });
   if (error) throw error;

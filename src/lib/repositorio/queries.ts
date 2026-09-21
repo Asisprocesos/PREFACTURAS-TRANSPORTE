@@ -11,7 +11,7 @@ export interface DocumentoConRelaciones extends DocumentoPdf {
     numero: string | null;
     estado: string;
     vehiculo: { placa: string } | null;
-    transportista: { razon_social: string; ruc: string } | null;
+    transportista: { razon_social: string; nombre: string | null; ruc: string } | null;
     periodo: { id: string; nombre: string } | null;
   } | null;
 }
@@ -80,7 +80,7 @@ export async function listarDocumentos({
   let query = supabase
     .from("documento_pdf")
     .select(
-      "*, prefactura:prefactura_id(id, numero, estado, vehiculo:vehiculo_id(placa), transportista:transportista_id(razon_social, ruc), periodo:periodo_id(id, nombre))",
+      "*, prefactura:prefactura_id(id, numero, estado, vehiculo:vehiculo_id(placa), transportista:transportista_id(razon_social, nombre, ruc), periodo:periodo_id(id, nombre))",
       { count: "exact" },
     )
     .order("generado_en", { ascending: false })

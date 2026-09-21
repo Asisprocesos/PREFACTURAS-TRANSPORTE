@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { nombreTransportista } from "@/lib/transportistas/display";
 
 const ESTADOS = ["VIGENTE", "REEMPLAZADO"] as const;
 
@@ -13,7 +14,7 @@ export function FiltrosRepositorio({
   transportistas,
 }: {
   periodos: { id: string; nombre: string }[];
-  transportistas: { id: string; razon_social: string }[];
+  transportistas: { id: string; razon_social: string; nombre: string | null }[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -52,7 +53,7 @@ export function FiltrosRepositorio({
         <option value="">Todos los transportistas</option>
         {transportistas.map((t) => (
           <option key={t.id} value={t.id}>
-            {t.razon_social}
+            {nombreTransportista(t)}
           </option>
         ))}
       </select>

@@ -24,6 +24,7 @@ export function TransportistaForm({ transportista }: { transportista?: Transport
     defaultValues: {
       ruc: transportista?.ruc ?? "",
       razonSocial: transportista?.razon_social ?? "",
+      nombre: transportista?.nombre ?? "",
       tipoTransportista: transportista?.tipo_transportista ?? "",
       activo: transportista?.activo ?? true,
     },
@@ -58,6 +59,15 @@ export function TransportistaForm({ transportista }: { transportista?: Transport
           {errors.razonSocial ? (
             <p className="text-sm text-destructive">{errors.razonSocial.message}</p>
           ) : null}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="nombre">Nombre</Label>
+          <Input id="nombre" {...register("nombre")} placeholder="Nombre comercial" />
+          {errors.nombre ? <p className="text-sm text-destructive">{errors.nombre.message}</p> : null}
+          <p className="text-xs text-muted-foreground">
+            Es el nombre que se muestra como &quot;Transportista&quot; en el resto del sistema (Vehículos,
+            Prefacturas, etc.). La razón social se sigue usando en el RUC y los documentos formales.
+          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="tipoTransportista">Tipo de transportista</Label>

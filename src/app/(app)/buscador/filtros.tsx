@@ -6,13 +6,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { nombreTransportista } from "@/lib/transportistas/display";
 
 export function FiltrosBuscador({
   periodos,
   transportistas,
 }: {
   periodos: { id: string; nombre: string }[];
-  transportistas: { id: string; razon_social: string }[];
+  transportistas: { id: string; razon_social: string; nombre: string | null }[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -96,7 +97,7 @@ export function FiltrosBuscador({
             <option value="">Todos los transportistas</option>
             {transportistas.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.razon_social}
+                {nombreTransportista(t)}
               </option>
             ))}
           </select>

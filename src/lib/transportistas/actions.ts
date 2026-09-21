@@ -26,6 +26,7 @@ export async function crearTransportista(valores: TransportistaFormValues): Prom
     .insert({
       ruc: parsed.data.ruc,
       razon_social: parsed.data.razonSocial,
+      nombre: parsed.data.nombre,
       tipo_transportista: parsed.data.tipoTransportista || null,
       activo: parsed.data.activo,
     })
@@ -60,6 +61,7 @@ export async function actualizarTransportista(
     .update({
       ruc: parsed.data.ruc,
       razon_social: parsed.data.razonSocial,
+      nombre: parsed.data.nombre,
       tipo_transportista: parsed.data.tipoTransportista || null,
       activo: parsed.data.activo,
     })

@@ -12,6 +12,7 @@ import {
   obtenerPrefactura,
   obtenerResumenFacturacion,
 } from "@/lib/prefacturas/queries";
+import { nombreTransportista } from "@/lib/transportistas/display";
 
 import { AccionesPdf } from "./acciones-pdf";
 import { EnviarCorreoForm } from "./enviar-correo-form";
@@ -46,7 +47,7 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
         <div>
           <h1 className="titulo-marca text-2xl">{prefactura.numero ?? "(sin número)"}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {prefactura.vehiculo?.placa} · {prefactura.transportista?.razon_social} ·{" "}
+            {prefactura.vehiculo?.placa} · {nombreTransportista(prefactura.transportista) ?? "—"} ·{" "}
             {prefactura.periodo?.nombre}
           </p>
         </div>
@@ -72,6 +73,8 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
           <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
             <dt className="text-muted-foreground">Placa</dt>
             <dd>{prefactura.vehiculo?.placa ?? "—"}</dd>
+            <dt className="text-muted-foreground">Transportista</dt>
+            <dd>{nombreTransportista(prefactura.transportista) ?? "—"}</dd>
             <dt className="text-muted-foreground">Razón social</dt>
             <dd>{prefactura.transportista?.razon_social ?? "—"}</dd>
             <dt className="text-muted-foreground">RUC</dt>

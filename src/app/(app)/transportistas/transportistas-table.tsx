@@ -15,13 +15,18 @@ const columnas: ColumnDef<Transportista>[] = [
     header: "RUC",
   },
   {
-    accessorKey: "razon_social",
-    header: "Razón social",
+    accessorKey: "nombre",
+    header: "Nombre",
     cell: ({ row }) => (
       <Link href={`/transportistas/${row.original.id}`} className="font-medium text-primary hover:underline">
-        {row.original.razon_social}
+        {row.original.nombre || "(sin nombre)"}
       </Link>
     ),
+  },
+  {
+    accessorKey: "razon_social",
+    header: "Razón social",
+    cell: ({ row }) => row.original.razon_social,
   },
   {
     accessorKey: "tipo_transportista",

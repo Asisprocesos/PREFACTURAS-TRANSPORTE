@@ -7,6 +7,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { nombreTransportista } from "@/lib/transportistas/display";
 import type { VehiculoConRelaciones } from "@/lib/vehiculos/queries";
 
 const columnas: ColumnDef<VehiculoConRelaciones>[] = [
@@ -22,7 +23,7 @@ const columnas: ColumnDef<VehiculoConRelaciones>[] = [
   {
     id: "transportista",
     header: "Transportista",
-    cell: ({ row }) => row.original.transportista?.razon_social ?? "—",
+    cell: ({ row }) => nombreTransportista(row.original.transportista) ?? "—",
   },
   {
     id: "regional",

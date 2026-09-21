@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { nombreTransportista } from "@/lib/transportistas/display";
 import { actualizarVehiculo, crearVehiculoYRedirigir } from "@/lib/vehiculos/actions";
 import type { Vehiculo } from "@/lib/vehiculos/queries";
 import { vehiculoFormSchema, type VehiculoFormValues } from "@/lib/vehiculos/schema";
@@ -23,7 +24,7 @@ export function VehiculoForm({
   regionales,
 }: {
   vehiculo?: Vehiculo;
-  transportistas: { id: string; razon_social: string }[];
+  transportistas: { id: string; razon_social: string; nombre: string | null }[];
   regionales: OpcionSelect[];
 }) {
   const router = useRouter();
@@ -85,7 +86,7 @@ export function VehiculoForm({
             <option value="">Sin asignar</option>
             {transportistas.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.razon_social}
+                {nombreTransportista(t)}
               </option>
             ))}
           </select>

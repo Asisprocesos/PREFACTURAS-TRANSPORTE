@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/roles";
 import { obtenerPrefactura } from "@/lib/prefacturas/queries";
 import { listarVersionesPrefactura } from "@/lib/repositorio/queries";
+import { nombreTransportista } from "@/lib/transportistas/display";
 
 import { ListaVersiones } from "./lista-versiones";
 
@@ -24,7 +25,7 @@ export default async function VersionesPrefacturaPage({
       <div>
         <h1 className="titulo-marca text-2xl">Versiones — {prefactura.numero}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {prefactura.vehiculo?.placa} · {prefactura.transportista?.razon_social}
+          {prefactura.vehiculo?.placa} · {nombreTransportista(prefactura.transportista) ?? "—"}
         </p>
       </div>
       <ListaVersiones versiones={versiones} />

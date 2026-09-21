@@ -7,6 +7,7 @@ export const transportistaFormSchema = z.object({
     .min(1, "El RUC es obligatorio.")
     .regex(/^\d{10,13}$/, "El RUC debe tener entre 10 y 13 dígitos."),
   razonSocial: z.string().trim().min(1, "La razón social es obligatoria."),
+  nombre: z.string().trim().min(1, "El nombre es obligatorio."),
   tipoTransportista: z.string().trim().optional(),
   activo: z.boolean().default(true),
 });

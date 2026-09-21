@@ -1,11 +1,12 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { nombreTransportista } from "@/lib/transportistas/display";
 import type { Database } from "@/types/database.types";
 
 export type PrefacturaReporte = Database["public"]["Tables"]["prefactura"]["Row"] & {
   vehiculo: { placa: string } | null;
-  transportista: { razon_social: string; ruc: string } | null;
+  transportista: { razon_social: string; nombre: string | null; ruc: string } | null;
   periodo: { nombre: string } | null;
 };
 
@@ -22,7 +23,7 @@ export async function obtenerPrefacturasReporte(
   let query = supabase
     .from("prefactura")
     .select(
-      "*, vehiculo:vehiculo_id(placa), transportista:transportista_id(razon_social, ruc), periodo:periodo_id(nombre)",
+      "*, vehiculo:vehiculo_id(placa), transportista:transportista_id(razon_social, nombre, ruc), periodo:periodo_id(nombre)",
     )
     .eq("periodo_id", periodoId)
     .order("created_at", { ascending: true })
@@ -93,19 +94,21 @@ export async function obtenerNovedadesFueraDePeriodo(periodoId: string): Promise
     {
       valor_final: number | null;
       valor: number;
-      vehiculo: { transportista: { razon_social: string } | null } | null;
+      vehiculo: { transportista: { razon_social: string; nombre: string | null } | null } | null;
     }
   >();
   if (odtIds.length > 0) {
     const { data: odtData } = await supabase
       .from("odt")
-      .select("id, valor_final, valor, vehiculo:vehiculo_id(transportista:transportista_id(razon_social))")
+      .select(
+        "id, valor_final, valor, vehiculo:vehiculo_id(transportista:transportista_id(razon_social, nombre))",
+      )
       .in("id", odtIds);
     for (const o of (odtData ?? []) as unknown as {
       id: string;
       valor_final: number | null;
       valor: number;
-      vehiculo: { transportista: { razon_social: string } | null } | null;
+      vehiculo: { transportista: { razon_social: string; nombre: string | null } | null } | null;
     }[]) {
       odtPorId.set(o.id, o);
     }
@@ -125,7 +128,7 @@ export async function obtenerNovedadesFueraDePeriodo(periodoId: string): Promise
     return {
       id: f.id,
       placa: f.placa,
-      transportista: odt?.vehiculo?.transportista?.razon_social ?? null,
+      transportista: nombreTransportista(odt?.vehiculo?.transportista),
       periodo: f.periodo?.nombre ?? null,
       valor: odt ? (odt.valor_final ?? odt.valor) : null,
       facturado: f.entidad_id ? prefacturadas.has(f.entidad_id) : false,

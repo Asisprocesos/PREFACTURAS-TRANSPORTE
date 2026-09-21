@@ -6,7 +6,7 @@ import type { Database } from "@/types/database.types";
 export type Vehiculo = Database["public"]["Tables"]["vehiculo"]["Row"];
 
 export interface VehiculoConRelaciones extends Vehiculo {
-  transportista: { id: string; razon_social: string } | null;
+  transportista: { id: string; razon_social: string; nombre: string | null } | null;
   regional: { id: string; nombre: string } | null;
 }
 
@@ -32,7 +32,7 @@ export async function listarVehiculos({
 
   let query = supabase
     .from("vehiculo")
-    .select("*, transportista:transportista_id(id, razon_social), regional:regional_id(id, nombre)", {
+    .select("*, transportista:transportista_id(id, razon_social, nombre), regional:regional_id(id, nombre)", {
       count: "exact",
     })
     .is("deleted_at", null)
@@ -71,7 +71,7 @@ export async function listarTransportistasParaSelect() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("transportista")
-    .select("id, razon_social")
+    .select("id, razon_social, nombre")
     .is("deleted_at", null)
     .eq("activo", true)
     .order("razon_social", { ascending: true });

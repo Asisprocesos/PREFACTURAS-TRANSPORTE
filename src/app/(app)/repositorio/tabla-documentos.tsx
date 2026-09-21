@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { encolarEnviosAction } from "@/lib/correo/actions";
 import { obtenerUrlDocumentoAction } from "@/lib/repositorio/actions";
 import type { DocumentoConRelaciones } from "@/lib/repositorio/queries";
+import { nombreTransportista } from "@/lib/transportistas/display";
 
 export function TablaDocumentos({
   filas,
@@ -71,7 +72,7 @@ export function TablaDocumentos({
                 <tr key={d.id}>
                   <td className="px-4 py-3 font-medium">{d.prefactura?.numero ?? "—"}</td>
                   <td className="px-4 py-3">{d.prefactura?.vehiculo?.placa ?? "—"}</td>
-                  <td className="px-4 py-3">{d.prefactura?.transportista?.razon_social ?? "—"}</td>
+                  <td className="px-4 py-3">{nombreTransportista(d.prefactura?.transportista) ?? "—"}</td>
                   <td className="px-4 py-3">{d.prefactura?.periodo?.nombre ?? "—"}</td>
                   <td className="px-4 py-3">v{d.version}</td>
                   <td className="px-4 py-3">{new Date(d.generado_en).toLocaleDateString("es-EC")}</td>

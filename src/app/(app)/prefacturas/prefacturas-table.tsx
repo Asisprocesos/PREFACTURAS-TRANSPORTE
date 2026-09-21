@@ -14,6 +14,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { encolarEnviosAction } from "@/lib/correo/actions";
 import type { PrefacturaConRelaciones } from "@/lib/prefacturas/queries";
+import { nombreTransportista } from "@/lib/transportistas/display";
 import { cn } from "@/lib/utils";
 
 const ETIQUETA_ESTADO: Record<string, string> = {
@@ -61,7 +62,7 @@ function crearColumnas(puedeEnviar: boolean): ColumnDef<PrefacturaConRelaciones>
     {
       id: "transportista",
       header: "Transportista",
-      cell: ({ row }) => row.original.transportista?.razon_social ?? "—",
+      cell: ({ row }) => nombreTransportista(row.original.transportista) ?? "—",
     },
     { id: "periodo", header: "Período", cell: ({ row }) => row.original.periodo?.nombre ?? "—" },
     { accessorKey: "cantidad_odt", header: "ODT" },

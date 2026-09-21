@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import type { OdtConRelaciones } from "@/lib/buscador/queries";
+import { nombreTransportista } from "@/lib/transportistas/display";
 
 const formatoMoneda = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD" });
 const formatoFecha = new Intl.DateTimeFormat("es-EC", { dateStyle: "medium" });
@@ -49,7 +50,7 @@ export function ResultadosBuscador({ filas }: { filas: OdtConRelaciones[] }) {
                   "—"
                 )}
               </td>
-              <td className="px-4 py-3">{odt.vehiculo?.transportista?.razon_social ?? "—"}</td>
+              <td className="px-4 py-3">{nombreTransportista(odt.vehiculo?.transportista) ?? "—"}</td>
               <td className="px-4 py-3">{formatoFecha.format(new Date(odt.fecha_creacion))}</td>
               <td className="px-4 py-3">{odt.estado_fenix ?? "—"}</td>
               <td className="px-4 py-3">{odt.centro_costo_final ?? "—"}</td>

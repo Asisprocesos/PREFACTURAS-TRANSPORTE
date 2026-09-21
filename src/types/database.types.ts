@@ -164,6 +164,7 @@ export interface Database {
           id: string;
           ruc: string;
           razon_social: string;
+          nombre: string | null;
           tipo_transportista: string | null;
           activo: boolean;
           deleted_at: string | null;
@@ -173,6 +174,7 @@ export interface Database {
           id?: string;
           ruc: string;
           razon_social: string;
+          nombre?: string | null;
           tipo_transportista?: string | null;
           activo?: boolean;
           deleted_at?: string | null;

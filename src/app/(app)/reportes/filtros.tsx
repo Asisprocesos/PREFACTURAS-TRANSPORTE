@@ -2,12 +2,14 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { nombreTransportista } from "@/lib/transportistas/display";
+
 export function FiltrosReportes({
   periodos,
   transportistas,
 }: {
   periodos: { id: string; nombre: string }[];
-  transportistas: { id: string; razon_social: string }[];
+  transportistas: { id: string; razon_social: string; nombre: string | null }[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -41,7 +43,7 @@ export function FiltrosReportes({
         <option value="">Todos los transportistas</option>
         {transportistas.map((t) => (
           <option key={t.id} value={t.id}>
-            {t.razon_social}
+            {nombreTransportista(t)}
           </option>
         ))}
       </select>

@@ -21,8 +21,10 @@ export default async function DetalleTransportistaPage({ params }: { params: Pro
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="titulo-marca text-2xl">{transportista.razon_social}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">RUC {transportista.ruc}</p>
+        <h1 className="titulo-marca text-2xl">{transportista.nombre || transportista.razon_social}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {transportista.razon_social} · RUC {transportista.ruc}
+        </p>
       </div>
 
       <Card>
@@ -34,6 +36,8 @@ export default async function DetalleTransportistaPage({ params }: { params: Pro
             <dl className="grid grid-cols-2 gap-3 text-sm">
               <dt className="text-muted-foreground">RUC</dt>
               <dd>{transportista.ruc}</dd>
+              <dt className="text-muted-foreground">Nombre</dt>
+              <dd>{transportista.nombre || "—"}</dd>
               <dt className="text-muted-foreground">Razón social</dt>
               <dd>{transportista.razon_social}</dd>
               <dt className="text-muted-foreground">Tipo</dt>

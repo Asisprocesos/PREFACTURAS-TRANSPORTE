@@ -9,7 +9,7 @@ export type Novedad = Database["public"]["Tables"]["novedad"]["Row"];
 
 export interface PrefacturaConRelaciones extends Prefactura {
   vehiculo: { id: string; placa: string } | null;
-  transportista: { id: string; razon_social: string; ruc: string } | null;
+  transportista: { id: string; razon_social: string; nombre: string | null; ruc: string } | null;
   periodo: { id: string; nombre: string } | null;
 }
 
@@ -35,7 +35,7 @@ export async function listarPrefacturas({
   let query = supabase
     .from("prefactura")
     .select(
-      "*, vehiculo:vehiculo_id(id, placa), transportista:transportista_id(id, razon_social, ruc), periodo:periodo_id(id, nombre)",
+      "*, vehiculo:vehiculo_id(id, placa), transportista:transportista_id(id, razon_social, nombre, ruc), periodo:periodo_id(id, nombre)",
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
@@ -57,7 +57,7 @@ export async function obtenerPrefactura(id: string): Promise<PrefacturaConRelaci
   const { data, error } = await supabase
     .from("prefactura")
     .select(
-      "*, vehiculo:vehiculo_id(id, placa), transportista:transportista_id(id, razon_social, ruc), periodo:periodo_id(id, nombre)",
+      "*, vehiculo:vehiculo_id(id, placa), transportista:transportista_id(id, razon_social, nombre, ruc), periodo:periodo_id(id, nombre)",
     )
     .eq("id", id)
     .maybeSingle();

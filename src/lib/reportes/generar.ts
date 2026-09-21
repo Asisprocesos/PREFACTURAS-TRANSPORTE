@@ -1,3 +1,5 @@
+import { nombreTransportista } from "@/lib/transportistas/display";
+
 import type { NovedadFueraDePeriodo, PrefacturaReporte, PuntoMonto } from "./queries";
 
 const ETIQUETA_ESTADO: Record<string, string> = {
@@ -19,7 +21,7 @@ export function filasPrefacturas(prefacturas: PrefacturaReporte[]): FilaExcel[] 
     Número: p.numero ?? "(sin número)",
     Período: p.periodo?.nombre ?? "",
     Placa: p.vehiculo?.placa ?? "",
-    Transportista: p.transportista?.razon_social ?? "",
+    Transportista: nombreTransportista(p.transportista) ?? "",
     RUC: p.transportista?.ruc ?? "",
     "Cantidad ODT": p.cantidad_odt,
     "Total ODT": p.total_odt,
@@ -38,7 +40,7 @@ export function filasErroresEnvio(
     .map((p) => ({
       Número: p.numero ?? "(sin número)",
       Placa: p.vehiculo?.placa ?? "",
-      Transportista: p.transportista?.razon_social ?? "",
+      Transportista: nombreTransportista(p.transportista) ?? "",
       Total: p.total,
       "Último error": errores.get(p.id) ?? "",
     }));
