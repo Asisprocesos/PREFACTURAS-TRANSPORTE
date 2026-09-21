@@ -46,6 +46,31 @@ export function nombreArchivoPdf(placa: string, ruc: string): string {
   return defaultAppConfig.pdf.nombreArchivo.replace("{PLACA}", placa).replace("{RUC}", ruc);
 }
 
+/**
+ * No hay un maestro de conductores poblado (la tabla `conductor` existe
+ * pero nada la carga todavía), así que el conductor del PDF se deriva del
+ * campo `chofer` de las propias ODT del corte: el que más se repite entre
+ * las ODT de la prefactura, para tolerar alguna fila con el nombre mal
+ * escrito o un chofer distinto en un viaje puntual.
+ */
+function conductorMasFrecuente(odts: Odt[]): string | null {
+  const conteo = new Map<string, number>();
+  for (const o of odts) {
+    const chofer = o.chofer?.trim();
+    if (!chofer) continue;
+    conteo.set(chofer, (conteo.get(chofer) ?? 0) + 1);
+  }
+  let mejor: string | null = null;
+  let mejorConteo = 0;
+  for (const [chofer, cantidad] of conteo) {
+    if (cantidad > mejorConteo) {
+      mejor = chofer;
+      mejorConteo = cantidad;
+    }
+  }
+  return mejor;
+}
+
 export interface ResultadoBufferPdf {
   buffer: Buffer;
   detalleOdt: Odt[];
@@ -70,7 +95,7 @@ export async function generarBufferPdf(prefactura: PrefacturaConRelaciones): Pro
     placa: prefactura.vehiculo?.placa ?? "",
     razonSocial: prefactura.transportista?.razon_social ?? "",
     ruc: prefactura.transportista?.ruc ?? "",
-    conductor: null,
+    conductor: conductorMasFrecuente(detalleOdt),
     totalOdt: prefactura.total_odt,
     totalDescuentos: prefactura.total_descuentos,
     total: prefactura.total,
