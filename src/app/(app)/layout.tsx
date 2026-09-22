@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+import { cerrarSesionAction } from "@/lib/auth/actions";
+import { obtenerPerfilActual } from "@/lib/auth/roles";
+
 const MENU = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/buscador", label: "Buscador" },
@@ -16,7 +19,9 @@ const MENU = [
   { href: "/configuracion", label: "Configuración" },
 ] as const;
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const perfil = await obtenerPerfilActual();
+
   return (
     <div className="flex min-h-screen">
       <aside className="flex w-64 shrink-0 flex-col bg-laar-sidebar text-white">
@@ -35,6 +40,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
+        <div className="border-t border-white/10 px-3 py-4">
+          {perfil ? (
+            <p className="truncate px-3 pb-2 text-xs text-white/50" title={perfil.email ?? undefined}>
+              {perfil.nombre || perfil.email}
+            </p>
+          ) : null}
+          <form action={cerrarSesionAction}>
+            <button
+              type="submit"
+              className="block w-full rounded-md px-3 py-2 text-left text-sm text-white/80 transition-colors hover:bg-white/10 hover:text-laar-amarillo"
+            >
+              Cerrar sesión
+            </button>
+          </form>
+        </div>
       </aside>
       <div className="flex-1 bg-laar-gris/30">
         <main className="p-6">{children}</main>
