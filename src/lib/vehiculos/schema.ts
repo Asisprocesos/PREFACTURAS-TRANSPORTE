@@ -18,6 +18,12 @@ export const vehiculoFormSchema = z.object({
     }),
   transportistaId: z.string().uuid().optional().or(z.literal("")),
   propietario: z.string().trim().optional(),
+  rucPropietario: z
+    .string()
+    .trim()
+    .regex(/^\d{10,13}$/, "El RUC debe tener entre 10 y 13 dígitos.")
+    .optional()
+    .or(z.literal("")),
   marca: z.string().trim().optional(),
   modelo: z.string().trim().optional(),
   anio: numeroOpcional,

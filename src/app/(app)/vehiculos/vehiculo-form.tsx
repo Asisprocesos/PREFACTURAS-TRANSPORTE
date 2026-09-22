@@ -24,7 +24,7 @@ export function VehiculoForm({
   regionales,
 }: {
   vehiculo?: Vehiculo;
-  transportistas: { id: string; razon_social: string; nombre: string | null }[];
+  transportistas: { id: string; razon_social: string; nombre: string | null; ruc: string }[];
   regionales: OpcionSelect[];
 }) {
   const router = useRouter();
@@ -39,6 +39,7 @@ export function VehiculoForm({
       placa: vehiculo?.placa ?? "",
       transportistaId: vehiculo?.transportista_id ?? "",
       propietario: vehiculo?.propietario ?? "",
+      rucPropietario: vehiculo?.ruc_propietario ?? "",
       marca: vehiculo?.marca ?? "",
       modelo: vehiculo?.modelo ?? "",
       anio: vehiculo?.anio ?? undefined,
@@ -86,7 +87,7 @@ export function VehiculoForm({
             <option value="">Sin asignar</option>
             {transportistas.map((t) => (
               <option key={t.id} value={t.id}>
-                {nombreTransportista(t)}
+                {nombreTransportista(t)} — RUC {t.ruc}
               </option>
             ))}
           </select>
@@ -94,6 +95,16 @@ export function VehiculoForm({
         <div className="space-y-2">
           <Label htmlFor="propietario">Propietario</Label>
           <Input id="propietario" {...register("propietario")} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="rucPropietario">RUC del propietario</Label>
+          <Input id="rucPropietario" {...register("rucPropietario")} placeholder="1790000000001" />
+          <p className="text-xs text-muted-foreground">
+            Compáralo con el RUC del transportista asignado arriba para confirmar si es la misma persona.
+          </p>
+          {errors.rucPropietario ? (
+            <p className="text-sm text-destructive">{errors.rucPropietario.message}</p>
+          ) : null}
         </div>
         <div className="space-y-2">
           <Label htmlFor="regionalId">Regional</Label>

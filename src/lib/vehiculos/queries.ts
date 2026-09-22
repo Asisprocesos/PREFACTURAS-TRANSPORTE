@@ -101,7 +101,7 @@ export async function listarTransportistasParaSelect() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("transportista")
-    .select("id, razon_social, nombre")
+    .select("id, razon_social, nombre, ruc")
     .is("deleted_at", null)
     .eq("activo", true)
     .order("razon_social", { ascending: true });

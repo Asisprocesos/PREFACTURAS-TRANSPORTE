@@ -191,6 +191,7 @@ export interface Database {
           placa: string;
           transportista_id: string | null;
           propietario: string | null;
+          ruc_propietario: string | null;
           marca: string | null;
           modelo: string | null;
           anio: number | null;
@@ -210,6 +211,7 @@ export interface Database {
           placa: string;
           transportista_id?: string | null;
           propietario?: string | null;
+          ruc_propietario?: string | null;
           marca?: string | null;
           modelo?: string | null;
           anio?: number | null;

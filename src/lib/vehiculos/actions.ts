@@ -15,6 +15,7 @@ function aFilaVehiculo(valores: VehiculoFormValues) {
     placa: valores.placa,
     transportista_id: valores.transportistaId || null,
     propietario: valores.propietario || null,
+    ruc_propietario: valores.rucPropietario || null,
     marca: valores.marca || null,
     modelo: valores.modelo || null,
     anio: valores.anio ?? null,

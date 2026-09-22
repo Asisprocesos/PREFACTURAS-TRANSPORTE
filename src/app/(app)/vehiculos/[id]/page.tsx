@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BotonEliminarORestaurar } from "@/components/ui/boton-eliminar-restaurar";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
+import { nombreTransportista } from "@/lib/transportistas/display";
 import {
   agregarCorreoVehiculo,
   eliminarCorreoVehiculo,
@@ -45,6 +46,7 @@ export default async function DetalleVehiculoPage({ params }: { params: Promise<
   ]);
 
   const soloLectura = perfil.rol === "CONSULTA";
+  const transportistaAsignado = transportistas.find((t) => t.id === vehiculo.transportista_id) ?? null;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -75,6 +77,16 @@ export default async function DetalleVehiculoPage({ params }: { params: Promise<
               <dd>
                 {vehiculo.marca ?? "—"} {vehiculo.modelo ?? ""}
               </dd>
+              <dt className="text-muted-foreground">Transportista</dt>
+              <dd>
+                {transportistaAsignado
+                  ? `${nombreTransportista(transportistaAsignado)} — RUC ${transportistaAsignado.ruc}`
+                  : "—"}
+              </dd>
+              <dt className="text-muted-foreground">Propietario</dt>
+              <dd>{vehiculo.propietario ?? "—"}</dd>
+              <dt className="text-muted-foreground">RUC del propietario</dt>
+              <dd>{vehiculo.ruc_propietario ?? "—"}</dd>
               <dt className="text-muted-foreground">Estado</dt>
               <dd>{vehiculo.activo ? "Activo" : "Inactivo"}</dd>
             </dl>
