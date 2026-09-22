@@ -21,6 +21,12 @@ export async function resolverNovedadAction(
 
   if (error) return { ok: false, error: "No se pudo actualizar la novedad." };
 
+  // "/control-placa" solo revalida esa página exacta; sin también apuntar al
+  // patrón dinámico, el detalle por placa (de donde sale esta acción) y la
+  // tarjeta de novedades de la prefactura podían seguir mostrando la
+  // novedad como abierta desde el Router Cache del cliente.
   revalidatePath("/control-placa");
+  revalidatePath("/control-placa/[placa]", "page");
+  revalidatePath("/prefacturas/[id]", "page");
   return { ok: true };
 }

@@ -32,12 +32,16 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
   const prefactura = await obtenerPrefactura(id);
   if (!prefactura) notFound();
 
-  const [resumen, detalleOdt, novedades, contactos] = await Promise.all([
+  const [resumen, detalleOdt, todasLasNovedades, contactos] = await Promise.all([
     obtenerResumenFacturacion(id),
     obtenerDetalleOdt(id),
     obtenerNovedadesPrefactura(prefactura.vehiculo?.placa ?? null, prefactura.periodo_id),
     obtenerContactosPrefactura(prefactura.vehiculo?.id ?? null, prefactura.transportista?.id ?? null),
   ]);
+  // Esta tarjeta es una alerta de "pendiente por resolver", no un historial:
+  // una novedad ya resuelta/ignorada (ver Control por placa) no debe seguir
+  // apareciendo aquí.
+  const novedades = todasLasNovedades.filter((n) => n.estado === "ABIERTA");
 
   const variables = construirVariablesPlantilla(prefactura);
   const asuntoInicial = interpolarPlantilla(defaultAppConfig.correo.plantillaIndividual.asunto, variables);
@@ -108,25 +112,22 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
       {novedades.length > 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Novedades</CardTitle>
+            <CardTitle className="text-lg">Novedades abiertas</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2 text-sm">
               {novedades.map((n) => (
-                <li key={n.id} className="flex items-start justify-between gap-2 border-b pb-2 last:border-0">
-                  <div>
-                    <span
-                      className={
-                        n.severidad === "ERROR"
-                          ? "mr-2 rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-medium text-destructive"
-                          : "mr-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
-                      }
-                    >
-                      {n.severidad}
-                    </span>
-                    {n.mensaje}
-                  </div>
-                  <span className="shrink-0 text-xs text-muted-foreground">{n.estado}</span>
+                <li key={n.id} className="border-b pb-2 last:border-0">
+                  <span
+                    className={
+                      n.severidad === "ERROR"
+                        ? "mr-2 rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-medium text-destructive"
+                        : "mr-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
+                    }
+                  >
+                    {n.severidad}
+                  </span>
+                  {n.mensaje}
                 </li>
               ))}
             </ul>

@@ -29,11 +29,21 @@ function FilaNovedad({ novedad, soloLectura }: { novedad: Novedad; soloLectura: 
   const [motivo, setMotivo] = useState("");
   const [mostrarForm, setMostrarForm] = useState(false);
   const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function resolver(marcarComo: "RESUELTA" | "IGNORADA") {
     setCargando(true);
-    await resolverNovedadAction(novedad.id, motivo || "Sin justificación adicional.", marcarComo);
+    setError(null);
+    const resultado = await resolverNovedadAction(
+      novedad.id,
+      motivo || "Sin justificación adicional.",
+      marcarComo,
+    );
     setCargando(false);
+    if (!resultado.ok) {
+      setError(resultado.error ?? "No se pudo actualizar la novedad.");
+      return;
+    }
     router.refresh();
   }
 
@@ -98,6 +108,7 @@ function FilaNovedad({ novedad, soloLectura }: { novedad: Novedad; soloLectura: 
               Ignorar
             </Button>
           </div>
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
       ) : null}
     </li>
