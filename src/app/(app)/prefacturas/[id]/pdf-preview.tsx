@@ -17,7 +17,7 @@ export function PdfPreview({ prefacturaId }: { prefacturaId: string }) {
     let cancelado = false;
     setCargando(true);
     setError(null);
-    fetch(`/api/prefacturas/${prefacturaId}/pdf`)
+    fetch(`/api/prefacturas/${prefacturaId}/pdf?inline=1`)
       .then(async (respuesta) => {
         const cuerpo = await respuesta.json().catch(() => null);
         if (cancelado) return;

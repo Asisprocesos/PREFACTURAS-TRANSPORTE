@@ -29,10 +29,17 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   }
 }
 
-/** URL firmada de descarga del PDF vigente. */
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+/**
+ * URL firmada del PDF vigente. Por defecto fuerza descarga
+ * (Content-Disposition: attachment) para el botón "Ver/descargar PDF".
+ * Con ?inline=1 (usado por la vista previa embebida) no fuerza descarga,
+ * para que el navegador lo renderice dentro del <iframe> en vez de
+ * descargarlo automáticamente.
+ */
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
   const { id } = await params;
+  const inline = new URL(request.url).searchParams.get("inline") === "1";
 
   try {
     const supabase = await createClient();
@@ -49,7 +56,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
     const { data: firmada, error } = await supabase.storage
       .from("prefacturas")
-      .createSignedUrl(documento.storage_key, 300, { download: documento.nombre_archivo });
+      .createSignedUrl(
+        documento.storage_key,
+        300,
+        inline ? undefined : { download: documento.nombre_archivo },
+      );
     if (error || !firmada) {
       return NextResponse.json(
         { error: error?.message ?? "No se pudo generar el enlace de descarga." },
