@@ -74,9 +74,24 @@ export async function actualizarTransportista(
     return { ok: false, error: "No se pudo actualizar el transportista." };
   }
 
-  revalidatePath("/transportistas");
-  revalidatePath(`/transportistas/${id}`);
+  revalidarVistasDependientes(id);
   return { ok: true, id };
+}
+
+/**
+ * Vehículos y Prefacturas muestran el nombre/razón social del transportista
+ * vía join en vivo (no guardan una copia), pero son rutas dinámicas
+ * distintas: revalidatePath("/transportistas") no las alcanza, así que sin
+ * esto el Router Cache del cliente puede seguir sirviendo la versión
+ * anterior tras editar/eliminar/restaurar un transportista.
+ */
+function revalidarVistasDependientes(transportistaId: string) {
+  revalidatePath("/transportistas");
+  revalidatePath(`/transportistas/${transportistaId}`);
+  revalidatePath("/vehiculos");
+  revalidatePath("/vehiculos/[id]", "page");
+  revalidatePath("/prefacturas");
+  revalidatePath("/prefacturas/[id]", "page");
 }
 
 export async function cambiarActivoTransportista(id: string, activo: boolean): Promise<ResultadoAccion> {
@@ -151,8 +166,7 @@ export async function eliminarTransportistaAction(id: string): Promise<Resultado
     .eq("id", id);
   if (error) return { ok: false, error: "No se pudo eliminar el transportista." };
 
-  revalidatePath("/transportistas");
-  revalidatePath(`/transportistas/${id}`);
+  revalidarVistasDependientes(id);
   return { ok: true, id };
 }
 
@@ -163,8 +177,7 @@ export async function restaurarTransportistaAction(id: string): Promise<Resultad
   const { error } = await supabase.from("transportista").update({ deleted_at: null }).eq("id", id);
   if (error) return { ok: false, error: "No se pudo restaurar el transportista." };
 
-  revalidatePath("/transportistas");
-  revalidatePath(`/transportistas/${id}`);
+  revalidarVistasDependientes(id);
   return { ok: true, id };
 }
 
