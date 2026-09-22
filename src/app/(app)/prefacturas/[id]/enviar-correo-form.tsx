@@ -1,14 +1,13 @@
 "use client";
 
+import { FileText, FileWarning } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { enviarCorreoIndividualAction } from "@/lib/correo/actions";
-
-import { PdfPreview } from "./pdf-preview";
 
 export function EnviarCorreoForm({
   prefacturaId,
@@ -32,6 +31,26 @@ export function EnviarCorreoForm({
   const [cuerpo, setCuerpo] = useState(cuerpoInicial);
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState<{ texto: string; ok: boolean } | null>(null);
+  const [nombreArchivoAdjunto, setNombreArchivoAdjunto] = useState<string | null | undefined>(undefined);
+
+  // undefined: todavía cargando. null: no hay PDF vigente (se generará uno
+  // al enviar). string: nombre del PDF que se adjuntará.
+  useEffect(() => {
+    if (!abierto) return;
+    let cancelado = false;
+    fetch(`/api/prefacturas/${prefacturaId}/pdf?inline=1`)
+      .then(async (respuesta) => {
+        const cuerpo = await respuesta.json().catch(() => null);
+        if (cancelado) return;
+        setNombreArchivoAdjunto(respuesta.ok ? (cuerpo?.nombreArchivo ?? null) : null);
+      })
+      .catch(() => {
+        if (!cancelado) setNombreArchivoAdjunto(null);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [abierto, prefacturaId]);
 
   function agregarAdicional() {
     if (!nuevoAdicional.trim()) return;
@@ -74,9 +93,24 @@ export function EnviarCorreoForm({
 
   return (
     <div className="w-full max-w-md space-y-3 rounded-lg border bg-card p-4 text-left">
-      <div className="space-y-1">
-        <Label>PDF que se va a adjuntar</Label>
-        <PdfPreview prefacturaId={prefacturaId} alto="h-64" />
+      <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-sm">
+        {nombreArchivoAdjunto === undefined ? (
+          <span className="text-muted-foreground">Verificando el PDF adjunto...</span>
+        ) : nombreArchivoAdjunto ? (
+          <>
+            <FileText className="h-5 w-5 shrink-0 text-primary" />
+            <span className="truncate">
+              Adjunto: <span className="font-medium">{nombreArchivoAdjunto}</span>
+            </span>
+          </>
+        ) : (
+          <>
+            <FileWarning className="h-5 w-5 shrink-0 text-amber-600" />
+            <span className="text-muted-foreground">
+              Aún no hay un PDF generado; se generará automáticamente al enviar.
+            </span>
+          </>
+        )}
       </div>
 
       <div className="space-y-2">
