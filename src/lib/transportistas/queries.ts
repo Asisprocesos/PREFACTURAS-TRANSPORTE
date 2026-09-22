@@ -12,6 +12,8 @@ export interface ListarTransportistasParams {
   pagina: number; // 1-indexado
   tamanoPagina: number;
   busqueda?: string;
+  /** true: solo eliminados (papelera). false/omitido: solo activos (por defecto). */
+  eliminados?: boolean;
 }
 
 export interface ListarTransportistasResultado {
@@ -23,6 +25,7 @@ export async function listarTransportistas({
   pagina,
   tamanoPagina,
   busqueda,
+  eliminados = false,
 }: ListarTransportistasParams): Promise<ListarTransportistasResultado> {
   const supabase = await createClient();
   const desde = (pagina - 1) * tamanoPagina;
@@ -31,9 +34,9 @@ export async function listarTransportistas({
   let query = supabase
     .from("transportista")
     .select("*", { count: "exact" })
-    .is("deleted_at", null)
     .order("razon_social", { ascending: true })
     .range(desde, hasta);
+  query = eliminados ? query.not("deleted_at", "is", null) : query.is("deleted_at", null);
 
   if (busqueda && busqueda.trim() !== "") {
     const termino = busqueda.trim();

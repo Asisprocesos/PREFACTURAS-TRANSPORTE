@@ -5,15 +5,17 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+import { BotonAccionConfirmada } from "@/components/ui/boton-accion-confirmada";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { nombreTransportista } from "@/lib/transportistas/display";
-import { eliminarVehiculoAction } from "@/lib/vehiculos/actions";
+import { eliminarVehiculoAction, restaurarVehiculoAction } from "@/lib/vehiculos/actions";
 import type { VehiculoConRelaciones } from "@/lib/vehiculos/queries";
 
 function crearColumnas(
-  puedeEliminar: boolean,
-  onEliminar: (id: string, placa: string) => void,
+  puedeGestionar: boolean,
+  mostrandoEliminados: boolean,
+  onCambio: () => void,
 ): ColumnDef<VehiculoConRelaciones>[] {
   const columnas: ColumnDef<VehiculoConRelaciones>[] = [
     {
@@ -57,20 +59,34 @@ function crearColumnas(
     },
   ];
 
-  if (puedeEliminar) {
+  if (puedeGestionar) {
     columnas.push({
       id: "acciones",
       header: "",
-      cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-destructive hover:text-destructive"
-          onClick={() => onEliminar(row.original.id, row.original.placa)}
-        >
-          Eliminar
-        </Button>
-      ),
+      cell: ({ row }) => {
+        const placa = row.original.placa;
+        return mostrandoEliminados ? (
+          <BotonAccionConfirmada
+            accion={() => restaurarVehiculoAction(row.original.id)}
+            etiqueta="Restaurar"
+            etiquetaCargando="Restaurando..."
+            confirmacion1={`¿Restaurar el vehículo ${placa}?`}
+            confirmacion2={`Confirma de nuevo: ¿restaurar ${placa} y que vuelva a aparecer en listas y selectores?`}
+            onExito={onCambio}
+          />
+        ) : (
+          <BotonAccionConfirmada
+            accion={() => eliminarVehiculoAction(row.original.id)}
+            etiqueta="Eliminar"
+            etiquetaCargando="Eliminando..."
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            confirmacion1={`¿Eliminar el vehículo ${placa}? Dejará de aparecer en listas y selectores.`}
+            confirmacion2={`Última confirmación: ¿de verdad quieres eliminar ${placa}?`}
+            onExito={onCambio}
+          />
+        );
+      },
     });
   }
 
@@ -82,29 +98,21 @@ export function VehiculosTable({
   total,
   pagina,
   tamanoPagina,
-  puedeEliminar,
+  puedeGestionar,
+  mostrandoEliminados,
 }: {
   filas: VehiculoConRelaciones[];
   total: number;
   pagina: number;
   tamanoPagina: number;
-  puedeEliminar: boolean;
+  puedeGestionar: boolean;
+  mostrandoEliminados: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [busqueda, setBusqueda] = useState(searchParams.get("q") ?? "");
 
-  async function eliminar(id: string, placa: string) {
-    if (!confirm(`¿Eliminar el vehículo ${placa}? Dejará de aparecer en listas y selectores.`)) return;
-    const resultado = await eliminarVehiculoAction(id);
-    if (!resultado.ok) {
-      alert(resultado.error ?? "No se pudo eliminar.");
-      return;
-    }
-    router.refresh();
-  }
-
-  const columnas = crearColumnas(puedeEliminar, eliminar);
+  const columnas = crearColumnas(puedeGestionar, mostrandoEliminados, () => router.refresh());
   const table = useReactTable({
     data: filas,
     columns: columnas,
@@ -164,7 +172,7 @@ export function VehiculosTable({
             {table.getRowModel().rows.length === 0 ? (
               <tr>
                 <td colSpan={columnas.length} className="px-4 py-6 text-center text-muted-foreground">
-                  No se encontraron vehículos.
+                  {mostrandoEliminados ? "No hay vehículos eliminados." : "No se encontraron vehículos."}
                 </td>
               </tr>
             ) : (

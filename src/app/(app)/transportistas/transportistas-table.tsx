@@ -5,14 +5,16 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+import { BotonAccionConfirmada } from "@/components/ui/boton-accion-confirmada";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { eliminarTransportistaAction } from "@/lib/transportistas/actions";
+import { eliminarTransportistaAction, restaurarTransportistaAction } from "@/lib/transportistas/actions";
 import type { Transportista } from "@/lib/transportistas/queries";
 
 function crearColumnas(
-  puedeEliminar: boolean,
-  onEliminar: (id: string, nombre: string) => void,
+  puedeGestionar: boolean,
+  mostrandoEliminados: boolean,
+  onCambio: () => void,
 ): ColumnDef<Transportista>[] {
   const columnas: ColumnDef<Transportista>[] = [
     {
@@ -58,20 +60,34 @@ function crearColumnas(
     },
   ];
 
-  if (puedeEliminar) {
+  if (puedeGestionar) {
     columnas.push({
       id: "acciones",
       header: "",
-      cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-destructive hover:text-destructive"
-          onClick={() => onEliminar(row.original.id, row.original.nombre || row.original.razon_social)}
-        >
-          Eliminar
-        </Button>
-      ),
+      cell: ({ row }) => {
+        const nombre = row.original.nombre || row.original.razon_social;
+        return mostrandoEliminados ? (
+          <BotonAccionConfirmada
+            accion={() => restaurarTransportistaAction(row.original.id)}
+            etiqueta="Restaurar"
+            etiquetaCargando="Restaurando..."
+            confirmacion1={`¿Restaurar "${nombre}"?`}
+            confirmacion2={`Confirma de nuevo: ¿restaurar "${nombre}" y que vuelva a aparecer en listas y selectores?`}
+            onExito={onCambio}
+          />
+        ) : (
+          <BotonAccionConfirmada
+            accion={() => eliminarTransportistaAction(row.original.id)}
+            etiqueta="Eliminar"
+            etiquetaCargando="Eliminando..."
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            confirmacion1={`¿Eliminar "${nombre}"? Dejará de aparecer en listas y selectores.`}
+            confirmacion2={`Última confirmación: ¿de verdad quieres eliminar "${nombre}"?`}
+            onExito={onCambio}
+          />
+        );
+      },
     });
   }
 
@@ -83,29 +99,21 @@ export function TransportistasTable({
   total,
   pagina,
   tamanoPagina,
-  puedeEliminar,
+  puedeGestionar,
+  mostrandoEliminados,
 }: {
   filas: Transportista[];
   total: number;
   pagina: number;
   tamanoPagina: number;
-  puedeEliminar: boolean;
+  puedeGestionar: boolean;
+  mostrandoEliminados: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [busqueda, setBusqueda] = useState(searchParams.get("q") ?? "");
 
-  async function eliminar(id: string, nombre: string) {
-    if (!confirm(`¿Eliminar "${nombre}"? Dejará de aparecer en listas y selectores.`)) return;
-    const resultado = await eliminarTransportistaAction(id);
-    if (!resultado.ok) {
-      alert(resultado.error ?? "No se pudo eliminar.");
-      return;
-    }
-    router.refresh();
-  }
-
-  const columnas = crearColumnas(puedeEliminar, eliminar);
+  const columnas = crearColumnas(puedeGestionar, mostrandoEliminados, () => router.refresh());
   const table = useReactTable({
     data: filas,
     columns: columnas,
@@ -165,7 +173,9 @@ export function TransportistasTable({
             {table.getRowModel().rows.length === 0 ? (
               <tr>
                 <td colSpan={columnas.length} className="px-4 py-6 text-center text-muted-foreground">
-                  No se encontraron transportistas.
+                  {mostrandoEliminados
+                    ? "No hay transportistas eliminados."
+                    : "No se encontraron transportistas."}
                 </td>
               </tr>
             ) : (

@@ -2,13 +2,14 @@ import { notFound } from "next/navigation";
 
 import { CorreosContacto } from "@/components/contactos/correos-contacto";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BotonEliminar } from "@/components/ui/boton-eliminar";
+import { BotonEliminarORestaurar } from "@/components/ui/boton-eliminar-restaurar";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
 import {
   agregarCorreoVehiculo,
   eliminarCorreoVehiculo,
   eliminarVehiculoAction,
+  restaurarVehiculoAction,
 } from "@/lib/vehiculos/actions";
 import {
   listarCorreosVehiculo,
@@ -51,10 +52,12 @@ export default async function DetalleVehiculoPage({ params }: { params: Promise<
       <div className="flex items-start justify-between gap-4">
         <h1 className="titulo-marca text-2xl">{vehiculo.placa}</h1>
         {!soloLectura ? (
-          <BotonEliminar
+          <BotonEliminarORestaurar
+            eliminado={!!vehiculo.deleted_at}
+            nombre={vehiculo.placa}
             onEliminar={eliminarVehiculoAction.bind(null, id)}
-            confirmacion={`¿Eliminar el vehículo ${vehiculo.placa}? Dejará de aparecer en listas y selectores.`}
-            redirigirA="/vehiculos"
+            onRestaurar={restaurarVehiculoAction.bind(null, id)}
+            listadoHref="/vehiculos"
           />
         ) : null}
       </div>

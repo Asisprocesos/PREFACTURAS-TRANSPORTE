@@ -2,13 +2,14 @@ import { notFound } from "next/navigation";
 
 import { CorreosContacto } from "@/components/contactos/correos-contacto";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BotonEliminar } from "@/components/ui/boton-eliminar";
+import { BotonEliminarORestaurar } from "@/components/ui/boton-eliminar-restaurar";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
 import {
   agregarCorreoTransportista,
   eliminarCorreoTransportista,
   eliminarTransportistaAction,
+  restaurarTransportistaAction,
 } from "@/lib/transportistas/actions";
 import { listarCorreosTransportista, obtenerTransportista } from "@/lib/transportistas/queries";
 
@@ -35,10 +36,12 @@ export default async function DetalleTransportistaPage({ params }: { params: Pro
           </p>
         </div>
         {!soloLectura ? (
-          <BotonEliminar
+          <BotonEliminarORestaurar
+            eliminado={!!transportista.deleted_at}
+            nombre={transportista.nombre || transportista.razon_social}
             onEliminar={eliminarTransportistaAction.bind(null, id)}
-            confirmacion={`¿Eliminar "${transportista.nombre || transportista.razon_social}"? Dejará de aparecer en listas y selectores.`}
-            redirigirA="/transportistas"
+            onRestaurar={restaurarTransportistaAction.bind(null, id)}
+            listadoHref="/transportistas"
           />
         ) : null}
       </div>

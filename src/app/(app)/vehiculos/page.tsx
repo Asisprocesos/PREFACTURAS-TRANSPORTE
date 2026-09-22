@@ -11,44 +11,60 @@ const TAMANO_PAGINA = 20;
 export default async function VehiculosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; q?: string }>;
+  searchParams: Promise<{ page?: string; q?: string; papelera?: string }>;
 }) {
   const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
   const params = await searchParams;
   const pagina = Math.max(1, Number(params.page ?? "1") || 1);
+  const papelera = params.papelera === "1";
 
   const { filas, total } = await listarVehiculos({
     pagina,
     tamanoPagina: TAMANO_PAGINA,
     busqueda: params.q,
+    eliminados: papelera,
   });
 
-  const puedeCrear = perfil.rol === "ADMIN" || perfil.rol === "OPERADOR_TRANSPORTE";
+  const puedeGestionar = perfil.rol === "ADMIN" || perfil.rol === "OPERADOR_TRANSPORTE";
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="titulo-marca text-2xl">Vehículos</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Maestro de placas (hoja VEHICULOS).</p>
+          <h1 className="titulo-marca text-2xl">{papelera ? "Vehículos eliminados" : "Vehículos"}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {papelera
+              ? "Registros eliminados: puedes restaurarlos o dejarlos aquí."
+              : "Maestro de placas (hoja VEHICULOS)."}
+          </p>
         </div>
-        {puedeCrear ? (
-          <div className="flex gap-2">
+        <div className="flex gap-2">
+          {puedeGestionar ? (
             <Button asChild variant="outline">
-              <Link href="/transportistas/importar">Carga masiva</Link>
+              <Link href={papelera ? "/vehiculos" : "/vehiculos?papelera=1"}>
+                {papelera ? "Ver activos" : "Ver papelera"}
+              </Link>
             </Button>
-            <Button asChild>
-              <Link href="/vehiculos/nuevo">Nuevo vehículo</Link>
-            </Button>
-          </div>
-        ) : null}
+          ) : null}
+          {puedeGestionar && !papelera ? (
+            <>
+              <Button asChild variant="outline">
+                <Link href="/transportistas/importar">Carga masiva</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/vehiculos/nuevo">Nuevo vehículo</Link>
+              </Button>
+            </>
+          ) : null}
+        </div>
       </div>
       <VehiculosTable
         filas={filas}
         total={total}
         pagina={pagina}
         tamanoPagina={TAMANO_PAGINA}
-        puedeEliminar={puedeCrear}
+        puedeGestionar={puedeGestionar}
+        mostrandoEliminados={papelera}
       />
     </div>
   );

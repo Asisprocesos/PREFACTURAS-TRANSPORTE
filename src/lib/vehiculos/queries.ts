@@ -14,6 +14,8 @@ export interface ListarVehiculosParams {
   pagina: number;
   tamanoPagina: number;
   busqueda?: string;
+  /** true: solo eliminados (papelera). false/omitido: solo activos (por defecto). */
+  eliminados?: boolean;
 }
 
 export interface ListarVehiculosResultado {
@@ -25,6 +27,7 @@ export async function listarVehiculos({
   pagina,
   tamanoPagina,
   busqueda,
+  eliminados = false,
 }: ListarVehiculosParams): Promise<ListarVehiculosResultado> {
   const supabase = await createClient();
   const desde = (pagina - 1) * tamanoPagina;
@@ -35,9 +38,9 @@ export async function listarVehiculos({
     .select("*, transportista:transportista_id(id, razon_social, nombre), regional:regional_id(id, nombre)", {
       count: "exact",
     })
-    .is("deleted_at", null)
     .order("placa", { ascending: true })
     .range(desde, hasta);
+  query = eliminados ? query.not("deleted_at", "is", null) : query.is("deleted_at", null);
 
   if (busqueda && busqueda.trim() !== "") {
     query = query.ilike("placa", `%${busqueda.trim()}%`);
