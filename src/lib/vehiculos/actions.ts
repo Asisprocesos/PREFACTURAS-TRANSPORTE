@@ -204,6 +204,35 @@ export async function restaurarVehiculoAction(id: string): Promise<ResultadoAcci
   return { ok: true, id };
 }
 
+export async function eliminarVehiculosAction(ids: string[]): Promise<ResultadoAccion> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+  if (ids.length === 0) return { ok: false, error: "No hay vehículos seleccionados." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("vehiculo")
+    .update({ deleted_at: new Date().toISOString() })
+    .in("id", ids);
+  if (error) return { ok: false, error: "No se pudieron eliminar los vehículos seleccionados." };
+
+  revalidatePath("/vehiculos");
+  for (const id of ids) revalidatePath(`/vehiculos/${id}`);
+  return { ok: true };
+}
+
+export async function restaurarVehiculosAction(ids: string[]): Promise<ResultadoAccion> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+  if (ids.length === 0) return { ok: false, error: "No hay vehículos seleccionados." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("vehiculo").update({ deleted_at: null }).in("id", ids);
+  if (error) return { ok: false, error: "No se pudieron restaurar los vehículos seleccionados." };
+
+  revalidatePath("/vehiculos");
+  for (const id of ids) revalidatePath(`/vehiculos/${id}`);
+  return { ok: true };
+}
+
 export async function crearVehiculoYRedirigir(valores: VehiculoFormValues) {
   const resultado = await crearVehiculo(valores);
   if (resultado.ok && resultado.id) {

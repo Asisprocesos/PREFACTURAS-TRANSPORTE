@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { enviarCorreoIndividualAction } from "@/lib/correo/actions";
 
+import { PdfPreview } from "./pdf-preview";
+
 export function EnviarCorreoForm({
   prefacturaId,
   correoPrincipal,
@@ -72,6 +74,11 @@ export function EnviarCorreoForm({
 
   return (
     <div className="w-full max-w-md space-y-3 rounded-lg border bg-card p-4 text-left">
+      <div className="space-y-1">
+        <Label>PDF que se va a adjuntar</Label>
+        <PdfPreview prefacturaId={prefacturaId} alto="h-64" />
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="correoPrincipal">Correo principal</Label>
         <Input

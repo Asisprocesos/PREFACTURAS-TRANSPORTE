@@ -13,6 +13,7 @@ export default async function BuscadorPage({
   searchParams: Promise<{
     texto?: string;
     placa?: string;
+    correo?: string;
     estado?: string;
     periodo?: string;
     transportista?: string;
@@ -33,6 +34,7 @@ export default async function BuscadorPage({
     {
       texto: params.texto,
       placa: params.placa,
+      correo: params.correo,
       estadoFenix: params.estado,
       periodoId: params.periodo,
       transportistaId: params.transportista,
@@ -47,7 +49,7 @@ export default async function BuscadorPage({
       <div>
         <h1 className="titulo-marca text-2xl">Buscador</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Búsqueda global de ODT por guía, placa, transportista, período, estado o fecha.
+          Búsqueda global de ODT por guía, placa, correo electrónico, transportista, período, estado o fecha.
         </p>
       </div>
       <FiltrosBuscador periodos={periodos} transportistas={transportistas} />

@@ -20,6 +20,7 @@ export function FiltrosBuscador({
 
   const [texto, setTexto] = useState(searchParams.get("texto") ?? "");
   const [placa, setPlaca] = useState(searchParams.get("placa") ?? "");
+  const [correo, setCorreo] = useState(searchParams.get("correo") ?? "");
   const [estado, setEstado] = useState(searchParams.get("estado") ?? "");
   const [fechaDesde, setFechaDesde] = useState(searchParams.get("desde") ?? "");
   const [fechaHasta, setFechaHasta] = useState(searchParams.get("hasta") ?? "");
@@ -29,6 +30,7 @@ export function FiltrosBuscador({
     const params = new URLSearchParams();
     if (texto.trim()) params.set("texto", texto.trim());
     if (placa.trim()) params.set("placa", placa.trim());
+    if (correo.trim()) params.set("correo", correo.trim());
     if (estado.trim()) params.set("estado", estado.trim());
     if (fechaDesde) params.set("desde", fechaDesde);
     if (fechaHasta) params.set("hasta", fechaHasta);
@@ -62,6 +64,16 @@ export function FiltrosBuscador({
         <div className="space-y-1">
           <Label htmlFor="placa">Placa</Label>
           <Input id="placa" value={placa} onChange={(e) => setPlaca(e.target.value)} placeholder="ABC1234" />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="correo">Correo electrónico</Label>
+          <Input
+            id="correo"
+            type="text"
+            value={correo}
+            onChange={(e) => setCorreo(e.target.value)}
+            placeholder="correo@ejemplo.com"
+          />
         </div>
         <div className="space-y-1">
           <Label htmlFor="estadoFenix">Estado (Fénix)</Label>

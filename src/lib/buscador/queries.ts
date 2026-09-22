@@ -18,6 +18,7 @@ export interface FiltrosBuscadorOdt {
   periodoId?: string;
   transportistaId?: string;
   placa?: string;
+  correo?: string;
   estadoFenix?: string;
   fechaDesde?: string;
   fechaHasta?: string;
@@ -42,14 +43,50 @@ export async function buscarOdt(
 ): Promise<ResultadoBuscadorOdt> {
   const supabase = await createClient();
 
-  let vehiculoIds: string[] | null = null;
+  // Cada filtro que restringe por vehículo (transportista, correo) aporta su
+  // propio conjunto de ids; al final se intersectan para que combinar varios
+  // filtros a la vez funcione como un Y lógico, no como una unión.
+  const restriccionesVehiculo: string[][] = [];
+
   if (filtros.transportistaId) {
     const { data, error } = await supabase
       .from("vehiculo")
       .select("id")
       .eq("transportista_id", filtros.transportistaId);
     if (error) throw error;
-    vehiculoIds = (data ?? []).map((v) => v.id);
+    restriccionesVehiculo.push((data ?? []).map((v) => v.id));
+  }
+
+  if (filtros.correo?.trim()) {
+    const { data, error } = await supabase
+      .from("contacto_correo")
+      .select("vehiculo_id, transportista_id")
+      .ilike("email", `%${filtros.correo.trim()}%`);
+    if (error) throw error;
+    const contactos = data ?? [];
+    const vehiculoIdsDirectos = contactos.map((c) => c.vehiculo_id).filter((id): id is string => !!id);
+    const transportistaIds = [
+      ...new Set(contactos.map((c) => c.transportista_id).filter((id): id is string => !!id)),
+    ];
+
+    let vehiculoIdsDeTransportistas: string[] = [];
+    if (transportistaIds.length > 0) {
+      const { data: vehiculos, error: errorVehiculos } = await supabase
+        .from("vehiculo")
+        .select("id")
+        .in("transportista_id", transportistaIds);
+      if (errorVehiculos) throw errorVehiculos;
+      vehiculoIdsDeTransportistas = (vehiculos ?? []).map((v) => v.id);
+    }
+
+    restriccionesVehiculo.push([...new Set([...vehiculoIdsDirectos, ...vehiculoIdsDeTransportistas])]);
+  }
+
+  let vehiculoIds: string[] | null = null;
+  if (restriccionesVehiculo.length > 0) {
+    vehiculoIds = restriccionesVehiculo.reduce((interseccion, ids) =>
+      interseccion.filter((id) => ids.includes(id)),
+    );
     if (vehiculoIds.length === 0) return { filas: [], cursorSiguiente: null };
   }
 

@@ -130,7 +130,7 @@ export const defaultAppConfig: AppConfig = {
   pdf: {
     tamanoPagina: "A4",
     margenes: { top: 36, right: 36, bottom: 36, left: 36 },
-    nombreArchivo: "{PLACA} - {RUC}.pdf",
+    nombreArchivo: "PF-{PLACA}-{RUC}.pdf",
     leyenda: "Documento no tributario – Prefactura",
   },
   correo: {

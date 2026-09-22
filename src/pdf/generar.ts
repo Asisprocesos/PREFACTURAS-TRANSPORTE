@@ -43,8 +43,16 @@ export async function validarPrefacturaParaPdf(
   return { ok: true, prefactura };
 }
 
+/**
+ * El nombre siempre sigue la estructura configurada (por defecto
+ * "PF-{PLACA}-{RUC}.pdf"); si falta la placa o el RUC se usa un marcador
+ * legible en su lugar en vez de dejar el nombre incompleto (ej.
+ * "PF-SIN PLACA-1790012345001.pdf").
+ */
 export function nombreArchivoPdf(placa: string, ruc: string): string {
-  return defaultAppConfig.pdf.nombreArchivo.replace("{PLACA}", placa).replace("{RUC}", ruc);
+  const placaSegura = placa.trim() || "SIN PLACA";
+  const rucSeguro = ruc.trim() || "SIN RUC";
+  return defaultAppConfig.pdf.nombreArchivo.replace("{PLACA}", placaSegura).replace("{RUC}", rucSeguro);
 }
 
 /**

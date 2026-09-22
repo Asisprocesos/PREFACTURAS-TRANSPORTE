@@ -1,6 +1,12 @@
 "use client";
 
-import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  type ColumnDef,
+  type RowSelectionState,
+} from "@tanstack/react-table";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -8,7 +14,12 @@ import { useState } from "react";
 import { BotonAccionConfirmada } from "@/components/ui/boton-accion-confirmada";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { eliminarTransportistaAction, restaurarTransportistaAction } from "@/lib/transportistas/actions";
+import {
+  eliminarTransportistaAction,
+  eliminarTransportistasAction,
+  restaurarTransportistaAction,
+  restaurarTransportistasAction,
+} from "@/lib/transportistas/actions";
 import type { Transportista } from "@/lib/transportistas/queries";
 
 function crearColumnas(
@@ -16,7 +27,25 @@ function crearColumnas(
   mostrandoEliminados: boolean,
   onCambio: () => void,
 ): ColumnDef<Transportista>[] {
-  const columnas: ColumnDef<Transportista>[] = [
+  const columnas: ColumnDef<Transportista>[] = [];
+
+  if (puedeGestionar) {
+    columnas.push({
+      id: "seleccion",
+      header: ({ table }) => (
+        <input
+          type="checkbox"
+          checked={table.getIsAllPageRowsSelected()}
+          onChange={table.getToggleAllPageRowsSelectedHandler()}
+        />
+      ),
+      cell: ({ row }) => (
+        <input type="checkbox" checked={row.getIsSelected()} onChange={row.getToggleSelectedHandler()} />
+      ),
+    });
+  }
+
+  columnas.push(
     {
       accessorKey: "ruc",
       header: "RUC",
@@ -58,7 +87,7 @@ function crearColumnas(
         </span>
       ),
     },
-  ];
+  );
 
   if (puedeGestionar) {
     columnas.push({
@@ -112,14 +141,23 @@ export function TransportistasTable({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [busqueda, setBusqueda] = useState(searchParams.get("q") ?? "");
+  const [seleccion, setSeleccion] = useState<RowSelectionState>({});
 
-  const columnas = crearColumnas(puedeGestionar, mostrandoEliminados, () => router.refresh());
+  function limpiarYRefrescar() {
+    setSeleccion({});
+    router.refresh();
+  }
+
+  const columnas = crearColumnas(puedeGestionar, mostrandoEliminados, limpiarYRefrescar);
   const table = useReactTable({
     data: filas,
     columns: columnas,
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true,
     pageCount: Math.max(1, Math.ceil(total / tamanoPagina)),
+    state: { rowSelection: seleccion },
+    onRowSelectionChange: setSeleccion,
+    getRowId: (row) => row.id,
   });
 
   function irAPagina(nuevaPagina: number) {
@@ -141,6 +179,7 @@ export function TransportistasTable({
   }
 
   const totalPaginas = Math.max(1, Math.ceil(total / tamanoPagina));
+  const idsSeleccionados = Object.keys(seleccion);
 
   return (
     <div className="space-y-4">
@@ -155,6 +194,32 @@ export function TransportistasTable({
           Buscar
         </Button>
       </form>
+
+      {puedeGestionar && idsSeleccionados.length > 0 ? (
+        <div className="flex items-center gap-3 rounded-md border bg-muted/50 px-4 py-2 text-sm">
+          <span>{idsSeleccionados.length} seleccionados</span>
+          {mostrandoEliminados ? (
+            <BotonAccionConfirmada
+              accion={() => restaurarTransportistasAction(idsSeleccionados)}
+              etiqueta="Restaurar seleccionados"
+              etiquetaCargando="Restaurando..."
+              confirmacion1={`¿Restaurar ${idsSeleccionados.length} transportistas?`}
+              confirmacion2="Confirma de nuevo: van a volver a aparecer en listas y selectores."
+              onExito={limpiarYRefrescar}
+            />
+          ) : (
+            <BotonAccionConfirmada
+              accion={() => eliminarTransportistasAction(idsSeleccionados)}
+              etiqueta="Eliminar seleccionados"
+              etiquetaCargando="Eliminando..."
+              variant="destructive"
+              confirmacion1={`¿Eliminar ${idsSeleccionados.length} transportistas? Dejarán de aparecer en listas y selectores.`}
+              confirmacion2="Última confirmación: ¿de verdad quieres eliminarlos?"
+              onExito={limpiarYRefrescar}
+            />
+          )}
+        </div>
+      ) : null}
 
       <div className="overflow-x-auto rounded-lg border bg-card">
         <table className="w-full text-sm">

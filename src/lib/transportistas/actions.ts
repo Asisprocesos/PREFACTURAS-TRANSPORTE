@@ -85,9 +85,10 @@ export async function actualizarTransportista(
  * esto el Router Cache del cliente puede seguir sirviendo la versión
  * anterior tras editar/eliminar/restaurar un transportista.
  */
-function revalidarVistasDependientes(transportistaId: string) {
+function revalidarVistasDependientes(transportistaIds: string | string[]) {
+  const ids = Array.isArray(transportistaIds) ? transportistaIds : [transportistaIds];
   revalidatePath("/transportistas");
-  revalidatePath(`/transportistas/${transportistaId}`);
+  for (const id of ids) revalidatePath(`/transportistas/${id}`);
   revalidatePath("/vehiculos");
   revalidatePath("/vehiculos/[id]", "page");
   revalidatePath("/prefacturas");
@@ -179,6 +180,33 @@ export async function restaurarTransportistaAction(id: string): Promise<Resultad
 
   revalidarVistasDependientes(id);
   return { ok: true, id };
+}
+
+export async function eliminarTransportistasAction(ids: string[]): Promise<ResultadoAccion> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+  if (ids.length === 0) return { ok: false, error: "No hay transportistas seleccionados." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("transportista")
+    .update({ deleted_at: new Date().toISOString() })
+    .in("id", ids);
+  if (error) return { ok: false, error: "No se pudieron eliminar los transportistas seleccionados." };
+
+  revalidarVistasDependientes(ids);
+  return { ok: true };
+}
+
+export async function restaurarTransportistasAction(ids: string[]): Promise<ResultadoAccion> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+  if (ids.length === 0) return { ok: false, error: "No hay transportistas seleccionados." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("transportista").update({ deleted_at: null }).in("id", ids);
+  if (error) return { ok: false, error: "No se pudieron restaurar los transportistas seleccionados." };
+
+  revalidarVistasDependientes(ids);
+  return { ok: true };
 }
 
 export async function crearTransportistaYRedirigir(valores: TransportistaFormValues) {
