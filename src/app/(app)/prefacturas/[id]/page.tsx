@@ -17,6 +17,7 @@ import { nombreTransportista } from "@/lib/transportistas/display";
 
 import { AccionesPdf } from "./acciones-pdf";
 import { EnviarCorreoForm } from "./enviar-correo-form";
+import { PdfPreview } from "./pdf-preview";
 
 // Los Server Actions de esta página (generar PDF, enviar correo con SMTP)
 // heredan el límite de duración de la ruta que los invoca.
@@ -45,13 +46,22 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
   return (
     <div className="space-y-6">
       <BotonVolver fallbackHref="/prefacturas" />
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="titulo-marca text-2xl">{prefactura.numero ?? "(sin número)"}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {prefactura.vehiculo?.placa} · {nombreTransportista(prefactura.transportista) ?? "—"} ·{" "}
-            {prefactura.periodo?.nombre}
-          </p>
+      <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+        <div className="space-y-3">
+          <div>
+            <h1 className="titulo-marca text-2xl">{prefactura.numero ?? "(sin número)"}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {prefactura.vehiculo?.placa} · {nombreTransportista(prefactura.transportista) ?? "—"} ·{" "}
+              {prefactura.periodo?.nombre}
+            </p>
+          </div>
+          {prefactura.version_actual > 0 ? (
+            <PdfPreview key={prefactura.version_actual} prefacturaId={id} />
+          ) : (
+            <div className="flex h-[600px] items-center justify-center rounded-lg border bg-card p-4 text-center text-sm text-muted-foreground">
+              Genera el PDF para poder previsualizarlo aquí antes de enviarlo.
+            </div>
+          )}
         </div>
         <div className="flex flex-col items-end gap-2">
           <div className="flex gap-2">
