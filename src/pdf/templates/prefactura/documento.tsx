@@ -73,22 +73,22 @@ export function DocumentoPrefactura({ datos }: { datos: DatosPdfPrefactura }) {
         </View>
 
         <View style={estilos.seccion}>
-          <Text style={estilos.seccionTitulo}>Resumen centro de costo × regional</Text>
+          <Text style={estilos.seccionTitulo}>Resumen de facturación</Text>
           <View style={estilos.tabla}>
             <View style={estilos.filaTablaCabecera} fixed>
-              <Text style={[estilos.celdaCabecera, { width: "30%" }]}>Centro de costo</Text>
-              <Text style={[estilos.celdaCabecera, { width: "25%" }]}>Regional</Text>
-              <Text style={[estilos.celdaCabecera, { width: "25%" }]}>Ruta</Text>
-              <Text style={[estilos.celdaCabecera, { width: "10%", textAlign: "right" }]}>Cant.</Text>
-              <Text style={[estilos.celdaCabecera, { width: "10%", textAlign: "right" }]}>Suma</Text>
+              <Text style={[estilos.celdaCabecera, { width: "28%" }]}>Centro de costo final</Text>
+              <Text style={[estilos.celdaCabecera, { width: "22%" }]}>Regional</Text>
+              <Text style={[estilos.celdaCabecera, { width: "20%" }]}>Ruta</Text>
+              <Text style={[estilos.celdaCabecera, { width: "10%", textAlign: "right" }]}>Cantidad</Text>
+              <Text style={[estilos.celdaCabecera, { width: "20%", textAlign: "right" }]}>Subtotal</Text>
             </View>
             {datos.resumenCentroCosto.map((r, i) => (
               <View style={estilos.filaTabla} key={i}>
-                <Text style={[estilos.celda, { width: "30%" }]}>{r.centroCosto}</Text>
-                <Text style={[estilos.celda, { width: "25%" }]}>{r.regional}</Text>
-                <Text style={[estilos.celda, { width: "25%" }]}>{r.ruta}</Text>
+                <Text style={[estilos.celda, { width: "28%" }]}>{r.centroCosto}</Text>
+                <Text style={[estilos.celda, { width: "22%" }]}>{r.regional}</Text>
+                <Text style={[estilos.celda, { width: "20%" }]}>{r.ruta}</Text>
                 <Text style={[estilos.celdaNumerica, { width: "10%" }]}>{r.cantidad}</Text>
-                <Text style={[estilos.celdaNumerica, { width: "10%" }]}>{formatoMoneda.format(r.suma)}</Text>
+                <Text style={[estilos.celdaNumerica, { width: "20%" }]}>{formatoMoneda.format(r.suma)}</Text>
               </View>
             ))}
           </View>
@@ -125,37 +125,6 @@ export function DocumentoPrefactura({ datos }: { datos: DatosPdfPrefactura }) {
           <Text style={estilos.totalValor}>{formatoMoneda.format(datos.total)}</Text>
         </View>
 
-        <PiePagina datos={datos} />
-        <NumeroPagina />
-      </Page>
-
-      <Page size="A4" style={estilos.pagina}>
-        <Encabezado datos={datos} />
-        <View style={estilos.seccion}>
-          <Text style={estilos.seccionTitulo}>Resumen de facturación</Text>
-          <View style={estilos.tabla}>
-            <View style={estilos.filaTablaCabecera}>
-              <Text style={[estilos.celdaCabecera, { width: "28%" }]}>Centro de costo final</Text>
-              <Text style={[estilos.celdaCabecera, { width: "22%" }]}>Regional</Text>
-              <Text style={[estilos.celdaCabecera, { width: "20%" }]}>Ruta</Text>
-              <Text style={[estilos.celdaCabecera, { width: "10%", textAlign: "right" }]}>Cantidad</Text>
-              <Text style={[estilos.celdaCabecera, { width: "20%", textAlign: "right" }]}>Subtotal</Text>
-            </View>
-            {datos.resumenCentroCosto.map((r, i) => (
-              <View style={estilos.filaTabla} key={i}>
-                <Text style={[estilos.celda, { width: "28%" }]}>{r.centroCosto}</Text>
-                <Text style={[estilos.celda, { width: "22%" }]}>{r.regional}</Text>
-                <Text style={[estilos.celda, { width: "20%" }]}>{r.ruta}</Text>
-                <Text style={[estilos.celdaNumerica, { width: "10%" }]}>{r.cantidad}</Text>
-                <Text style={[estilos.celdaNumerica, { width: "20%" }]}>{formatoMoneda.format(r.suma)}</Text>
-              </View>
-            ))}
-          </View>
-          <View style={estilos.totalFila}>
-            <Text style={estilos.totalEtiqueta}>Total general</Text>
-            <Text style={estilos.totalValor}>{formatoMoneda.format(datos.totalOdt)}</Text>
-          </View>
-        </View>
         <PiePagina datos={datos} />
         <NumeroPagina />
       </Page>

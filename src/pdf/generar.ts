@@ -10,6 +10,7 @@ import {
   type Odt,
   type PrefacturaConRelaciones,
 } from "@/lib/prefacturas/queries";
+import { obtenerConductorVigente } from "@/lib/vehiculos/queries";
 
 import { DocumentoPrefactura } from "./templates/prefactura/documento";
 import type { DatosPdfPrefactura } from "./templates/prefactura/tipos";
@@ -47,11 +48,12 @@ export function nombreArchivoPdf(placa: string, ruc: string): string {
 }
 
 /**
- * No hay un maestro de conductores poblado (la tabla `conductor` existe
- * pero nada la carga todavía), así que el conductor del PDF se deriva del
- * campo `chofer` de las propias ODT del corte: el que más se repite entre
- * las ODT de la prefactura, para tolerar alguna fila con el nombre mal
- * escrito o un chofer distinto en un viaje puntual.
+ * Respaldo cuando el vehículo no tiene un conductor registrado
+ * (Vehículos → Conductor): se deriva del campo `chofer` de las propias ODT
+ * del corte, el que más se repite entre las ODT de la prefactura. Es un
+ * texto libre del Excel importado — puede variar entre viajes o traer
+ * datos de prueba —, así que el conductor registrado siempre tiene
+ * prioridad cuando existe.
  */
 function conductorMasFrecuente(odts: Odt[]): string | null {
   const conteo = new Map<string, number>();
@@ -83,9 +85,10 @@ export interface ResultadoBufferPdf {
  * en el tiempo total contra el límite de la función serverless.
  */
 export async function generarBufferPdf(prefactura: PrefacturaConRelaciones): Promise<ResultadoBufferPdf> {
-  const [detalleOdt, resumen] = await Promise.all([
+  const [detalleOdt, resumen, conductorRegistrado] = await Promise.all([
     obtenerDetalleOdt(prefactura.id),
     obtenerResumenFacturacion(prefactura.id),
+    prefactura.vehiculo?.id ? obtenerConductorVigente(prefactura.vehiculo.id) : Promise.resolve(null),
   ]);
 
   const datos: DatosPdfPrefactura = {
@@ -95,7 +98,7 @@ export async function generarBufferPdf(prefactura: PrefacturaConRelaciones): Pro
     placa: prefactura.vehiculo?.placa ?? "",
     razonSocial: prefactura.transportista?.razon_social ?? "",
     ruc: prefactura.transportista?.ruc ?? "",
-    conductor: conductorMasFrecuente(detalleOdt),
+    conductor: conductorRegistrado?.nombre ?? conductorMasFrecuente(detalleOdt),
     totalOdt: prefactura.total_odt,
     totalDescuentos: prefactura.total_descuentos,
     total: prefactura.total,

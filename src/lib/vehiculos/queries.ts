@@ -56,6 +56,33 @@ export async function obtenerVehiculo(id: string): Promise<Vehiculo | null> {
   return data;
 }
 
+export interface ConductorVigente {
+  id: string;
+  nombre: string;
+  vigenteDesde: string;
+}
+
+/** Conductor asignado actualmente a un vehículo (vigente_hasta null), si hay alguno registrado. */
+export async function obtenerConductorVigente(vehiculoId: string): Promise<ConductorVigente | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("vehiculo_conductor")
+    .select("vigente_desde, conductor:conductor_id(id, nombres, apellidos)")
+    .eq("vehiculo_id", vehiculoId)
+    .is("vigente_hasta", null)
+    .maybeSingle();
+  if (error || !data) return null;
+
+  const conductor = data.conductor as unknown as {
+    id: string;
+    nombres: string | null;
+    apellidos: string | null;
+  };
+  const nombre = [conductor.nombres, conductor.apellidos].filter(Boolean).join(" ").trim();
+  if (!nombre) return null;
+  return { id: conductor.id, nombre, vigenteDesde: data.vigente_desde };
+}
+
 export async function listarCorreosVehiculo(vehiculoId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase

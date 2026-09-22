@@ -10,10 +10,12 @@ import {
   listarHistorialVehiculo,
   listarRegionalesParaSelect,
   listarTransportistasParaSelect,
+  obtenerConductorVigente,
   obtenerVehiculo,
 } from "@/lib/vehiculos/queries";
 
 import { VehiculoForm } from "../vehiculo-form";
+import { ConductorVehiculo } from "./conductor-vehiculo";
 
 const ETIQUETA_ACCION: Record<string, string> = {
   INSERT: "Creado",
@@ -28,11 +30,12 @@ export default async function DetalleVehiculoPage({ params }: { params: Promise<
   const vehiculo = await obtenerVehiculo(id);
   if (!vehiculo) notFound();
 
-  const [correos, historial, transportistas, regionales] = await Promise.all([
+  const [correos, historial, transportistas, regionales, conductorActual] = await Promise.all([
     listarCorreosVehiculo(id),
     listarHistorialVehiculo(id),
     listarTransportistasParaSelect(),
     listarRegionalesParaSelect(),
+    obtenerConductorVigente(id),
   ]);
 
   const soloLectura = perfil.rol === "CONSULTA";
@@ -63,6 +66,15 @@ export default async function DetalleVehiculoPage({ params }: { params: Promise<
           ) : (
             <VehiculoForm vehiculo={vehiculo} transportistas={transportistas} regionales={regionales} />
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Conductor</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ConductorVehiculo vehiculoId={id} conductorActual={conductorActual} soloLectura={soloLectura} />
         </CardContent>
       </Card>
 

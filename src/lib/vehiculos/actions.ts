@@ -130,6 +130,47 @@ export async function eliminarCorreoVehiculo(vehiculoId: string, correoId: strin
   return { ok: true };
 }
 
+/**
+ * Registra quién maneja el vehículo ahora mismo: cierra la asignación
+ * vigente anterior (si había) y crea una nueva. El PDF de prefactura usa
+ * esto para el campo Conductor — sin un conductor registrado, cae de
+ * vuelta a adivinar por el campo "Chofer" de las ODT del corte, que no es
+ * confiable (texto libre del Excel importado, puede variar entre viajes).
+ */
+export async function asignarConductorVehiculoAction(
+  vehiculoId: string,
+  nombreCompleto: string,
+): Promise<ResultadoAccion> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+
+  const nombre = nombreCompleto.trim();
+  if (!nombre) return { ok: false, error: "El nombre del conductor es obligatorio." };
+
+  const supabase = await createClient();
+
+  const { data: conductor, error: errorConductor } = await supabase
+    .from("conductor")
+    .insert({ nombres: nombre })
+    .select("id")
+    .single();
+  if (errorConductor || !conductor) return { ok: false, error: "No se pudo registrar el conductor." };
+
+  const { error: errorCierre } = await supabase
+    .from("vehiculo_conductor")
+    .update({ vigente_hasta: new Date().toISOString().slice(0, 10) })
+    .eq("vehiculo_id", vehiculoId)
+    .is("vigente_hasta", null);
+  if (errorCierre) return { ok: false, error: "No se pudo cerrar la asignación anterior." };
+
+  const { error: errorAsignacion } = await supabase
+    .from("vehiculo_conductor")
+    .insert({ vehiculo_id: vehiculoId, conductor_id: conductor.id });
+  if (errorAsignacion) return { ok: false, error: "No se pudo asignar el conductor." };
+
+  revalidatePath(`/vehiculos/${vehiculoId}`);
+  return { ok: true };
+}
+
 export async function crearVehiculoYRedirigir(valores: VehiculoFormValues) {
   const resultado = await crearVehiculo(valores);
   if (resultado.ok && resultado.id) {
