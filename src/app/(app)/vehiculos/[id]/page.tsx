@@ -2,9 +2,14 @@ import { notFound } from "next/navigation";
 
 import { CorreosContacto } from "@/components/contactos/correos-contacto";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BotonEliminar } from "@/components/ui/boton-eliminar";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
-import { agregarCorreoVehiculo, eliminarCorreoVehiculo } from "@/lib/vehiculos/actions";
+import {
+  agregarCorreoVehiculo,
+  eliminarCorreoVehiculo,
+  eliminarVehiculoAction,
+} from "@/lib/vehiculos/actions";
 import {
   listarCorreosVehiculo,
   listarHistorialVehiculo,
@@ -43,8 +48,15 @@ export default async function DetalleVehiculoPage({ params }: { params: Promise<
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <BotonVolver fallbackHref="/vehiculos" />
-      <div>
+      <div className="flex items-start justify-between gap-4">
         <h1 className="titulo-marca text-2xl">{vehiculo.placa}</h1>
+        {!soloLectura ? (
+          <BotonEliminar
+            onEliminar={eliminarVehiculoAction.bind(null, id)}
+            confirmacion={`¿Eliminar el vehículo ${vehiculo.placa}? Dejará de aparecer en listas y selectores.`}
+            redirigirA="/vehiculos"
+          />
+        ) : null}
       </div>
 
       <Card>

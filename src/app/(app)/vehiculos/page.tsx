@@ -43,7 +43,13 @@ export default async function VehiculosPage({
           </div>
         ) : null}
       </div>
-      <VehiculosTable filas={filas} total={total} pagina={pagina} tamanoPagina={TAMANO_PAGINA} />
+      <VehiculosTable
+        filas={filas}
+        total={total}
+        pagina={pagina}
+        tamanoPagina={TAMANO_PAGINA}
+        puedeEliminar={puedeCrear}
+      />
     </div>
   );
 }

@@ -171,6 +171,27 @@ export async function asignarConductorVehiculoAction(
   return { ok: true };
 }
 
+/**
+ * Borrado lógico (deleted_at): desaparece de listas y selectores, pero no
+ * se toca físicamente para no romper el historial de ODT/prefacturas que ya
+ * lo hayan usado. No hay "restaurar" en la UI: revertirlo requiere entrar
+ * directo a la base de datos.
+ */
+export async function eliminarVehiculoAction(id: string): Promise<ResultadoAccion> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("vehiculo")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) return { ok: false, error: "No se pudo eliminar el vehículo." };
+
+  revalidatePath("/vehiculos");
+  revalidatePath(`/vehiculos/${id}`);
+  return { ok: true, id };
+}
+
 export async function crearVehiculoYRedirigir(valores: VehiculoFormValues) {
   const resultado = await crearVehiculo(valores);
   if (resultado.ok && resultado.id) {

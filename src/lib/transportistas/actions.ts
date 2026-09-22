@@ -134,6 +134,28 @@ export async function eliminarCorreoTransportista(
   return { ok: true };
 }
 
+/**
+ * Borrado lógico (deleted_at): desaparece de listas y selectores, pero no
+ * se toca físicamente para no romper el historial de ODT/prefacturas que ya
+ * lo hayan usado (esas siguen mostrando sus datos vía la relación
+ * existente, RLS no filtra por deleted_at). No hay "restaurar" en la UI:
+ * revertirlo requiere entrar directo a la base de datos.
+ */
+export async function eliminarTransportistaAction(id: string): Promise<ResultadoAccion> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("transportista")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) return { ok: false, error: "No se pudo eliminar el transportista." };
+
+  revalidatePath("/transportistas");
+  revalidatePath(`/transportistas/${id}`);
+  return { ok: true, id };
+}
+
 export async function crearTransportistaYRedirigir(valores: TransportistaFormValues) {
   const resultado = await crearTransportista(valores);
   if (resultado.ok && resultado.id) {

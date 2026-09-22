@@ -43,7 +43,13 @@ export default async function TransportistasPage({
           </div>
         ) : null}
       </div>
-      <TransportistasTable filas={filas} total={total} pagina={pagina} tamanoPagina={TAMANO_PAGINA} />
+      <TransportistasTable
+        filas={filas}
+        total={total}
+        pagina={pagina}
+        tamanoPagina={TAMANO_PAGINA}
+        puedeEliminar={puedeCrear}
+      />
     </div>
   );
 }

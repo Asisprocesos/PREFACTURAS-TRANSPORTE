@@ -8,65 +8,103 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { nombreTransportista } from "@/lib/transportistas/display";
+import { eliminarVehiculoAction } from "@/lib/vehiculos/actions";
 import type { VehiculoConRelaciones } from "@/lib/vehiculos/queries";
 
-const columnas: ColumnDef<VehiculoConRelaciones>[] = [
-  {
-    accessorKey: "placa",
-    header: "Placa",
-    cell: ({ row }) => (
-      <Link href={`/vehiculos/${row.original.id}`} className="font-medium text-primary hover:underline">
-        {row.original.placa}
-      </Link>
-    ),
-  },
-  {
-    id: "transportista",
-    header: "Transportista",
-    cell: ({ row }) => nombreTransportista(row.original.transportista) ?? "—",
-  },
-  {
-    id: "regional",
-    header: "Regional",
-    cell: ({ row }) => row.original.regional?.nombre ?? "—",
-  },
-  {
-    accessorKey: "tipo_vehiculo",
-    header: "Tipo",
-    cell: ({ row }) => row.original.tipo_vehiculo ?? "—",
-  },
-  {
-    accessorKey: "activo",
-    header: "Estado",
-    cell: ({ row }) => (
-      <span
-        className={
-          row.original.activo
-            ? "rounded-full bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary-foreground/80"
-            : "rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
-        }
-      >
-        {row.original.activo ? "Activo" : "Inactivo"}
-      </span>
-    ),
-  },
-];
+function crearColumnas(
+  puedeEliminar: boolean,
+  onEliminar: (id: string, placa: string) => void,
+): ColumnDef<VehiculoConRelaciones>[] {
+  const columnas: ColumnDef<VehiculoConRelaciones>[] = [
+    {
+      accessorKey: "placa",
+      header: "Placa",
+      cell: ({ row }) => (
+        <Link href={`/vehiculos/${row.original.id}`} className="font-medium text-primary hover:underline">
+          {row.original.placa}
+        </Link>
+      ),
+    },
+    {
+      id: "transportista",
+      header: "Transportista",
+      cell: ({ row }) => nombreTransportista(row.original.transportista) ?? "—",
+    },
+    {
+      id: "regional",
+      header: "Regional",
+      cell: ({ row }) => row.original.regional?.nombre ?? "—",
+    },
+    {
+      accessorKey: "tipo_vehiculo",
+      header: "Tipo",
+      cell: ({ row }) => row.original.tipo_vehiculo ?? "—",
+    },
+    {
+      accessorKey: "activo",
+      header: "Estado",
+      cell: ({ row }) => (
+        <span
+          className={
+            row.original.activo
+              ? "rounded-full bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary-foreground/80"
+              : "rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+          }
+        >
+          {row.original.activo ? "Activo" : "Inactivo"}
+        </span>
+      ),
+    },
+  ];
+
+  if (puedeEliminar) {
+    columnas.push({
+      id: "acciones",
+      header: "",
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-destructive hover:text-destructive"
+          onClick={() => onEliminar(row.original.id, row.original.placa)}
+        >
+          Eliminar
+        </Button>
+      ),
+    });
+  }
+
+  return columnas;
+}
 
 export function VehiculosTable({
   filas,
   total,
   pagina,
   tamanoPagina,
+  puedeEliminar,
 }: {
   filas: VehiculoConRelaciones[];
   total: number;
   pagina: number;
   tamanoPagina: number;
+  puedeEliminar: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [busqueda, setBusqueda] = useState(searchParams.get("q") ?? "");
 
+  async function eliminar(id: string, placa: string) {
+    if (!confirm(`¿Eliminar el vehículo ${placa}? Dejará de aparecer en listas y selectores.`)) return;
+    const resultado = await eliminarVehiculoAction(id);
+    if (!resultado.ok) {
+      alert(resultado.error ?? "No se pudo eliminar.");
+      return;
+    }
+    router.refresh();
+  }
+
+  const columnas = crearColumnas(puedeEliminar, eliminar);
   const table = useReactTable({
     data: filas,
     columns: columnas,

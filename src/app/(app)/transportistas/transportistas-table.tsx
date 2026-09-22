@@ -7,64 +7,105 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { eliminarTransportistaAction } from "@/lib/transportistas/actions";
 import type { Transportista } from "@/lib/transportistas/queries";
 
-const columnas: ColumnDef<Transportista>[] = [
-  {
-    accessorKey: "ruc",
-    header: "RUC",
-  },
-  {
-    accessorKey: "nombre",
-    header: "Nombre",
-    cell: ({ row }) => (
-      <Link href={`/transportistas/${row.original.id}`} className="font-medium text-primary hover:underline">
-        {row.original.nombre || "(sin nombre)"}
-      </Link>
-    ),
-  },
-  {
-    accessorKey: "razon_social",
-    header: "Razón social",
-    cell: ({ row }) => row.original.razon_social,
-  },
-  {
-    accessorKey: "tipo_transportista",
-    header: "Tipo",
-    cell: ({ row }) => row.original.tipo_transportista ?? "—",
-  },
-  {
-    accessorKey: "activo",
-    header: "Estado",
-    cell: ({ row }) => (
-      <span
-        className={
-          row.original.activo
-            ? "rounded-full bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary-foreground/80"
-            : "rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
-        }
-      >
-        {row.original.activo ? "Activo" : "Inactivo"}
-      </span>
-    ),
-  },
-];
+function crearColumnas(
+  puedeEliminar: boolean,
+  onEliminar: (id: string, nombre: string) => void,
+): ColumnDef<Transportista>[] {
+  const columnas: ColumnDef<Transportista>[] = [
+    {
+      accessorKey: "ruc",
+      header: "RUC",
+    },
+    {
+      accessorKey: "nombre",
+      header: "Nombre",
+      cell: ({ row }) => (
+        <Link
+          href={`/transportistas/${row.original.id}`}
+          className="font-medium text-primary hover:underline"
+        >
+          {row.original.nombre || "(sin nombre)"}
+        </Link>
+      ),
+    },
+    {
+      accessorKey: "razon_social",
+      header: "Razón social",
+      cell: ({ row }) => row.original.razon_social,
+    },
+    {
+      accessorKey: "tipo_transportista",
+      header: "Tipo",
+      cell: ({ row }) => row.original.tipo_transportista ?? "—",
+    },
+    {
+      accessorKey: "activo",
+      header: "Estado",
+      cell: ({ row }) => (
+        <span
+          className={
+            row.original.activo
+              ? "rounded-full bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary-foreground/80"
+              : "rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+          }
+        >
+          {row.original.activo ? "Activo" : "Inactivo"}
+        </span>
+      ),
+    },
+  ];
+
+  if (puedeEliminar) {
+    columnas.push({
+      id: "acciones",
+      header: "",
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-destructive hover:text-destructive"
+          onClick={() => onEliminar(row.original.id, row.original.nombre || row.original.razon_social)}
+        >
+          Eliminar
+        </Button>
+      ),
+    });
+  }
+
+  return columnas;
+}
 
 export function TransportistasTable({
   filas,
   total,
   pagina,
   tamanoPagina,
+  puedeEliminar,
 }: {
   filas: Transportista[];
   total: number;
   pagina: number;
   tamanoPagina: number;
+  puedeEliminar: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [busqueda, setBusqueda] = useState(searchParams.get("q") ?? "");
 
+  async function eliminar(id: string, nombre: string) {
+    if (!confirm(`¿Eliminar "${nombre}"? Dejará de aparecer en listas y selectores.`)) return;
+    const resultado = await eliminarTransportistaAction(id);
+    if (!resultado.ok) {
+      alert(resultado.error ?? "No se pudo eliminar.");
+      return;
+    }
+    router.refresh();
+  }
+
+  const columnas = crearColumnas(puedeEliminar, eliminar);
   const table = useReactTable({
     data: filas,
     columns: columnas,
