@@ -10,13 +10,18 @@ import type { EmailMensaje, EmailProvider, EmailResultado } from "../tipos";
  * salientes a los puertos 25/587/465.
  */
 export function crearProveedorSmtp(): EmailProvider {
-  const host = process.env.SMTP_HOST;
+  const host = process.env.SMTP_HOST?.trim();
   const port = Number(process.env.SMTP_PORT ?? "587");
-  const secure = process.env.SMTP_SECURE === "true";
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASSWORD;
-  const from = process.env.EMAIL_FROM ?? user;
-  const replyTo = process.env.EMAIL_REPLY_TO;
+  // Tolerante a mayúsculas/minúsculas y espacios: un valor mal transcrito
+  // (ej. "True" en vez de "true") no debe hacer que se intente una
+  // conexión sin TLS contra un puerto que lo exige desde el primer byte
+  // (465) — eso se queda colgado hasta el connectionTimeout sin dar ninguna
+  // pista de la causa real.
+  const secure = /^(true|1|yes|si|sí)$/i.test((process.env.SMTP_SECURE ?? "").trim());
+  const user = process.env.SMTP_USER?.trim();
+  const pass = process.env.SMTP_PASSWORD?.trim();
+  const from = process.env.EMAIL_FROM?.trim() ?? user;
+  const replyTo = process.env.EMAIL_REPLY_TO?.trim() || undefined;
 
   if (!host || !user || !pass) {
     throw new Error("Faltan SMTP_HOST/SMTP_USER/SMTP_PASSWORD en las variables de entorno.");
@@ -54,11 +59,16 @@ export function crearProveedorSmtp(): EmailProvider {
       } catch (err) {
         const codigo = (err as { responseCode?: number }).responseCode;
         const permanente = typeof codigo === "number" && codigo >= 500;
-        return {
-          ok: false,
-          error: err instanceof Error ? err.message : "Error desconocido enviando el correo.",
-          permanente,
-        };
+        const codigoRed = (err as { code?: string }).code;
+        let mensaje = err instanceof Error ? err.message : "Error desconocido enviando el correo.";
+        if (codigoRed === "ETIMEDOUT" || codigoRed === "ESOCKET" || codigoRed === "ECONNREFUSED") {
+          // No es un problema de credenciales: la conexión TCP/TLS con
+          // SMTP_HOST:SMTP_PORT nunca se completó. La causa típica es que el
+          // servidor de correo solo acepta conexiones desde IPs conocidas
+          // (red de la oficina) y no desde el servidor de Vercel.
+          mensaje = `${mensaje} — no se pudo conectar a ${host}:${port} desde el servidor. Verifica que el firewall del correo permita conexiones desde internet, o considera un proveedor de correo transaccional (SMTP relay / API) en vez de conectarse directo al servidor interno.`;
+        }
+        return { ok: false, error: mensaje, permanente };
       }
     },
   };
