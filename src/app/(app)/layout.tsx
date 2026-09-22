@@ -1,23 +1,40 @@
+import {
+  BarChart3,
+  ChevronRight,
+  ClipboardCheck,
+  FileUp,
+  Folder,
+  History,
+  IdCard,
+  LayoutDashboard,
+  Receipt,
+  Search,
+  Settings,
+  Truck,
+  UserCog,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 
 import { cerrarSesionAction } from "@/lib/auth/actions";
 import { obtenerPerfilActual } from "@/lib/auth/roles";
 
-const MENU = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/buscador", label: "Buscador" },
-  { href: "/prefacturas", label: "Prefacturas" },
-  { href: "/importar", label: "Importar" },
-  { href: "/control-placa", label: "Control por placa" },
-  { href: "/validacion-odt", label: "Validación ODT / Escaneo" },
-  { href: "/transportistas", label: "Transportistas" },
-  { href: "/vehiculos", label: "Vehículos" },
-  { href: "/repositorio", label: "Repositorio PDF" },
-  { href: "/historial", label: "Historial / Log" },
-  { href: "/reportes", label: "Reportes" },
-  { href: "/usuarios", label: "Usuarios" },
-  { href: "/configuracion", label: "Configuración" },
-] as const;
+const MENU: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/buscador", label: "Buscador", icon: Search },
+  { href: "/prefacturas", label: "Prefacturas", icon: Receipt },
+  { href: "/importar", label: "Importar", icon: FileUp },
+  { href: "/control-placa", label: "Control por placa", icon: IdCard },
+  { href: "/validacion-odt", label: "Validación ODT / Escaneo", icon: ClipboardCheck },
+  { href: "/transportistas", label: "Transportistas", icon: Users },
+  { href: "/vehiculos", label: "Vehículos", icon: Truck },
+  { href: "/repositorio", label: "Repositorio PDF", icon: Folder },
+  { href: "/historial", label: "Historial / Log", icon: History },
+  { href: "/reportes", label: "Reportes", icon: BarChart3 },
+  { href: "/usuarios", label: "Usuarios", icon: UserCog },
+  { href: "/configuracion", label: "Configuración", icon: Settings },
+];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const perfil = await obtenerPerfilActual();
@@ -25,20 +42,28 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen">
       <aside className="flex w-64 shrink-0 flex-col bg-laar-sidebar text-white">
-        <div className="flex items-center gap-2 border-b border-white/10 px-6 py-5">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-2 border-b border-white/10 px-6 py-5 transition-opacity hover:opacity-80"
+        >
           <div className="h-2 w-2 rounded-full bg-laar-amarillo" />
           <span className="font-brand text-lg font-bold tracking-wide">LAARCOURIER</span>
-        </div>
+        </Link>
         <nav className="flex-1 space-y-1 px-3 py-4">
-          {MENU.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="block rounded-md px-3 py-2 text-sm text-white/80 transition-colors hover:bg-white/10 hover:text-laar-amarillo"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {MENU.map((item) => {
+            const Icono = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-white/80 transition-colors hover:bg-white/10 hover:text-laar-amarillo"
+              >
+                <Icono className="h-4 w-4 shrink-0" />
+                <span className="flex-1">{item.label}</span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-white/30" />
+              </Link>
+            );
+          })}
         </nav>
         <div className="border-t border-white/10 px-3 py-4">
           {perfil ? (
