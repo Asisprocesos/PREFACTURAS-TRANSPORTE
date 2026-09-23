@@ -1,22 +1,25 @@
 import "server-only";
 
+import { crearProveedorResend } from "./providers/resend";
 import { crearProveedorSmtp } from "./providers/smtp";
 import type { EmailMensaje, EmailProvider, EmailResultado } from "./tipos";
 
 /**
- * Fábrica de EmailProvider según EMAIL_PROVIDER. Solo `smtp` está
- * implementado (el proveedor real de este proyecto, Zimbra); brevo/resend/
- * ses quedan como adaptadores futuros intercambiables — fallan con un
- * mensaje claro en vez de simular un envío que no ocurre.
+ * Fábrica de EmailProvider según EMAIL_PROVIDER. `smtp` (Zimbra) y `resend`
+ * están implementados; brevo/ses quedan como adaptadores futuros
+ * intercambiables — fallan con un mensaje claro en vez de simular un envío
+ * que no ocurre.
  */
 function crearProveedor(): EmailProvider {
   const proveedor = process.env.EMAIL_PROVIDER ?? "smtp";
   switch (proveedor) {
     case "smtp":
       return crearProveedorSmtp();
+    case "resend":
+      return crearProveedorResend();
     default:
       throw new Error(
-        `EMAIL_PROVIDER="${proveedor}" no está implementado todavía. Adaptadores disponibles: smtp.`,
+        `EMAIL_PROVIDER="${proveedor}" no está implementado todavía. Adaptadores disponibles: smtp, resend.`,
       );
   }
 }
