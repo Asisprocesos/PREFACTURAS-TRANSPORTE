@@ -3,11 +3,7 @@
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  importarMaestrosAction,
-  type ResultadoFilaMaestro,
-  type ResultadoImportarMaestros,
-} from "@/lib/maestros/importar-actions";
+import { importarMaestrosAction, type ResultadoImportarMaestros } from "@/lib/maestros/importar-actions";
 
 export function FormularioImportarMaestros() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -39,6 +35,11 @@ export function FormularioImportarMaestros() {
     }
   }
 
+  const filas = resultado?.filas ?? [];
+  const creados = filas.filter((f) => f.accion === "CREADO").length;
+  const actualizados = filas.filter((f) => f.accion === "ACTUALIZADO").length;
+  const errores = filas.filter((f) => f.accion === "ERROR").length;
+
   return (
     <div className="space-y-6">
       <div className="rounded-lg border bg-card p-4">
@@ -63,70 +64,56 @@ export function FormularioImportarMaestros() {
       </div>
 
       {resultado ? (
-        <div className="space-y-6">
-          <SeccionResultado titulo="Transportistas" filas={resultado.transportistas} />
-          <SeccionResultado titulo="Vehículos" filas={resultado.vehiculos} />
-        </div>
+        filas.length === 0 ? (
+          <p className="text-sm text-muted-foreground">La hoja no tenía filas.</p>
+        ) : (
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold">Resultado</h2>
+            <p className="text-sm text-muted-foreground">
+              {creados} creados · {actualizados} actualizados
+              {errores > 0 ? ` · ${errores} con error` : ""}
+            </p>
+            <div className="overflow-x-auto rounded-lg border bg-card">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-left text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Fila</th>
+                    <th className="px-3 py-2 font-medium">Placa</th>
+                    <th className="px-3 py-2 font-medium">Resultado</th>
+                    <th className="px-3 py-2 font-medium">Detalle</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {filas.map((f, i) => (
+                    <tr key={i}>
+                      <td className="px-3 py-2">{f.fila}</td>
+                      <td className="px-3 py-2">{f.clave}</td>
+                      <td className="px-3 py-2">
+                        <span
+                          className={
+                            f.accion === "ERROR"
+                              ? "text-destructive"
+                              : f.detalle
+                                ? "text-amber-600"
+                                : "text-primary"
+                          }
+                        >
+                          {f.accion === "CREADO"
+                            ? "Creado"
+                            : f.accion === "ACTUALIZADO"
+                              ? "Actualizado"
+                              : "Error"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{f.detalle ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
       ) : null}
-    </div>
-  );
-}
-
-function SeccionResultado({ titulo, filas }: { titulo: string; filas: ResultadoFilaMaestro[] }) {
-  if (filas.length === 0) {
-    return (
-      <div>
-        <h2 className="text-lg font-semibold">{titulo}</h2>
-        <p className="text-sm text-muted-foreground">La hoja no tenía filas (o no venía en el archivo).</p>
-      </div>
-    );
-  }
-
-  const creados = filas.filter((f) => f.accion === "CREADO").length;
-  const actualizados = filas.filter((f) => f.accion === "ACTUALIZADO").length;
-  const errores = filas.filter((f) => f.accion === "ERROR").length;
-
-  return (
-    <div className="space-y-2">
-      <h2 className="text-lg font-semibold">{titulo}</h2>
-      <p className="text-sm text-muted-foreground">
-        {creados} creados · {actualizados} actualizados
-        {errores > 0 ? ` · ${errores} con error` : ""}
-      </p>
-      <div className="overflow-x-auto rounded-lg border bg-card">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2 font-medium">Fila</th>
-              <th className="px-3 py-2 font-medium">Clave</th>
-              <th className="px-3 py-2 font-medium">Resultado</th>
-              <th className="px-3 py-2 font-medium">Detalle</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {filas.map((f, i) => (
-              <tr key={i}>
-                <td className="px-3 py-2">{f.fila}</td>
-                <td className="px-3 py-2">{f.clave}</td>
-                <td className="px-3 py-2">
-                  <span
-                    className={
-                      f.accion === "ERROR"
-                        ? "text-destructive"
-                        : f.detalle
-                          ? "text-amber-600"
-                          : "text-primary"
-                    }
-                  >
-                    {f.accion === "CREADO" ? "Creado" : f.accion === "ACTUALIZADO" ? "Actualizado" : "Error"}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">{f.detalle ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }

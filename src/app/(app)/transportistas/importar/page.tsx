@@ -10,11 +10,11 @@ export default async function ImportarMaestrosPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <BotonVolver fallbackHref="/transportistas" />
       <div>
-        <h1 className="titulo-marca text-2xl">Carga masiva de Transportistas y Vehículos</h1>
+        <h1 className="titulo-marca text-2xl">Carga masiva de Vehículos</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Descarga la plantilla, complétala (una fila por transportista/vehículo) y vuelve a subirla. El RUC
-          identifica a cada transportista y la Placa a cada vehículo: si ya existen se actualizan sus datos,
-          si no, se crean. Los correos de contacto solo se agregan, nunca se borran.
+          Una sola hoja, una fila por vehículo: incluye los datos del transportista dueño, el vehículo y su
+          conductor. La Placa identifica a cada vehículo y el RUC a cada transportista: si ya existen se
+          actualizan sus datos, si no, se crean. Los correos de contacto solo se agregan, nunca se borran.
         </p>
       </div>
       <FormularioImportarMaestros />

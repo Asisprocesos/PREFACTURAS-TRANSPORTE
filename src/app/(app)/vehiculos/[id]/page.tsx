@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { CorreosContacto } from "@/components/contactos/correos-contacto";
@@ -5,7 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BotonEliminarORestaurar } from "@/components/ui/boton-eliminar-restaurar";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
+import { agregarCorreoTransportista, eliminarCorreoTransportista } from "@/lib/transportistas/actions";
 import { nombreTransportista } from "@/lib/transportistas/display";
+import { listarCorreosTransportista, obtenerTransportista } from "@/lib/transportistas/queries";
 import {
   agregarCorreoVehiculo,
   eliminarCorreoVehiculo,
@@ -21,6 +24,7 @@ import {
   obtenerVehiculo,
 } from "@/lib/vehiculos/queries";
 
+import { TransportistaForm } from "../../transportistas/transportista-form";
 import { VehiculoForm } from "../vehiculo-form";
 import { ConductorVehiculo } from "./conductor-vehiculo";
 
@@ -47,6 +51,16 @@ export default async function DetalleVehiculoPage({ params }: { params: Promise<
 
   const soloLectura = perfil.rol === "CONSULTA";
   const transportistaAsignado = transportistas.find((t) => t.id === vehiculo.transportista_id) ?? null;
+
+  // Ficha combinada: además de sus propios datos, el detalle del vehículo
+  // muestra y permite editar los del transportista dueño en la misma
+  // pantalla, para no tener que saltar entre los dos módulos.
+  const [transportistaCompleto, correosTransportista] = vehiculo.transportista_id
+    ? await Promise.all([
+        obtenerTransportista(vehiculo.transportista_id),
+        listarCorreosTransportista(vehiculo.transportista_id),
+      ])
+    : [null, []];
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -98,6 +112,54 @@ export default async function DetalleVehiculoPage({ params }: { params: Promise<
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-lg">Datos del transportista</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!transportistaCompleto ? (
+            <p className="text-sm text-muted-foreground">
+              Este vehículo no tiene transportista asignado.{" "}
+              {!soloLectura ? (
+                <>
+                  Selecciona uno en el campo &quot;Transportista&quot; de arriba, o{" "}
+                  <Link href="/transportistas/nuevo" className="text-primary hover:underline">
+                    crea uno nuevo
+                  </Link>
+                  .
+                </>
+              ) : null}
+            </p>
+          ) : soloLectura ? (
+            <dl className="grid grid-cols-2 gap-3 text-sm">
+              <dt className="text-muted-foreground">RUC</dt>
+              <dd>{transportistaCompleto.ruc}</dd>
+              <dt className="text-muted-foreground">Nombre</dt>
+              <dd>{transportistaCompleto.nombre || "—"}</dd>
+              <dt className="text-muted-foreground">Razón social</dt>
+              <dd>{transportistaCompleto.razon_social}</dd>
+              <dt className="text-muted-foreground">Tipo</dt>
+              <dd>{transportistaCompleto.tipo_transportista ?? "—"}</dd>
+              <dt className="text-muted-foreground">Estado</dt>
+              <dd>{transportistaCompleto.activo ? "Activo" : "Inactivo"}</dd>
+            </dl>
+          ) : (
+            <TransportistaForm transportista={transportistaCompleto} />
+          )}
+          {transportistaCompleto ? (
+            <div className="space-y-2 border-t pt-4">
+              <p className="text-sm font-medium">Correos del transportista</p>
+              <CorreosContacto
+                correos={correosTransportista}
+                soloLectura={soloLectura}
+                agregarAction={agregarCorreoTransportista.bind(null, transportistaCompleto.id)}
+                eliminarAction={eliminarCorreoTransportista.bind(null, transportistaCompleto.id)}
+              />
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-lg">Conductor</CardTitle>
         </CardHeader>
         <CardContent>
@@ -107,7 +169,7 @@ export default async function DetalleVehiculoPage({ params }: { params: Promise<
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Correos de contacto</CardTitle>
+          <CardTitle className="text-lg">Correos del vehículo</CardTitle>
         </CardHeader>
         <CardContent>
           <CorreosContacto
