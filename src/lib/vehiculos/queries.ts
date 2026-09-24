@@ -80,19 +80,6 @@ export async function obtenerVehiculo(id: string): Promise<Vehiculo | null> {
   return data;
 }
 
-/** Usado por el enlace "Corregir" del importador para saltar directo al vehículo de una placa. */
-export async function obtenerVehiculoIdPorPlaca(placa: string): Promise<string | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("vehiculo")
-    .select("id")
-    .eq("placa", placa)
-    .is("deleted_at", null)
-    .maybeSingle();
-  if (error) throw error;
-  return data?.id ?? null;
-}
-
 export interface ConductorVigente {
   id: string;
   nombre: string;

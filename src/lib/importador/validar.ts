@@ -3,15 +3,13 @@ import { normalizarPlaca } from "@/lib/validation/placa";
 import { limpiarTextoOculto, parsearFechaDdMmAaaa } from "@/lib/validation/texto";
 
 import type { CampoOdt } from "./campos";
-import { mensajePlacaNoRegistrada, mensajePlacaSinCorreo, mensajeTipoRutaPorRevisar } from "./mensajes";
+import { mensajePlacaNoRegistrada, mensajeTipoRutaPorRevisar } from "./mensajes";
 
 export interface ContextoValidacion {
   periodoInicio: Date;
   periodoFin: Date;
   /** Placas normalizadas (sin guion, mayúsculas) que existen en `vehiculo`. */
   placasConocidas: Set<string>;
-  /** Placas normalizadas que tienen al menos un correo de contacto activo. */
-  placasConCorreo: Set<string>;
   /** Tipo de ruta (normalizado) -> si requiere revisión / centro de costo. */
   tiposRuta: Map<string, { requiereRevision: boolean; centroCosto: string | null }>;
   /** Guías que ya existen en la tabla `odt` (de cualquier importación previa). */
@@ -138,13 +136,12 @@ export function validarFila(
         ? `Placa "${placaNormalizada}" no cumple el formato esperado.`
         : "No se pudo determinar la placa (vacía y no encontrada en Chofer).",
     );
-  } else if (placaNormalizada) {
-    if (!contexto.placasConocidas.has(placaNormalizada)) {
-      advertencias.push(mensajePlacaNoRegistrada(placaNormalizada));
-    } else if (!contexto.placasConCorreo.has(placaNormalizada)) {
-      advertencias.push(mensajePlacaSinCorreo(placaNormalizada));
-    }
+  } else if (placaNormalizada && !contexto.placasConocidas.has(placaNormalizada)) {
+    advertencias.push(mensajePlacaNoRegistrada(placaNormalizada));
   }
+  // No se advierte si la placa no tiene correo propio: al enviar la
+  // prefactura, obtenerContactosPrefactura() ya cae al correo del
+  // transportista cuando el vehículo no tiene uno (ver src/lib/correo/queries.ts).
   if (corregida) {
     advertencias.push("Placa recuperada desde el campo Chofer (Placa original inválida o vacía).");
   }

@@ -10,7 +10,6 @@ function contextoBase(overrides: Partial<ContextoValidacion> = {}): ContextoVali
     periodoInicio: new Date(Date.UTC(2026, 7, 13)),
     periodoFin: new Date(Date.UTC(2026, 8, 12)),
     placasConocidas: new Set(["GSG9141"]),
-    placasConCorreo: new Set(["GSG9141"]),
     tiposRuta: new Map([["DISTRIBUCION", { requiereRevision: false, centroCosto: "DISTRIBUCION" }]]),
     guiasExistentesBD: new Set(),
     patronPlaca: PATRON_PLACA,
@@ -67,15 +66,14 @@ describe("validarFila — duplicados", () => {
 
 describe("validarFila — placa", () => {
   it("advierte cuando la placa no está en Vehículos", () => {
-    const contexto = contextoBase({ placasConocidas: new Set(), placasConCorreo: new Set() });
+    const contexto = contextoBase({ placasConocidas: new Set() });
     const r = validarFila(1, filaValidaBase, contexto, new Set());
     expect(r.advertencias.some((a) => a.includes("no está registrada en Vehículos"))).toBe(true);
   });
 
-  it("advierte cuando la placa no tiene correo", () => {
-    const contexto = contextoBase({ placasConCorreo: new Set() });
-    const r = validarFila(1, filaValidaBase, contexto, new Set());
-    expect(r.advertencias.some((a) => a.includes("no tiene correo"))).toBe(true);
+  it("no advierte sobre correo aunque la placa esté registrada (el envío cae al correo del transportista)", () => {
+    const r = validarFila(1, filaValidaBase, contextoBase(), new Set());
+    expect(r.advertencias.some((a) => a.includes("correo"))).toBe(false);
   });
 
   it("recupera la placa desde Chofer y lo marca como corregida", () => {

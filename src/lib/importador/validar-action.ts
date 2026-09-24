@@ -44,7 +44,7 @@ export async function construirContextoBase(
   if (errorPeriodo || !periodo) throw new Error("El período seleccionado no existe.");
 
   const [{ data: vehiculos }, { data: tiposRuta }] = await Promise.all([
-    supabase.from("vehiculo").select("placa, contacto_correo(id)").is("deleted_at", null),
+    supabase.from("vehiculo").select("placa").is("deleted_at", null),
     supabase
       .from("tipo_ruta_centro_costo")
       .select("tipo_ruta, centro_costo, requiere_revision")
@@ -53,11 +53,6 @@ export async function construirContextoBase(
   ]);
 
   const placasConocidas = new Set((vehiculos ?? []).map((v) => v.placa));
-  const placasConCorreo = new Set(
-    (vehiculos ?? [])
-      .filter((v) => Array.isArray(v.contacto_correo) && v.contacto_correo.length > 0)
-      .map((v) => v.placa),
-  );
   const tiposRutaMapa = new Map(
     (tiposRuta ?? []).map((t) => [
       t.tipo_ruta.toUpperCase(),
@@ -69,7 +64,6 @@ export async function construirContextoBase(
     periodoInicio: new Date(`${periodo.fecha_inicio}T00:00:00Z`),
     periodoFin: new Date(`${periodo.fecha_fin}T00:00:00Z`),
     placasConocidas,
-    placasConCorreo,
     tiposRuta: tiposRutaMapa,
     patronPlaca: defaultAppConfig.patrones.placa,
     patronExtraccionChofer: defaultAppConfig.patrones.extraccionPlacaDesdeChofer,

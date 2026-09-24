@@ -8,11 +8,7 @@ import { Input } from "@/components/ui/input";
 import { establecerDecisionFilaAction } from "@/lib/importador/confirmar-action";
 import { corregirFilaImportacionAction, type CorreccionFila } from "@/lib/importador/correccion-action";
 import { listarFilasImportacionAction } from "@/lib/importador/lectura-actions";
-import {
-  extraerPlacaNoRegistrada,
-  extraerPlacaSinCorreo,
-  extraerTipoRutaPorRevisar,
-} from "@/lib/importador/mensajes";
+import { extraerPlacaNoRegistrada, extraerTipoRutaPorRevisar } from "@/lib/importador/mensajes";
 import type { ImportacionFila, PestanaFilas } from "@/lib/importador/queries";
 import type { ResumenValidacion } from "@/lib/importador/validar-action";
 import { cn } from "@/lib/utils";
@@ -38,9 +34,9 @@ interface AccionExterna {
 
 /**
  * Algunas advertencias apuntan a datos que viven en otro módulo (la placa no
- * tiene vehículo/correo registrado, o el Tipo de Ruta no tiene Centro de
- * Costo en el catálogo): para esas, "Corregir" no alcanza porque el dato no
- * está en esta fila del staging. Se arma un enlace directo al módulo que
+ * tiene vehículo registrado, o el Tipo de Ruta no tiene Centro de Costo en
+ * el catálogo): para esas, "Corregir" no alcanza porque el dato no está en
+ * esta fila del staging. Se arma un enlace directo al módulo que
  * corresponde, que al volver revalida automáticamente esta fila (ver
  * `revalidarFila` en `DetalleImportacion`).
  *
@@ -59,14 +55,6 @@ function accionesExternas(
       acciones.push({
         href: `/vehiculos/nuevo?placa=${encodeURIComponent(placaNoRegistrada)}&volver=${encodeURIComponent(volver)}`,
         etiqueta: "Crear vehículo",
-      });
-      continue;
-    }
-    const placaSinCorreo = extraerPlacaSinCorreo(mensaje);
-    if (placaSinCorreo) {
-      acciones.push({
-        href: `/vehiculos/por-placa/${encodeURIComponent(placaSinCorreo)}?volver=${encodeURIComponent(volver)}`,
-        etiqueta: "Agregar correo del vehículo",
       });
       continue;
     }
