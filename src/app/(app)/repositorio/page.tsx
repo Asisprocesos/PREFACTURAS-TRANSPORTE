@@ -25,7 +25,7 @@ export default async function RepositorioPage({
     hasta?: string;
   }>;
 }) {
-  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
+  const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
   const params = await searchParams;
   const pagina = Math.max(1, Number(params.page ?? "1") || 1);
 
@@ -57,7 +57,13 @@ export default async function RepositorioPage({
         </p>
       </div>
       <FiltrosRepositorio periodos={periodos} transportistas={transportistas} />
-      <TablaDocumentos filas={filas} total={total} pagina={pagina} tamanoPagina={TAMANO_PAGINA} />
+      <TablaDocumentos
+        filas={filas}
+        total={total}
+        pagina={pagina}
+        tamanoPagina={TAMANO_PAGINA}
+        puedeEliminar={perfil.rol === "ADMIN"}
+      />
     </div>
   );
 }
