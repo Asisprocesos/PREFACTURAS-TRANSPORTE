@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 
 import { registrarLogEjecucion } from "@/lib/log-ejecucion/registrar";
 import { createClient } from "@/lib/supabase/server";
+import { completarRuc } from "@/lib/transportistas/display";
 
 import { generarBufferPdf, nombreArchivoPdf, validarPrefacturaParaPdf } from "./generar";
 
@@ -51,8 +52,11 @@ export async function generarYGuardarPdf(
   const anio = ahora.getFullYear();
   const mes = String(ahora.getMonth() + 1).padStart(2, "0");
   const ruc = prefactura.transportista!.ruc;
+  // La ruta de Storage usa el RUC tal cual está guardado (clave interna, no
+  // visible): completarlo aquí mezclaría carpetas de 12 y 13 dígitos para
+  // un mismo transportista según cuándo se generó cada versión.
   const storageKey = `prefacturas/${anio}/${mes}/${ruc}/${prefactura.numero}_v${version}.pdf`;
-  const nombreArchivo = nombreArchivoPdf(prefactura.vehiculo?.placa ?? "", ruc);
+  const nombreArchivo = nombreArchivoPdf(prefactura.vehiculo?.placa ?? "", completarRuc(ruc));
 
   // La subida a Storage y marcar la versión anterior como REEMPLAZADO son
   // independientes entre sí: se corren en paralelo para no sumar otra

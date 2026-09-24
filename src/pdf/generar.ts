@@ -10,7 +10,7 @@ import {
   type Odt,
   type PrefacturaConRelaciones,
 } from "@/lib/prefacturas/queries";
-import { nombreTransportista } from "@/lib/transportistas/display";
+import { completarRuc, nombreTransportista } from "@/lib/transportistas/display";
 import { obtenerConductorVigente } from "@/lib/vehiculos/queries";
 
 import { DocumentoPrefactura } from "./templates/prefactura/documento";
@@ -80,7 +80,7 @@ export async function generarBufferPdf(prefactura: PrefacturaConRelaciones): Pro
     fechaEmision: new Date().toLocaleDateString("es-EC"),
     placa: prefactura.vehiculo?.placa ?? "",
     razonSocial: prefactura.transportista?.razon_social ?? "",
-    ruc: prefactura.transportista?.ruc ?? "",
+    ruc: completarRuc(prefactura.transportista?.ruc),
     // El vehículo puede tener un conductor distinto del transportista (el
     // transportista es dueño/contratista, no necesariamente quien maneja).
     // Cuando no hay un conductor registrado para el vehículo, el PDF cae al
