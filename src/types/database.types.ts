@@ -889,9 +889,9 @@ export interface Database {
         Args: { p_sesion_id: string };
         Returns: { guia: string; resultado: ResultadoMatchEscaneo; odt_id: string | null }[];
       };
-      confirmar_importacion: {
-        Args: { p_importacion_id: string };
-        Returns: { odt_insertadas: number; novedades_generadas: number }[];
+      confirmar_importacion_lote: {
+        Args: { p_importacion_id: string; p_tamano_lote?: number };
+        Returns: { odt_insertadas: number; novedades_generadas: number; filas_restantes: number }[];
       };
       revertir_importacion: { Args: { p_importacion_id: string }; Returns: undefined };
       generar_prefacturas_periodo: {

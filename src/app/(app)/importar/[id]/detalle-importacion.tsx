@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { confirmarImportacionAction, revertirImportacionAction } from "@/lib/importador/confirmar-action";
+import { confirmarLoteImportacionAction, revertirImportacionAction } from "@/lib/importador/confirmar-action";
 import { corregirFilaImportacionAction } from "@/lib/importador/correccion-action";
 import type { Importacion } from "@/lib/importador/queries";
 import type { ResumenValidacion } from "@/lib/importador/validar-action";
@@ -57,10 +57,33 @@ export function DetalleImportacion({ importacion, esAdmin }: { importacion: Impo
   async function confirmar() {
     setCargando(true);
     setMensaje(null);
-    const r = await confirmarImportacionAction(importacion.id);
-    setCargando(false);
-    setMensaje(r.ok ? `Confirmada: ${r.odtInsertadas} ODT insertadas.` : (r.error ?? "Error al confirmar."));
-    router.refresh();
+    let totalOdt = 0;
+    try {
+      for (;;) {
+        let r = await confirmarLoteImportacionAction(importacion.id).catch(() => null);
+        if (!r || !r.ok) {
+          // Un solo reintento antes de rendirnos con esta vuelta — un lote
+          // ya confirmado no se vuelve a insertar, así que es seguro seguir
+          // dándole "Confirmar importación" hasta terminar.
+          r = await confirmarLoteImportacionAction(importacion.id).catch(() => null);
+        }
+        if (!r || !r.ok) {
+          setMensaje(
+            totalOdt > 0
+              ? `Se insertaron ${totalOdt} ODT antes de perder la conexión. Vuelve a darle "Confirmar importación" para continuar con el resto (es seguro, no duplica lo ya insertado).`
+              : (r?.error ?? "Error al confirmar."),
+          );
+          return;
+        }
+        totalOdt += r.odtInsertadas ?? 0;
+        setMensaje(`Confirmando... ${totalOdt} ODT insertadas hasta ahora.`);
+        if (!r.filasRestantes) break;
+      }
+      setMensaje(`Confirmada: ${totalOdt} ODT insertadas.`);
+    } finally {
+      setCargando(false);
+      router.refresh();
+    }
   }
 
   async function revertir() {
@@ -95,7 +118,7 @@ export function DetalleImportacion({ importacion, esAdmin }: { importacion: Impo
       <div className="flex gap-2">
         {importacion.estado === "VALIDADA" ? (
           <Button onClick={confirmar} disabled={cargando}>
-            Confirmar importación
+            {cargando ? "Confirmando..." : "Confirmar importación"}
           </Button>
         ) : null}
         {importacion.estado === "CONFIRMADA" ? (

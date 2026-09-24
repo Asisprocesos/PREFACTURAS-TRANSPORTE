@@ -12,7 +12,7 @@ import {
   ETIQUETA_CAMPO,
   type CampoOdt,
 } from "@/lib/importador/campos";
-import { confirmarImportacionAction } from "@/lib/importador/confirmar-action";
+import { confirmarLoteImportacionAction } from "@/lib/importador/confirmar-action";
 import { calcularHashArchivo } from "@/lib/importador/hash";
 import { guardarAliasMapeoAction, obtenerAliasMapeoAction } from "@/lib/importador/lectura-actions";
 import { sugerirMapeo } from "@/lib/importador/mapeo";
@@ -333,16 +333,26 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
         ) : null}
 
         {estado.paso === 5 && estado.importacionId ? (
-          <PasoConfirmar importacionId={estado.importacionId} />
+          <PasoConfirmar
+            importacionId={estado.importacionId}
+            totalParaInsertar={estado.resumen?.filasParaInsertar ?? 0}
+          />
         ) : null}
       </CardContent>
     </Card>
   );
 }
 
-function PasoConfirmar({ importacionId }: { importacionId: string }) {
+function PasoConfirmar({
+  importacionId,
+  totalParaInsertar,
+}: {
+  importacionId: string;
+  totalParaInsertar: number;
+}) {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progreso, setProgreso] = useState(0);
   const [resultado, setResultado] = useState<{ odtInsertadas?: number; novedadesGeneradas?: number } | null>(
     null,
   );
@@ -350,13 +360,35 @@ function PasoConfirmar({ importacionId }: { importacionId: string }) {
   async function confirmar() {
     setCargando(true);
     setError(null);
-    const r = await confirmarImportacionAction(importacionId);
-    setCargando(false);
-    if (!r.ok) {
-      setError(r.error ?? "No se pudo confirmar la importación.");
-      return;
+    setProgreso(0);
+    let totalOdt = 0;
+    let totalNovedades = 0;
+    try {
+      for (;;) {
+        let r = await confirmarLoteImportacionAction(importacionId).catch(() => null);
+        if (!r || !r.ok) {
+          // Un solo reintento antes de rendirnos con esta vuelta — un lote
+          // ya confirmado no se vuelve a insertar, así que es seguro seguir
+          // dándole "Confirmar importación" hasta terminar.
+          r = await confirmarLoteImportacionAction(importacionId).catch(() => null);
+        }
+        if (!r || !r.ok) {
+          setError(
+            totalOdt > 0
+              ? `Se insertaron ${totalOdt} ODT antes de perder la conexión. Vuelve a darle "Confirmar importación" para continuar con el resto (es seguro, no duplica lo ya insertado).`
+              : (r?.error ?? "No se pudo confirmar la importación."),
+          );
+          return;
+        }
+        totalOdt += r.odtInsertadas ?? 0;
+        totalNovedades += r.novedadesGeneradas ?? 0;
+        setProgreso(totalOdt);
+        if (!r.filasRestantes) break;
+      }
+      setResultado({ odtInsertadas: totalOdt, novedadesGeneradas: totalNovedades });
+    } finally {
+      setCargando(false);
     }
-    setResultado(r);
   }
 
   if (resultado) {
@@ -381,9 +413,15 @@ function PasoConfirmar({ importacionId }: { importacionId: string }) {
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Se insertarán las filas marcadas como válidas. Esta acción es transaccional: si algo falla, no se
-        inserta nada.
+        Se insertarán las filas marcadas como válidas, en lotes pequeños. Si algo falla a mitad de camino, lo
+        ya insertado queda guardado — vuelve a darle &quot;Confirmar importación&quot; para continuar con el
+        resto (es seguro, no duplica nada).
       </p>
+      {cargando ? (
+        <p className="text-sm text-muted-foreground">
+          Confirmando... {progreso} / {totalParaInsertar} ODT insertadas hasta ahora.
+        </p>
+      ) : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <Button onClick={confirmar} disabled={cargando}>
         {cargando ? "Confirmando..." : "Confirmar importación"}

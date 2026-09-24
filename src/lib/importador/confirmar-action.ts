@@ -9,27 +9,46 @@ import type { ResultadoAccion } from "@/lib/types/acciones";
 import { recalcularResumenImportacion } from "./resumen";
 import type { ResumenValidacion } from "./validar-action";
 
-export interface ResultadoConfirmacion extends ResultadoAccion {
+export interface ResultadoConfirmacionLote extends ResultadoAccion {
   odtInsertadas?: number;
   novedadesGeneradas?: number;
+  /** Filas con decision=INSERTAR que todavía no se han convertido en ODT: si es > 0, hay que volver a llamar. */
+  filasRestantes?: number;
 }
 
-export async function confirmarImportacionAction(importacionId: string): Promise<ResultadoConfirmacion> {
+/**
+ * Confirma un lote chico (por defecto 300 filas) en vez de todo el archivo
+ * de una sola vez — el cliente la llama en un ciclo hasta que
+ * `filasRestantes` llega a 0 (ver `confirmar()` en detalle-importacion.tsx
+ * e importar-wizard.tsx). Es idempotente: cada lote solo toma filas cuya
+ * guía todavía no existe en `odt` para esta importación, así que
+ * reintentar un lote fallido nunca duplica nada.
+ */
+export async function confirmarLoteImportacionAction(
+  importacionId: string,
+  tamanoLote = 300,
+): Promise<ResultadoConfirmacionLote> {
   await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
   const supabase = await createClient();
 
-  const { data, error } = await supabase.rpc("confirmar_importacion", { p_importacion_id: importacionId });
+  const { data, error } = await supabase.rpc("confirmar_importacion_lote", {
+    p_importacion_id: importacionId,
+    p_tamano_lote: tamanoLote,
+  });
   if (error) {
     return { ok: false, error: error.message };
   }
 
-  revalidatePath(`/importar/${importacionId}`);
-  revalidatePath("/importar");
   const resumen = data?.[0];
+  if (!resumen || resumen.filas_restantes === 0) {
+    revalidatePath(`/importar/${importacionId}`);
+    revalidatePath("/importar");
+  }
   return {
     ok: true,
     odtInsertadas: resumen?.odt_insertadas,
     novedadesGeneradas: resumen?.novedades_generadas,
+    filasRestantes: resumen?.filas_restantes,
   };
 }
 

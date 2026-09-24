@@ -6,8 +6,8 @@ import { obtenerImportacion } from "@/lib/importador/queries";
 
 import { DetalleImportacion } from "./detalle-importacion";
 
-// confirmarImportacionAction y la revalidación de filas se invocan desde
-// esta página; heredan este límite (ver el mismo comentario en /importar).
+// confirmarLoteImportacionAction y la revalidación de filas se invocan
+// desde esta página; heredan este límite (ver el mismo comentario en /importar).
 export const maxDuration = 60;
 
 export default async function DetalleImportacionPage({ params }: { params: Promise<{ id: string }> }) {
