@@ -19,10 +19,21 @@ export interface ResultadoFilaMaestro {
   detalle?: string;
 }
 
-export interface ResultadoImportarMaestros {
+export interface FilaVehiculoAImportar {
+  numeroFila: number;
+  datos: Record<string, unknown>;
+}
+
+export interface ResultadoAnalisisArchivo {
   ok: boolean;
   error?: string;
-  filas: ResultadoFilaMaestro[];
+  filas: FilaVehiculoAImportar[];
+}
+
+export interface ResultadoImportarLote {
+  ok: boolean;
+  error?: string;
+  resultados: ResultadoFilaMaestro[];
 }
 
 const REGEX_EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -48,6 +59,40 @@ function leerNumero(v: unknown): number | null {
   if (!s) return null;
   const n = Number(s.replace(",", "."));
   return Number.isNaN(n) ? null : n;
+}
+
+/**
+ * Solo lee y valida la hoja del archivo (rápido, sin escribir nada en la
+ * base de datos): separado de importarLoteVehiculosAction para que el
+ * cliente pueda partir las filas en lotes pequeños y procesarlas una a una.
+ * Un archivo con muchas filas en un solo request corría el riesgo de
+ * exceder el límite de duración de la función serverless a mitad de
+ * camino, sin devolver ninguna respuesta.
+ */
+export async function analizarArchivoVehiculosAction(formData: FormData): Promise<ResultadoAnalisisArchivo> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+
+  const archivo = formData.get("archivo");
+  if (!(archivo instanceof File)) {
+    return { ok: false, error: "No se recibió ningún archivo.", filas: [] };
+  }
+
+  try {
+    const buffer = await archivo.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+
+    const hoja = workbook.Sheets["Vehiculos"];
+    if (!hoja) {
+      return { ok: false, error: 'El archivo no tiene la hoja "Vehiculos". Usa la plantilla.', filas: [] };
+    }
+
+    const filasHoja = XLSX.utils.sheet_to_json<Record<string, unknown>>(hoja, { raw: false, defval: "" });
+    const filas = filasHoja.map((datos, i) => ({ numeroFila: i + 2, datos }));
+    return { ok: true, filas };
+  } catch (error) {
+    const mensaje = error instanceof Error ? error.message : "Error desconocido leyendo el archivo.";
+    return { ok: false, error: mensaje, filas: [] };
+  }
 }
 
 /**
@@ -92,12 +137,11 @@ async function sincronizarCorreos(
 
 /**
  * Resuelve (creando o actualizando si hace falta) el transportista de una
- * fila a partir de su RUC. Cachea por RUC dentro de la corrida: si el mismo
- * transportista se repite en varias filas (varios vehículos), solo se
- * consulta/escribe una vez — las filas siguientes con ese RUC reutilizan el
- * id ya resuelto sin necesidad de repetir Razón Social/Nombre. Al
- * actualizar un transportista existente, solo se pisan los campos que
- * vengan llenos en la fila (una celda vacía no borra el dato ya guardado).
+ * fila a partir de su RUC. Cachea por RUC dentro del lote: si el mismo
+ * transportista se repite en varias filas del mismo lote (varios
+ * vehículos), solo se consulta/escribe una vez. Al actualizar un
+ * transportista existente, solo se pisan los campos que vengan llenos en la
+ * fila (una celda vacía no borra el dato ya guardado).
  */
 async function resolverTransportistaDeFila(
   supabase: SupabaseServerClient,
@@ -167,163 +211,146 @@ async function resolverTransportistaDeFila(
   return { transportistaId };
 }
 
-async function procesarVehiculos(
+async function procesarFilaVehiculo(
   supabase: SupabaseServerClient,
-  hoja: XLSX.WorkSheet,
-): Promise<ResultadoFilaMaestro[]> {
-  const resultados: ResultadoFilaMaestro[] = [];
-  const filas = XLSX.utils.sheet_to_json<Record<string, unknown>>(hoja, { raw: false, defval: "" });
+  numeroFila: number,
+  fila: Record<string, unknown>,
+  regionalPorNombre: Map<string, string>,
+  patronPlaca: RegExp,
+  transportistaPorRuc: Map<string, string>,
+): Promise<ResultadoFilaMaestro | null> {
+  const placaOriginal = String(fila["Placa"] ?? "").trim();
+  if (!placaOriginal) return null;
 
-  const { data: regionales } = await supabase.from("regional").select("id, nombre").is("deleted_at", null);
-  const regionalPorNombre = new Map((regionales ?? []).map((r) => [r.nombre.trim().toUpperCase(), r.id]));
-  const patronPlaca = new RegExp(defaultAppConfig.patrones.placa);
-  const transportistaPorRuc = new Map<string, string>();
-
-  for (let i = 0; i < filas.length; i++) {
-    const fila = filas[i]!;
-    const numeroFila = i + 2;
-    const placaOriginal = String(fila["Placa"] ?? "").trim();
-    if (!placaOriginal) continue;
-
-    const placa = placaOriginal.toUpperCase().replace(/[-\s]/g, "");
-    if (!patronPlaca.test(placa)) {
-      resultados.push({
-        fila: numeroFila,
-        clave: placaOriginal,
-        accion: "ERROR",
-        detalle: "Placa con formato inválido.",
-      });
-      continue;
-    }
-
-    const advertencias: string[] = [];
-
-    const { transportistaId, advertencia: advertenciaTransportista } = await resolverTransportistaDeFila(
-      supabase,
-      fila,
-      transportistaPorRuc,
-    );
-    if (advertenciaTransportista) advertencias.push(advertenciaTransportista);
-
-    const regionalTexto = String(fila["Regional"] ?? "").trim();
-    const regionalId = regionalTexto ? (regionalPorNombre.get(regionalTexto.toUpperCase()) ?? null) : null;
-    if (regionalTexto && !regionalId) advertencias.push(`no se encontró la regional "${regionalTexto}".`);
-
-    const datos = {
-      transportista_id: transportistaId,
-      regional_id: regionalId,
-      tipo_vehiculo: String(fila["Tipo de Vehículo"] ?? "").trim() || null,
-      marca: String(fila["Marca"] ?? "").trim() || null,
-      modelo: String(fila["Modelo"] ?? "").trim() || null,
-      anio: leerNumero(fila["Año"]),
-      tonelaje: leerNumero(fila["Tonelaje"]),
-      propietario: String(fila["Propietario"] ?? "").trim() || null,
-      ruc_propietario: String(fila["RUC del Propietario"] ?? "").trim() || null,
-      activo: leerBooleano(fila["Activo Vehículo"]),
+  const placa = placaOriginal.toUpperCase().replace(/[-\s]/g, "");
+  if (!patronPlaca.test(placa)) {
+    return {
+      fila: numeroFila,
+      clave: placaOriginal,
+      accion: "ERROR",
+      detalle: "Placa con formato inválido.",
     };
-
-    const { data: existente } = await supabase
-      .from("vehiculo")
-      .select("id")
-      .eq("placa", placa)
-      .is("deleted_at", null)
-      .maybeSingle();
-
-    let vehiculoId: string;
-    let accion: "CREADO" | "ACTUALIZADO";
-    if (existente) {
-      const { error } = await supabase.from("vehiculo").update(datos).eq("id", existente.id);
-      if (error) {
-        resultados.push({
-          fila: numeroFila,
-          clave: placa,
-          accion: "ERROR",
-          detalle: "No se pudo actualizar el vehículo.",
-        });
-        continue;
-      }
-      vehiculoId = existente.id;
-      accion = "ACTUALIZADO";
-    } else {
-      const { data: creado, error } = await supabase
-        .from("vehiculo")
-        .insert({ placa, ...datos })
-        .select("id")
-        .single();
-      if (error || !creado) {
-        resultados.push({
-          fila: numeroFila,
-          clave: placa,
-          accion: "ERROR",
-          detalle: "No se pudo crear el vehículo.",
-        });
-        continue;
-      }
-      vehiculoId = creado.id;
-      accion = "CREADO";
-    }
-
-    const nombreConductor = String(fila["Nombre del Conductor"] ?? "").trim();
-    if (nombreConductor) {
-      const resultadoConductor = await asignarConductorSiCambio(supabase, vehiculoId, nombreConductor);
-      if (!resultadoConductor.ok) {
-        advertencias.push(`no se pudo registrar el conductor: ${resultadoConductor.error}`);
-      }
-    }
-
-    await sincronizarCorreos(
-      supabase,
-      "vehiculo_id",
-      vehiculoId,
-      fila["Correo Vehículo"],
-      fila["Correos Adicionales Vehículo"],
-    );
-
-    const detalleAdvertencia =
-      advertencias.length > 0 ? `Advertencia: ${advertencias.join("; ")}` : undefined;
-    resultados.push({ fila: numeroFila, clave: placa, accion, detalle: detalleAdvertencia });
   }
 
-  return resultados;
+  const advertencias: string[] = [];
+
+  const { transportistaId, advertencia: advertenciaTransportista } = await resolverTransportistaDeFila(
+    supabase,
+    fila,
+    transportistaPorRuc,
+  );
+  if (advertenciaTransportista) advertencias.push(advertenciaTransportista);
+
+  const regionalTexto = String(fila["Regional"] ?? "").trim();
+  const regionalId = regionalTexto ? (regionalPorNombre.get(regionalTexto.toUpperCase()) ?? null) : null;
+  if (regionalTexto && !regionalId) advertencias.push(`no se encontró la regional "${regionalTexto}".`);
+
+  const datos = {
+    transportista_id: transportistaId,
+    regional_id: regionalId,
+    tipo_vehiculo: String(fila["Tipo de Vehículo"] ?? "").trim() || null,
+    marca: String(fila["Marca"] ?? "").trim() || null,
+    modelo: String(fila["Modelo"] ?? "").trim() || null,
+    anio: leerNumero(fila["Año"]),
+    tonelaje: leerNumero(fila["Tonelaje"]),
+    propietario: String(fila["Propietario"] ?? "").trim() || null,
+    ruc_propietario: String(fila["RUC del Propietario"] ?? "").trim() || null,
+    activo: leerBooleano(fila["Activo Vehículo"]),
+  };
+
+  const { data: existente } = await supabase
+    .from("vehiculo")
+    .select("id")
+    .eq("placa", placa)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  let vehiculoId: string;
+  let accion: "CREADO" | "ACTUALIZADO";
+  if (existente) {
+    const { error } = await supabase.from("vehiculo").update(datos).eq("id", existente.id);
+    if (error) {
+      return {
+        fila: numeroFila,
+        clave: placa,
+        accion: "ERROR",
+        detalle: "No se pudo actualizar el vehículo.",
+      };
+    }
+    vehiculoId = existente.id;
+    accion = "ACTUALIZADO";
+  } else {
+    const { data: creado, error } = await supabase
+      .from("vehiculo")
+      .insert({ placa, ...datos })
+      .select("id")
+      .single();
+    if (error || !creado) {
+      return { fila: numeroFila, clave: placa, accion: "ERROR", detalle: "No se pudo crear el vehículo." };
+    }
+    vehiculoId = creado.id;
+    accion = "CREADO";
+  }
+
+  const nombreConductor = String(fila["Nombre del Conductor"] ?? "").trim();
+  if (nombreConductor) {
+    const resultadoConductor = await asignarConductorSiCambio(supabase, vehiculoId, nombreConductor);
+    if (!resultadoConductor.ok) {
+      advertencias.push(`no se pudo registrar el conductor: ${resultadoConductor.error}`);
+    }
+  }
+
+  await sincronizarCorreos(
+    supabase,
+    "vehiculo_id",
+    vehiculoId,
+    fila["Correo Vehículo"],
+    fila["Correos Adicionales Vehículo"],
+  );
+
+  const detalleAdvertencia = advertencias.length > 0 ? `Advertencia: ${advertencias.join("; ")}` : undefined;
+  return { fila: numeroFila, clave: placa, accion, detalle: detalleAdvertencia };
 }
 
 /**
- * Carga masiva unificada de Vehículos (transportista + vehículo + conductor
- * en una sola fila) desde la plantilla .xlsx (ver /api/maestros/plantilla).
- * Placa es la clave del vehículo y RUC Transportista la del transportista:
- * si ya existen se actualizan sus datos, si no, se crean. Los correos de
- * contacto solo se agregan, nunca se borran.
+ * Procesa un lote pequeño (pensado para ~5 filas) ya parsadas del archivo —
+ * el cliente llama esta acción una vez por lote, en secuencia, mostrando
+ * progreso entre cada llamada. Cada llamada es independiente y rápida, así
+ * que un archivo con muchas filas nunca depende de que una sola función
+ * serverless aguante todo el trabajo de punta a punta.
  */
-export async function importarMaestrosAction(formData: FormData): Promise<ResultadoImportarMaestros> {
+export async function importarLoteVehiculosAction(
+  lote: FilaVehiculoAImportar[],
+): Promise<ResultadoImportarLote> {
   await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
-
-  const archivo = formData.get("archivo");
-  if (!(archivo instanceof File)) {
-    return { ok: false, error: "No se recibió ningún archivo.", filas: [] };
-  }
+  if (lote.length === 0) return { ok: true, resultados: [] };
 
   try {
-    const buffer = await archivo.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: "buffer" });
-
-    const hojaVehiculos = workbook.Sheets["Vehiculos"];
-    if (!hojaVehiculos) {
-      return {
-        ok: false,
-        error: 'El archivo no tiene la hoja "Vehiculos". Usa la plantilla.',
-        filas: [],
-      };
-    }
-
     const supabase = await createClient();
-    const filas = await procesarVehiculos(supabase, hojaVehiculos);
+    const { data: regionales } = await supabase.from("regional").select("id, nombre").is("deleted_at", null);
+    const regionalPorNombre = new Map((regionales ?? []).map((r) => [r.nombre.trim().toUpperCase(), r.id]));
+    const patronPlaca = new RegExp(defaultAppConfig.patrones.placa);
+    const transportistaPorRuc = new Map<string, string>();
+
+    const resultados: ResultadoFilaMaestro[] = [];
+    for (const { numeroFila, datos } of lote) {
+      const resultado = await procesarFilaVehiculo(
+        supabase,
+        numeroFila,
+        datos,
+        regionalPorNombre,
+        patronPlaca,
+        transportistaPorRuc,
+      );
+      if (resultado) resultados.push(resultado);
+    }
 
     revalidatePath("/transportistas");
     revalidatePath("/vehiculos");
 
-    return { ok: true, filas };
+    return { ok: true, resultados };
   } catch (error) {
-    const mensaje = error instanceof Error ? error.message : "Error desconocido procesando el archivo.";
-    return { ok: false, error: mensaje, filas: [] };
+    const mensaje = error instanceof Error ? error.message : "Error desconocido procesando el lote.";
+    return { ok: false, error: mensaje, resultados: [] };
   }
 }
