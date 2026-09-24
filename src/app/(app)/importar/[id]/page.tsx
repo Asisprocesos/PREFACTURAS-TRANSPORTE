@@ -6,8 +6,12 @@ import { obtenerImportacion } from "@/lib/importador/queries";
 
 import { DetalleImportacion } from "./detalle-importacion";
 
+// confirmarImportacionAction y la revalidación de filas se invocan desde
+// esta página; heredan este límite (ver el mismo comentario en /importar).
+export const maxDuration = 60;
+
 export default async function DetalleImportacionPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
+  const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
   const { id } = await params;
 
   const importacion = await obtenerImportacion(id);
@@ -20,7 +24,7 @@ export default async function DetalleImportacionPage({ params }: { params: Promi
         <h1 className="titulo-marca text-2xl">{importacion.archivo}</h1>
         <p className="mt-1 text-sm text-muted-foreground">Estado: {importacion.estado}</p>
       </div>
-      <DetalleImportacion importacion={importacion} />
+      <DetalleImportacion importacion={importacion} esAdmin={perfil.rol === "ADMIN"} />
     </div>
   );
 }

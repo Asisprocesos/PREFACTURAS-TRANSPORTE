@@ -3,6 +3,7 @@ import { normalizarPlaca } from "@/lib/validation/placa";
 import { limpiarTextoOculto, parsearFechaDdMmAaaa } from "@/lib/validation/texto";
 
 import type { CampoOdt } from "./campos";
+import { mensajePlacaNoRegistrada, mensajePlacaSinCorreo, mensajeTipoRutaPorRevisar } from "./mensajes";
 
 export interface ContextoValidacion {
   periodoInicio: Date;
@@ -139,9 +140,9 @@ export function validarFila(
     );
   } else if (placaNormalizada) {
     if (!contexto.placasConocidas.has(placaNormalizada)) {
-      advertencias.push(`Placa ${placaNormalizada} no está registrada en Vehículos.`);
+      advertencias.push(mensajePlacaNoRegistrada(placaNormalizada));
     } else if (!contexto.placasConCorreo.has(placaNormalizada)) {
-      advertencias.push(`Placa ${placaNormalizada} no tiene correo de contacto.`);
+      advertencias.push(mensajePlacaSinCorreo(placaNormalizada));
     }
   }
   if (corregida) {
@@ -157,7 +158,7 @@ export function validarFila(
   if (tipoRuta) {
     const info = contexto.tiposRuta.get(tipoRuta.toUpperCase());
     if (!info || info.requiereRevision || !info.centroCosto) {
-      advertencias.push(`Tipo de Ruta "${tipoRuta}" por revisar (sin centro de costo asignado).`);
+      advertencias.push(mensajeTipoRutaPorRevisar(tipoRuta));
     }
   } else {
     advertencias.push("Tipo de Ruta vacío.");

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { nombreTransportista } from "@/lib/transportistas/display";
-import { actualizarVehiculo, crearVehiculoYRedirigir } from "@/lib/vehiculos/actions";
+import { actualizarVehiculo, crearVehiculo, crearVehiculoYRedirigir } from "@/lib/vehiculos/actions";
 import type { Vehiculo } from "@/lib/vehiculos/queries";
 import { vehiculoFormSchema, type VehiculoFormValues } from "@/lib/vehiculos/schema";
 
@@ -22,10 +22,16 @@ export function VehiculoForm({
   vehiculo,
   transportistas,
   regionales,
+  placaInicial,
+  volverA,
 }: {
   vehiculo?: Vehiculo;
   transportistas: { id: string; razon_social: string; nombre: string | null; ruc: string }[];
   regionales: OpcionSelect[];
+  /** Prefill de Placa al llegar desde el enlace "Corregir" del importador. */
+  placaInicial?: string;
+  /** Si viene de "Corregir" del importador, a dónde volver en vez del detalle del vehículo recién creado. */
+  volverA?: string;
 }) {
   const router = useRouter();
   const [errorServidor, setErrorServidor] = useState<string | null>(null);
@@ -36,7 +42,7 @@ export function VehiculoForm({
   } = useForm<VehiculoFormValues>({
     resolver: zodResolver(vehiculoFormSchema),
     defaultValues: {
-      placa: vehiculo?.placa ?? "",
+      placa: vehiculo?.placa ?? placaInicial ?? "",
       transportistaId: vehiculo?.transportista_id ?? "",
       propietario: vehiculo?.propietario ?? "",
       rucPropietario: vehiculo?.ruc_propietario ?? "",
@@ -56,16 +62,33 @@ export function VehiculoForm({
 
   const onSubmit = handleSubmit(async (valores) => {
     setErrorServidor(null);
-    const resultado = vehiculo
-      ? await actualizarVehiculo(vehiculo.id, valores)
-      : await crearVehiculoYRedirigir(valores);
 
-    if (!resultado.ok) {
-      setErrorServidor(resultado.error ?? "Ocurrió un error.");
+    if (vehiculo) {
+      const resultado = await actualizarVehiculo(vehiculo.id, valores);
+      if (!resultado.ok) {
+        setErrorServidor(resultado.error ?? "Ocurrió un error.");
+        return;
+      }
+      router.refresh();
       return;
     }
-    if (vehiculo) {
-      router.refresh();
+
+    if (volverA) {
+      // Viene de "Corregir" del importador: no redirigir al detalle del
+      // vehículo recién creado, sino de vuelta a la fila que se estaba
+      // corrigiendo (crearVehiculoYRedirigir siempre manda a /vehiculos/id).
+      const resultado = await crearVehiculo(valores);
+      if (!resultado.ok) {
+        setErrorServidor(resultado.error ?? "Ocurrió un error.");
+        return;
+      }
+      router.push(volverA);
+      return;
+    }
+
+    const resultado = await crearVehiculoYRedirigir(valores);
+    if (!resultado.ok) {
+      setErrorServidor(resultado.error ?? "Ocurrió un error.");
     }
   });
 

@@ -5,6 +5,7 @@ import { CorreosContacto } from "@/components/contactos/correos-contacto";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BotonEliminarORestaurar } from "@/components/ui/boton-eliminar-restaurar";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { VolverAImportacion } from "@/components/ui/volver-a-importacion";
 import { requireRole } from "@/lib/auth/roles";
 import { agregarCorreoTransportista, eliminarCorreoTransportista } from "@/lib/transportistas/actions";
 import { nombreTransportista } from "@/lib/transportistas/display";
@@ -34,9 +35,16 @@ const ETIQUETA_ACCION: Record<string, string> = {
   DELETE: "Eliminado",
 };
 
-export default async function DetalleVehiculoPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DetalleVehiculoPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ volver?: string }>;
+}) {
   const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
   const { id } = await params;
+  const { volver } = await searchParams;
 
   const vehiculo = await obtenerVehiculo(id);
   if (!vehiculo) notFound();
@@ -65,6 +73,7 @@ export default async function DetalleVehiculoPage({ params }: { params: Promise<
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <BotonVolver fallbackHref="/vehiculos" />
+      <VolverAImportacion volver={volver} />
       <div className="flex items-start justify-between gap-4">
         <h1 className="titulo-marca text-2xl">{vehiculo.placa}</h1>
         {!soloLectura ? (
@@ -167,7 +176,7 @@ export default async function DetalleVehiculoPage({ params }: { params: Promise<
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="correos">
         <CardHeader>
           <CardTitle className="text-lg">Correos del vehículo</CardTitle>
         </CardHeader>

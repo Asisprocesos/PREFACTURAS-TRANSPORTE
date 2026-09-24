@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,13 +20,32 @@ interface FormValues {
 
 const VACIO: FormValues = { tipoRuta: "", centroCosto: "", requiereRevision: false, activo: true };
 
-export function TipoRutaCentroCostoTabla({ filas }: { filas: TipoRutaCentroCosto[] }) {
+export function TipoRutaCentroCostoTabla({
+  filas,
+  tipoRutaInicial,
+}: {
+  filas: TipoRutaCentroCosto[];
+  /** Llegó desde "Corregir" en una advertencia del importador: abre esa fila para editarla (o precarga el alta si todavía no existe). */
+  tipoRutaInicial?: string;
+}) {
   const router = useRouter();
   const [nuevaFila, setNuevaFila] = useState<FormValues>(VACIO);
   const [filaEnEdicion, setFilaEnEdicion] = useState<string | null>(null);
   const [valoresEdicion, setValoresEdicion] = useState<FormValues>(VACIO);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState<{ texto: string; ok: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!tipoRutaInicial) return;
+    const existente = filas.find((f) => f.tipo_ruta.toUpperCase() === tipoRutaInicial.toUpperCase());
+    if (existente) {
+      iniciarEdicion(existente);
+    } else {
+      setNuevaFila((v) => ({ ...v, tipoRuta: tipoRutaInicial.toUpperCase() }));
+    }
+    // Solo al llegar con el query param, no en cada cambio de `filas`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipoRutaInicial]);
 
   function iniciarEdicion(fila: TipoRutaCentroCosto) {
     setFilaEnEdicion(fila.id);

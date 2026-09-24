@@ -122,11 +122,9 @@ export async function corregirFilaImportacionAction(
     guiasVistasEnArchivo,
   );
 
-  const decision: DecisionFila | null = resultado.excluida
-    ? "OMITIR"
-    : resultado.errores.length > 0
-      ? null
-      : "INSERTAR";
+  // Mismo criterio que la validación inicial: una fila con error (o
+  // excluida por Estado) arranca en OMITIR en vez de sin decidir.
+  const decision: DecisionFila = resultado.excluida || resultado.errores.length > 0 ? "OMITIR" : "INSERTAR";
 
   const { error: errorUpdate } = await supabase
     .from("importacion_fila")

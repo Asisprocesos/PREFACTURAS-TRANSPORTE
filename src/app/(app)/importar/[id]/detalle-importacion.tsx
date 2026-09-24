@@ -1,29 +1,58 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { confirmarImportacionAction, revertirImportacionAction } from "@/lib/importador/confirmar-action";
+import { corregirFilaImportacionAction } from "@/lib/importador/correccion-action";
 import type { Importacion } from "@/lib/importador/queries";
+import type { ResumenValidacion } from "@/lib/importador/validar-action";
 
 import { ResultadosValidacion } from "../resultados-validacion";
 
-export function DetalleImportacion({ importacion }: { importacion: Importacion }) {
+export function DetalleImportacion({ importacion, esAdmin }: { importacion: Importacion; esAdmin: boolean }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
-
-  const resumen = {
+  const [dispararRecarga, setDispararRecarga] = useState(0);
+  const [resumen, setResumen] = useState<ResumenValidacion>({
     filasLeidas: importacion.filas_leidas,
     filasValidas: importacion.filas_validas,
     filasConError: importacion.filas_con_error,
     filasAdvertencias: importacion.filas_advertencias,
     filasExcluidas: 0,
-    // Solo se usa para las etiquetas de esta vista de solo lectura (no hay
-    // botón "Continuar" aquí); aproxima con las filas sin error al validar.
+    // Aproxima con las filas sin error hasta que se corrija/revalide alguna
+    // (`importacion` no persiste filasParaInsertar; a partir de ahí el
+    // valor real viene de onResumenActualizado).
     filasParaInsertar: importacion.filas_validas + importacion.filas_advertencias,
-  };
+  });
+  const revalidando = useRef(false);
+
+  // Al volver de "Corregir" en otro módulo (crear vehículo, agregar correo,
+  // ajustar el catálogo), el enlace trae `?revalidarFila=<id>`: revalida esa
+  // fila contra los catálogos ya actualizados (sin cambiar ningún dato de la
+  // fila) para que la advertencia/error desaparezca sin que el usuario
+  // tenga que volver a tocarla.
+  useEffect(() => {
+    const filaId = searchParams.get("revalidarFila");
+    if (!filaId || revalidando.current) return;
+    revalidando.current = true;
+    corregirFilaImportacionAction(filaId, {}).then((r) => {
+      if (r.ok && r.resumen) setResumen(r.resumen);
+      setMensaje(
+        r.ok
+          ? (r.errores?.length ?? 0) > 0
+            ? "Fila revalidada: todavía tiene errores pendientes."
+            : "Fila revalidada: ya quedó lista."
+          : (r.error ?? "No se pudo revalidar la fila."),
+      );
+      setDispararRecarga((n) => n + 1);
+      router.replace(`/importar/${importacion.id}`, { scroll: false });
+      revalidando.current = false;
+    });
+  }, [searchParams, importacion.id, router]);
 
   async function confirmar() {
     setCargando(true);
@@ -50,7 +79,10 @@ export function DetalleImportacion({ importacion }: { importacion: Importacion }
         <ResultadosValidacion
           importacionId={importacion.id}
           resumen={resumen}
+          onResumenActualizado={setResumen}
           soloLectura={importacion.estado !== "VALIDADA"}
+          puedeAdministrarCatalogo={esAdmin}
+          dispararRecarga={dispararRecarga}
         />
       ) : (
         <p className="text-sm text-muted-foreground">

@@ -157,11 +157,11 @@ export async function validarImportacionAction(datos: {
     else if (resultado.advertencias.length > 0) resumen.filasAdvertencias++;
     else resumen.filasValidas++;
 
-    const decision: DecisionFila | null = resultado.excluida
-      ? "OMITIR"
-      : resultado.errores.length > 0
-        ? null
-        : "INSERTAR";
+    // Las filas con error arrancan en OMITIR (en vez de sin decidir) para
+    // que se vean de una vez como "Omitida" y no haya que marcarlas una por
+    // una solo para que quede claro que no se van a insertar — el operador
+    // solo tiene que actuar sobre las que sí quiere corregir e incluir.
+    const decision: DecisionFila = resultado.excluida || resultado.errores.length > 0 ? "OMITIR" : "INSERTAR";
     if (decision === "INSERTAR") resumen.filasParaInsertar++;
 
     return {

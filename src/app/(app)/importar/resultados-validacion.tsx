@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,11 @@ import { Input } from "@/components/ui/input";
 import { establecerDecisionFilaAction } from "@/lib/importador/confirmar-action";
 import { corregirFilaImportacionAction, type CorreccionFila } from "@/lib/importador/correccion-action";
 import { listarFilasImportacionAction } from "@/lib/importador/lectura-actions";
+import {
+  extraerPlacaNoRegistrada,
+  extraerPlacaSinCorreo,
+  extraerTipoRutaPorRevisar,
+} from "@/lib/importador/mensajes";
 import type { ImportacionFila, PestanaFilas } from "@/lib/importador/queries";
 import type { ResumenValidacion } from "@/lib/importador/validar-action";
 import { cn } from "@/lib/utils";
@@ -25,11 +31,63 @@ const ETIQUETA_DECISION: Record<string, string> = {
   CORREGIR: "Por corregir",
 };
 
+interface AccionExterna {
+  href: string;
+  etiqueta: string;
+}
+
+/**
+ * Algunas advertencias apuntan a datos que viven en otro módulo (la placa no
+ * tiene vehículo/correo registrado, o el Tipo de Ruta no tiene Centro de
+ * Costo en el catálogo): para esas, "Corregir" no alcanza porque el dato no
+ * está en esta fila del staging. Se arma un enlace directo al módulo que
+ * corresponde, que al volver revalida automáticamente esta fila (ver
+ * `revalidarFila` en `DetalleImportacion`).
+ *
+ * `catalogoTipoRuta` requiere ADMIN (RLS de `/configuracion`), así que el
+ * enlace del catálogo solo se ofrece si el usuario actual puede llegar ahí.
+ */
+function accionesExternas(
+  mensajes: string[],
+  volver: string,
+  puedeAdministrarCatalogo: boolean,
+): AccionExterna[] {
+  const acciones: AccionExterna[] = [];
+  for (const mensaje of mensajes) {
+    const placaNoRegistrada = extraerPlacaNoRegistrada(mensaje);
+    if (placaNoRegistrada) {
+      acciones.push({
+        href: `/vehiculos/nuevo?placa=${encodeURIComponent(placaNoRegistrada)}&volver=${encodeURIComponent(volver)}`,
+        etiqueta: "Crear vehículo",
+      });
+      continue;
+    }
+    const placaSinCorreo = extraerPlacaSinCorreo(mensaje);
+    if (placaSinCorreo) {
+      acciones.push({
+        href: `/vehiculos/por-placa/${encodeURIComponent(placaSinCorreo)}?volver=${encodeURIComponent(volver)}`,
+        etiqueta: "Agregar correo del vehículo",
+      });
+      continue;
+    }
+    const tipoRuta = extraerTipoRutaPorRevisar(mensaje);
+    if (tipoRuta && puedeAdministrarCatalogo) {
+      acciones.push({
+        href: `/configuracion?tipoRuta=${encodeURIComponent(tipoRuta)}&volver=${encodeURIComponent(volver)}#tipo-ruta-centro-costo`,
+        etiqueta: "Corregir en catálogo",
+      });
+    }
+  }
+  return acciones;
+}
+
 export function ResultadosValidacion({
   importacionId,
   resumen,
   onResumenActualizado,
   soloLectura = false,
+  puedeAdministrarCatalogo = false,
+  dispararRecarga = 0,
 }: {
   importacionId: string;
   resumen: ResumenValidacion;
@@ -37,6 +95,10 @@ export function ResultadosValidacion({
   /** true una vez que la importación ya se confirmó: las ODT reales ya se
    * insertaron, así que corregir el staging aquí no tendría ningún efecto. */
   soloLectura?: boolean;
+  /** true solo para ADMIN: habilita el enlace "Corregir en catálogo" (Tipo de Ruta → Centro de Costo). */
+  puedeAdministrarCatalogo?: boolean;
+  /** Cambia (ej. tras volver de corregir en otro módulo) para forzar un refetch de la página/pestaña actual. */
+  dispararRecarga?: number;
 }) {
   const [pestana, setPestana] = useState<PestanaFilas>("errores");
   const [pagina, setPagina] = useState(1);
@@ -59,7 +121,7 @@ export function ResultadosValidacion({
     return () => {
       cancelado = true;
     };
-  }, [importacionId, pestana, pagina, recarga]);
+  }, [importacionId, pestana, pagina, recarga, dispararRecarga]);
 
   const totalPaginas = Math.max(1, Math.ceil(total / TAMANO_PAGINA));
 
@@ -166,6 +228,8 @@ export function ResultadosValidacion({
                 const mensajes = [...errores, ...advertencias];
                 const tieneErrores = errores.length > 0;
                 const enEdicion = filaEnEdicion === f.id;
+                const volverAqui = `/importar/${importacionId}?revalidarFila=${f.id}`;
+                const acciones = accionesExternas(mensajes, volverAqui, puedeAdministrarCatalogo);
 
                 return (
                   <Fragment key={f.id}>
@@ -207,6 +271,11 @@ export function ResultadosValidacion({
                             >
                               {enEdicion ? "Cancelar" : "Corregir"}
                             </Button>
+                            {acciones.map((a) => (
+                              <Button key={a.href} asChild size="sm" variant="outline">
+                                <Link href={a.href}>{a.etiqueta}</Link>
+                              </Button>
+                            ))}
                           </div>
                         </td>
                       ) : null}

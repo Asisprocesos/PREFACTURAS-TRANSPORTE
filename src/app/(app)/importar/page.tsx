@@ -4,8 +4,14 @@ import { listarImportacionesRecientes, listarPeriodosParaSelect } from "@/lib/im
 import { ImportarWizard } from "./importar-wizard";
 import { ImportacionesRecientes } from "./importaciones-recientes";
 
+// validarImportacionAction procesa el archivo completo (parseo + validación
+// fila a fila + inserts por lote al staging) en un solo Server Action, que
+// hereda este límite de la página que lo invoca. Con archivos de varios
+// miles de filas, el límite por defecto de Vercel se queda corto.
+export const maxDuration = 60;
+
 export default async function ImportarPage() {
-  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+  const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
 
   const [periodos, recientes] = await Promise.all([
     listarPeriodosParaSelect(),
@@ -21,7 +27,7 @@ export default async function ImportarPage() {
           el body de la API.
         </p>
       </div>
-      <ImportarWizard periodos={periodos} />
+      <ImportarWizard periodos={periodos} esAdmin={perfil.rol === "ADMIN"} />
       <ImportacionesRecientes importaciones={recientes} />
     </div>
   );

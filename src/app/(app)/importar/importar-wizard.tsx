@@ -30,7 +30,7 @@ interface PeriodoOpcion {
   estado: string;
 }
 
-export function ImportarWizard({ periodos }: { periodos: PeriodoOpcion[] }) {
+export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[]; esAdmin: boolean }) {
   const [estado, setEstado] = useState<EstadoImportador>(ESTADO_INICIAL);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -293,6 +293,7 @@ export function ImportarWizard({ periodos }: { periodos: PeriodoOpcion[] }) {
               importacionId={estado.importacionId}
               resumen={estado.resumen}
               onResumenActualizado={(resumen) => actualizar({ resumen })}
+              puedeAdministrarCatalogo={esAdmin}
             />
             <p className="text-sm text-muted-foreground">
               {estado.resumen.filasParaInsertar} de {estado.resumen.filasLeidas} filas se insertarán al
