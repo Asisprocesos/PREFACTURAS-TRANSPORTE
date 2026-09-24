@@ -9,7 +9,17 @@ import { createClient } from "@/lib/supabase/server";
 import type { ResultadoAccion } from "@/lib/types/acciones";
 
 import { asignarConductorSiCambio } from "./conductor";
+import { contarVehiculos } from "./queries";
 import { vehiculoFormSchema, type VehiculoFormValues } from "./schema";
+
+/** Para el contador en vivo del listado (sondeado desde el cliente). */
+export async function contarVehiculosAction(params: {
+  eliminados: boolean;
+  busqueda?: string;
+}): Promise<number> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
+  return contarVehiculos(params);
+}
 
 function aFilaVehiculo(valores: VehiculoFormValues) {
   return {

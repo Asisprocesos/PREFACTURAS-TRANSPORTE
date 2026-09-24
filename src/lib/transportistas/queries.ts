@@ -49,6 +49,28 @@ export async function listarTransportistas({
   return { filas: data ?? [], total: count ?? 0 };
 }
 
+/** Conteo liviano (sin traer filas) para el contador en vivo del listado. */
+export async function contarTransportistas({
+  eliminados = false,
+  busqueda,
+}: {
+  eliminados?: boolean;
+  busqueda?: string;
+} = {}): Promise<number> {
+  const supabase = await createClient();
+  let query = supabase.from("transportista").select("*", { count: "exact", head: true });
+  query = eliminados ? query.not("deleted_at", "is", null) : query.is("deleted_at", null);
+
+  if (busqueda && busqueda.trim() !== "") {
+    const termino = busqueda.trim();
+    query = query.or(`razon_social.ilike.%${termino}%,nombre.ilike.%${termino}%,ruc.ilike.%${termino}%`);
+  }
+
+  const { count, error } = await query;
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function listarTransportistasParaSelect(): Promise<
   { id: string; razon_social: string; nombre: string | null }[]
 > {

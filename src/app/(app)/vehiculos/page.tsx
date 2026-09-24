@@ -1,7 +1,9 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { ContadorEnVivo } from "@/components/ui/contador-en-vivo";
 import { requireRole } from "@/lib/auth/roles";
+import { contarVehiculosAction } from "@/lib/vehiculos/actions";
 import { listarVehiculos } from "@/lib/vehiculos/queries";
 
 import { VehiculosTable } from "./vehiculos-table";
@@ -30,9 +32,16 @@ export default async function VehiculosPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="titulo-marca text-2xl">{papelera ? "Vehículos eliminados" : "Vehículos"}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="titulo-marca text-2xl">{papelera ? "Vehículos eliminados" : "Vehículos"}</h1>
+            <ContadorEnVivo
+              total={total}
+              etiqueta={papelera ? "en papelera" : "activos"}
+              obtenerConteo={contarVehiculosAction.bind(null, { eliminados: papelera, busqueda: params.q })}
+            />
+          </div>
+          <p className="text-sm text-muted-foreground">
             {papelera
               ? "Registros eliminados: puedes restaurarlos o dejarlos aquí."
               : "Maestro de placas (hoja VEHICULOS)."}

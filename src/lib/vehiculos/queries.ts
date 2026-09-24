@@ -52,6 +52,27 @@ export async function listarVehiculos({
   return { filas: (data ?? []) as unknown as VehiculoConRelaciones[], total: count ?? 0 };
 }
 
+/** Conteo liviano (sin traer filas) para el contador en vivo del listado. */
+export async function contarVehiculos({
+  eliminados = false,
+  busqueda,
+}: {
+  eliminados?: boolean;
+  busqueda?: string;
+} = {}): Promise<number> {
+  const supabase = await createClient();
+  let query = supabase.from("vehiculo").select("*", { count: "exact", head: true });
+  query = eliminados ? query.not("deleted_at", "is", null) : query.is("deleted_at", null);
+
+  if (busqueda && busqueda.trim() !== "") {
+    query = query.ilike("placa", `%${busqueda.trim()}%`);
+  }
+
+  const { count, error } = await query;
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function obtenerVehiculo(id: string): Promise<Vehiculo | null> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("vehiculo").select("*").eq("id", id).maybeSingle();

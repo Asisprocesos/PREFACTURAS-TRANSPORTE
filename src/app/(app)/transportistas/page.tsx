@@ -1,7 +1,9 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { ContadorEnVivo } from "@/components/ui/contador-en-vivo";
 import { requireRole } from "@/lib/auth/roles";
+import { contarTransportistasAction } from "@/lib/transportistas/actions";
 import { listarTransportistas } from "@/lib/transportistas/queries";
 
 import { TransportistasTable } from "./transportistas-table";
@@ -30,11 +32,21 @@ export default async function TransportistasPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="titulo-marca text-2xl">
-            {papelera ? "Transportistas eliminados" : "Transportistas"}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="titulo-marca text-2xl">
+              {papelera ? "Transportistas eliminados" : "Transportistas"}
+            </h1>
+            <ContadorEnVivo
+              total={total}
+              etiqueta={papelera ? "en papelera" : "activos"}
+              obtenerConteo={contarTransportistasAction.bind(null, {
+                eliminados: papelera,
+                busqueda: params.q,
+              })}
+            />
+          </div>
+          <p className="text-sm text-muted-foreground">
             {papelera
               ? "Registros eliminados: puedes restaurarlos o dejarlos aquí."
               : "Maestro de transportistas (contratista/RUC)."}

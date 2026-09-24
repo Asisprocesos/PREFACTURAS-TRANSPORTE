@@ -8,9 +8,19 @@ import { createClient } from "@/lib/supabase/server";
 import { correoFormSchema } from "@/lib/contactos/schema";
 import type { ResultadoAccion } from "@/lib/types/acciones";
 
+import { contarTransportistas } from "./queries";
 import { transportistaFormSchema, type TransportistaFormValues } from "./schema";
 
 export type { ResultadoAccion };
+
+/** Para el contador en vivo del listado (sondeado desde el cliente). */
+export async function contarTransportistasAction(params: {
+  eliminados: boolean;
+  busqueda?: string;
+}): Promise<number> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
+  return contarTransportistas(params);
+}
 
 export async function crearTransportista(valores: TransportistaFormValues): Promise<ResultadoAccion> {
   await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
