@@ -48,6 +48,13 @@ const REPORTES = [
       "ODT cuya fecha de creación cayó fuera del rango del período (novedad de fecha fuera de corte), con la resolución elegida por el operador.",
     usaTransportista: false,
   },
+  {
+    tipo: "placas-sin-vehiculo",
+    titulo: "Placas sin vehículo",
+    descripcion:
+      "Placas del período que no coincidieron con ningún vehículo registrado (se facturaron igual). Úsalo para armar la plantilla de carga masiva de Vehículos con lo que falte.",
+    usaTransportista: false,
+  },
 ] as const;
 
 export default async function ReportesPage({

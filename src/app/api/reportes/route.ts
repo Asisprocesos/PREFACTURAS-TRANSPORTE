@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 import { requireRole } from "@/lib/auth/roles";
 import {
   filasErroresEnvio,
+  filasPlacasSinVehiculo,
   filasPrefacturas,
   filasResumenCentroCosto,
   filasRezagos,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/reportes/generar";
 import {
   obtenerNovedadesFueraDePeriodo,
+  obtenerPlacasSinVehiculo,
   obtenerPrefacturasReporte,
   obtenerResumenCentroCostoCompleto,
   obtenerUltimosErroresEnvio,
@@ -24,6 +26,7 @@ const TIPOS_VALIDOS = [
   "errores-envio",
   "centro-costo",
   "rezagos",
+  "placas-sin-vehiculo",
 ] as const;
 type TipoReporte = (typeof TIPOS_VALIDOS)[number];
 
@@ -58,6 +61,9 @@ export async function GET(request: Request) {
   } else if (tipo === "rezagos") {
     const novedades = await obtenerNovedadesFueraDePeriodo(periodoId);
     buffer = construirLibro([{ nombre: "Rezagos", filas: filasRezagos(novedades) }]);
+  } else if (tipo === "placas-sin-vehiculo") {
+    const placas = await obtenerPlacasSinVehiculo(periodoId);
+    buffer = construirLibro([{ nombre: "Placas sin vehículo", filas: filasPlacasSinVehiculo(placas) }]);
   } else {
     const prefacturas = await obtenerPrefacturasReporte(periodoId, transportistaId);
     if (tipo === "prefacturas") {

@@ -2,11 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import {
   filasErroresEnvio,
+  filasPlacasSinVehiculo,
   filasPrefacturas,
   filasResumenCentroCosto,
   filasRezagos,
 } from "@/lib/reportes/generar";
-import type { NovedadFueraDePeriodo, PrefacturaReporte, PuntoMonto } from "@/lib/reportes/queries";
+import type {
+  NovedadFueraDePeriodo,
+  PlacaSinVehiculo,
+  PrefacturaReporte,
+  PuntoMonto,
+} from "@/lib/reportes/queries";
 
 function prefactura(overrides: Partial<PrefacturaReporte>): PrefacturaReporte {
   return {
@@ -80,6 +86,17 @@ describe("filasResumenCentroCosto", () => {
     const datos: PuntoMonto[] = [{ nombre: "LOGISTICA", monto: 500.5, cantidad: 10 }];
     expect(filasResumenCentroCosto(datos)).toEqual([
       { "Centro de costo": "LOGISTICA", "Cantidad ODT": 10, Monto: 500.5 },
+    ]);
+  });
+});
+
+describe("filasPlacasSinVehiculo", () => {
+  it("mapea placa, cantidad de ODT, última fecha y valor total", () => {
+    const datos: PlacaSinVehiculo[] = [
+      { placa: "XYZ9876", cantidadOdt: 3, ultimaFecha: "2026-09-10", valorTotal: 75.25 },
+    ];
+    expect(filasPlacasSinVehiculo(datos)).toEqual([
+      { Placa: "XYZ9876", "Cantidad ODT": 3, "Última fecha": "2026-09-10", "Valor total": 75.25 },
     ]);
   });
 });

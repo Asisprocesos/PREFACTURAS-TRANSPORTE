@@ -1,6 +1,6 @@
 import { nombreTransportista } from "@/lib/transportistas/display";
 
-import type { NovedadFueraDePeriodo, PrefacturaReporte, PuntoMonto } from "./queries";
+import type { NovedadFueraDePeriodo, PlacaSinVehiculo, PrefacturaReporte, PuntoMonto } from "./queries";
 
 const ETIQUETA_ESTADO: Record<string, string> = {
   BORRADOR: "Borrador",
@@ -51,6 +51,15 @@ export function filasResumenCentroCosto(datos: PuntoMonto[]): FilaExcel[] {
     "Centro de costo": d.nombre,
     "Cantidad ODT": d.cantidad,
     Monto: d.monto,
+  }));
+}
+
+export function filasPlacasSinVehiculo(placas: PlacaSinVehiculo[]): FilaExcel[] {
+  return placas.map((p) => ({
+    Placa: p.placa,
+    "Cantidad ODT": p.cantidadOdt,
+    "Última fecha": p.ultimaFecha,
+    "Valor total": p.valorTotal,
   }));
 }
 

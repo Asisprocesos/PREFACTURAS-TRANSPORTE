@@ -138,6 +138,51 @@ export async function obtenerNovedadesFueraDePeriodo(periodoId: string): Promise
   });
 }
 
+export interface PlacaSinVehiculo {
+  placa: string;
+  cantidadOdt: number;
+  ultimaFecha: string;
+  valorTotal: number;
+}
+
+// Mismo tope de seguridad que obtenerPrefacturasReporte: acota el peor caso
+// sin depender de una función agregada en la base de datos para un reporte
+// que en la práctica solo se usa para armar una carga masiva puntual.
+const TOPE_FILAS_PLACAS_SIN_VEHICULO = 5000;
+
+/**
+ * ODT del período cuya placa no coincidió con ningún vehículo registrado
+ * (vehiculo_id null) — la lista que el operador usa para armar la plantilla
+ * de carga masiva de Vehículos con las placas que faltan.
+ */
+export async function obtenerPlacasSinVehiculo(periodoId: string): Promise<PlacaSinVehiculo[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("odt")
+    .select("placa_normalizada, fecha_creacion, valor_final, valor")
+    .eq("periodo_id", periodoId)
+    .is("vehiculo_id", null)
+    .not("placa_normalizada", "is", null)
+    .limit(TOPE_FILAS_PLACAS_SIN_VEHICULO);
+  if (error) throw error;
+
+  const porPlaca = new Map<string, PlacaSinVehiculo>();
+  for (const fila of data ?? []) {
+    const placa = fila.placa_normalizada!;
+    const valor = fila.valor_final ?? fila.valor ?? 0;
+    const existente = porPlaca.get(placa);
+    if (!existente) {
+      porPlaca.set(placa, { placa, cantidadOdt: 1, ultimaFecha: fila.fecha_creacion, valorTotal: valor });
+    } else {
+      existente.cantidadOdt += 1;
+      existente.valorTotal += valor;
+      if (fila.fecha_creacion > existente.ultimaFecha) existente.ultimaFecha = fila.fecha_creacion;
+    }
+  }
+
+  return [...porPlaca.values()].sort((a, b) => b.cantidadOdt - a.cantidadOdt);
+}
+
 export interface PuntoMonto {
   nombre: string;
   monto: number;
