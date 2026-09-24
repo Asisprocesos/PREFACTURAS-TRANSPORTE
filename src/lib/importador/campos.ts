@@ -43,3 +43,16 @@ export const ETIQUETA_CAMPO: Record<CampoOdt, string> = {
 };
 
 export const CAMPOS_OBLIGATORIOS: CampoOdt[] = ["guia", "fecha_creacion", "estado"];
+
+/**
+ * Campos obligatorios que todavía no están mapeados a ninguna columna del
+ * archivo. "estado" es el más crítico de los tres: es la columna que decide
+ * qué filas se importan (solo "Entregado"); sin mapearla, todas las filas
+ * quedarían excluidas en silencio en vez de fallar con un mensaje claro.
+ * Compartido entre el wizard (bloquea "Validar") y `validarImportacionAction`
+ * (frontera real, por si se llama sin pasar por la UI).
+ */
+export function camposObligatoriosFaltantes(mapeo: Record<string, CampoOdt | null>): CampoOdt[] {
+  const mapeados = new Set(Object.values(mapeo).filter((c): c is CampoOdt => c !== null));
+  return CAMPOS_OBLIGATORIOS.filter((c) => !mapeados.has(c));
+}

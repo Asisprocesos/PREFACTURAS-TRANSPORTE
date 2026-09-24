@@ -6,7 +6,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { CAMPOS_ODT, ETIQUETA_CAMPO, type CampoOdt } from "@/lib/importador/campos";
+import {
+  CAMPOS_ODT,
+  camposObligatoriosFaltantes,
+  ETIQUETA_CAMPO,
+  type CampoOdt,
+} from "@/lib/importador/campos";
 import { confirmarImportacionAction } from "@/lib/importador/confirmar-action";
 import { calcularHashArchivo } from "@/lib/importador/hash";
 import { guardarAliasMapeoAction, obtenerAliasMapeoAction } from "@/lib/importador/lectura-actions";
@@ -211,6 +216,16 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
 
         {estado.paso === 3 ? (
           <div className="space-y-4">
+            {(() => {
+              const faltantes = camposObligatoriosFaltantes(estado.mapeo);
+              return faltantes.length > 0 ? (
+                <p className="text-sm text-destructive">
+                  Falta mapear columnas obligatorias: {faltantes.map((c) => ETIQUETA_CAMPO[c]).join(", ")}.
+                  &quot;Estado&quot; es la que decide qué filas se importan (solo &quot;Entregado&quot;); sin
+                  mapearla, todas quedarían excluidas.
+                </p>
+              ) : null;
+            })()}
             <div className="max-w-xs space-y-2">
               <label className="text-sm font-medium">Período del corte</label>
               <select
@@ -276,7 +291,10 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <Button onClick={validar} disabled={cargando}>
+              <Button
+                onClick={validar}
+                disabled={cargando || camposObligatoriosFaltantes(estado.mapeo).length > 0}
+              >
                 {cargando ? "Validando..." : "Validar"}
               </Button>
               <Button variant="outline" onClick={guardarPlantilla} disabled={guardandoPlantilla}>

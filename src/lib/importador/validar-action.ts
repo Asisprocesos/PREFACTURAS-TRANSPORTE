@@ -7,7 +7,7 @@ import { requireRole } from "@/lib/auth/roles";
 import { createClient } from "@/lib/supabase/server";
 import type { DecisionFila, Json } from "@/types/database.types";
 
-import type { CampoOdt } from "./campos";
+import { camposObligatoriosFaltantes, ETIQUETA_CAMPO, type CampoOdt } from "./campos";
 import { aplicarMapeo } from "./mapeo";
 import { validarFila, type ContextoValidacion } from "./validar";
 
@@ -83,6 +83,20 @@ export async function validarImportacionAction(datos: {
   mapeo: Record<string, CampoOdt | null>;
 }): Promise<ResumenValidacion> {
   await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+
+  // "estado" es obligatorio porque es la columna que decide qué se importa:
+  // sin mapearla, ninguna fila tendría "Entregado" y quedarían todas
+  // excluidas en silencio (seguro, pero confuso). Se bloquea acá en vez de
+  // dejar que el usuario se pregunte por qué no se insertó nada. Repite el
+  // chequeo del cliente (importar-wizard.tsx) porque un Server Action es la
+  // frontera real de validación, no la UI.
+  const faltantes = camposObligatoriosFaltantes(datos.mapeo);
+  if (faltantes.length > 0) {
+    throw new Error(
+      `Falta mapear columnas obligatorias: ${faltantes.map((c) => ETIQUETA_CAMPO[c]).join(", ")}.`,
+    );
+  }
+
   const supabase = await createClient();
 
   const { data: importacion, error: errorImportacion } = await supabase
