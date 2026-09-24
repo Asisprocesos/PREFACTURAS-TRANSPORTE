@@ -3,6 +3,14 @@ import { requireRole } from "@/lib/auth/roles";
 
 import { FormularioImportarMaestros } from "./formulario-importar-maestros";
 
+// El Server Action de carga masiva (importarMaestrosAction) hereda este
+// límite de duración de la página que lo invoca. Sin esto, cae en el
+// límite por defecto de Vercel (unos pocos segundos) y un archivo con
+// varias filas —cada una hace varias consultas seguidas a la base de
+// datos— se corta a mitad de camino sin avisar: el navegador se queda
+// esperando una respuesta que nunca llega ("Procesando..." sin avanzar).
+export const maxDuration = 60;
+
 export default async function ImportarMaestrosPage() {
   await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
 

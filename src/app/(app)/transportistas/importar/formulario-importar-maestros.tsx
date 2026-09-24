@@ -29,7 +29,12 @@ export function FormularioImportarMaestros() {
       setArchivo(null);
       if (inputRef.current) inputRef.current.value = "";
     } catch {
-      setError("Se perdió la conexión con el servidor mientras se procesaba el archivo.");
+      setError(
+        "Se perdió la conexión con el servidor mientras se procesaba el archivo. Si tenía muchas filas, " +
+          "es posible que algunas ya se hayan guardado antes del corte — revisa Transportistas y " +
+          "Vehículos para confirmar qué quedó cargado, y si falta algo, vuelve a subir el mismo archivo " +
+          "(es seguro repetirlo, no duplica lo que ya se creó).",
+      );
     } finally {
       setCargando(false);
     }
@@ -60,6 +65,12 @@ export function FormularioImportarMaestros() {
             {cargando ? "Procesando..." : "Subir y cargar"}
           </Button>
         </div>
+        {cargando ? (
+          <p className="text-xs text-muted-foreground">
+            Con archivos de varias filas puede tardar uno o dos minutos (cada fila hace varias operaciones).
+            No cierres ni recargues esta página mientras dice &quot;Procesando...&quot;.
+          </p>
+        ) : null}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
       </div>
 
