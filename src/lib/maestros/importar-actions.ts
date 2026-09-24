@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import { requireRole } from "@/lib/auth/roles";
 import { defaultAppConfig } from "@/config/app.config";
 import { createClient } from "@/lib/supabase/server";
+import { asignarConductorSiCambio } from "@/lib/vehiculos/conductor";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -219,11 +220,11 @@ async function procesarVehiculos(
     const regionalTexto = String(fila["Regional"] ?? "").trim();
     const regionalId = regionalTexto ? (regionalPorNombre.get(regionalTexto.toUpperCase()) ?? null) : null;
 
+    const nombreConductor = String(fila["Nombre del Conductor"] ?? "").trim();
+
     const advertencias: string[] = [];
     if (rucTransportista && !transportistaId) advertencias.push(`no se encontró el RUC ${rucTransportista}`);
     if (regionalTexto && !regionalId) advertencias.push(`no se encontró la regional "${regionalTexto}"`);
-    const detalleAdvertencia =
-      advertencias.length > 0 ? `Advertencia: ${advertencias.join("; ")}.` : undefined;
 
     const datos = {
       transportista_id: transportistaId,
@@ -244,6 +245,7 @@ async function procesarVehiculos(
       .maybeSingle();
 
     let vehiculoId: string;
+    let accion: "CREADO" | "ACTUALIZADO";
     if (existente) {
       const { error } = await supabase.from("vehiculo").update(datos).eq("id", existente.id);
       if (error) {
@@ -256,7 +258,7 @@ async function procesarVehiculos(
         continue;
       }
       vehiculoId = existente.id;
-      resultados.push({ fila: numeroFila, clave: placa, accion: "ACTUALIZADO", detalle: detalleAdvertencia });
+      accion = "ACTUALIZADO";
     } else {
       const { data: creado, error } = await supabase
         .from("vehiculo")
@@ -268,7 +270,14 @@ async function procesarVehiculos(
         continue;
       }
       vehiculoId = creado.id;
-      resultados.push({ fila: numeroFila, clave: placa, accion: "CREADO", detalle: detalleAdvertencia });
+      accion = "CREADO";
+    }
+
+    if (nombreConductor) {
+      const resultadoConductor = await asignarConductorSiCambio(supabase, vehiculoId, nombreConductor);
+      if (!resultadoConductor.ok) {
+        advertencias.push(`no se pudo registrar el conductor: ${resultadoConductor.error}`);
+      }
     }
 
     await sincronizarCorreos(
@@ -278,6 +287,10 @@ async function procesarVehiculos(
       fila["Correo Principal"],
       fila["Correos Adicionales"],
     );
+
+    const detalleAdvertencia =
+      advertencias.length > 0 ? `Advertencia: ${advertencias.join("; ")}.` : undefined;
+    resultados.push({ fila: numeroFila, clave: placa, accion, detalle: detalleAdvertencia });
   }
 
   return resultados;

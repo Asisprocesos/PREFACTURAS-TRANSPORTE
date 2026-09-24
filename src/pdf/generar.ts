@@ -10,6 +10,7 @@ import {
   type Odt,
   type PrefacturaConRelaciones,
 } from "@/lib/prefacturas/queries";
+import { nombreTransportista } from "@/lib/transportistas/display";
 import { obtenerConductorVigente } from "@/lib/vehiculos/queries";
 
 import { DocumentoPrefactura } from "./templates/prefactura/documento";
@@ -55,32 +56,6 @@ export function nombreArchivoPdf(placa: string, ruc: string): string {
   return defaultAppConfig.pdf.nombreArchivo.replace("{PLACA}", placaSegura).replace("{RUC}", rucSeguro);
 }
 
-/**
- * Respaldo cuando el vehículo no tiene un conductor registrado
- * (Vehículos → Conductor): se deriva del campo `chofer` de las propias ODT
- * del corte, el que más se repite entre las ODT de la prefactura. Es un
- * texto libre del Excel importado — puede variar entre viajes o traer
- * datos de prueba —, así que el conductor registrado siempre tiene
- * prioridad cuando existe.
- */
-function conductorMasFrecuente(odts: Odt[]): string | null {
-  const conteo = new Map<string, number>();
-  for (const o of odts) {
-    const chofer = o.chofer?.trim();
-    if (!chofer) continue;
-    conteo.set(chofer, (conteo.get(chofer) ?? 0) + 1);
-  }
-  let mejor: string | null = null;
-  let mejorConteo = 0;
-  for (const [chofer, cantidad] of conteo) {
-    if (cantidad > mejorConteo) {
-      mejor = chofer;
-      mejorConteo = cantidad;
-    }
-  }
-  return mejor;
-}
-
 export interface ResultadoBufferPdf {
   buffer: Buffer;
   detalleOdt: Odt[];
@@ -106,7 +81,12 @@ export async function generarBufferPdf(prefactura: PrefacturaConRelaciones): Pro
     placa: prefactura.vehiculo?.placa ?? "",
     razonSocial: prefactura.transportista?.razon_social ?? "",
     ruc: prefactura.transportista?.ruc ?? "",
-    conductor: conductorRegistrado?.nombre ?? conductorMasFrecuente(detalleOdt),
+    // El vehículo puede tener un conductor distinto del transportista (el
+    // transportista es dueño/contratista, no necesariamente quien maneja).
+    // Cuando no hay un conductor registrado para el vehículo, el PDF cae al
+    // nombre del transportista en vez de adivinarlo del campo "Chofer" de
+    // las ODT (texto libre del Excel importado, poco confiable).
+    conductor: conductorRegistrado?.nombre ?? nombreTransportista(prefactura.transportista),
     totalOdt: prefactura.total_odt,
     totalDescuentos: prefactura.total_descuentos,
     total: prefactura.total,

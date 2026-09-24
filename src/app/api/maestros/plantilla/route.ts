@@ -27,6 +27,7 @@ const TRANSPORTISTAS_EJEMPLO = [
 const VEHICULOS_HEADERS = [
   "Placa",
   "RUC Transportista",
+  "Nombre del Conductor",
   "Regional",
   "Tipo de Vehículo",
   "Marca",
@@ -41,6 +42,7 @@ const VEHICULOS_HEADERS = [
 const VEHICULOS_EJEMPLO = [
   "ABC1234",
   "1790012345001",
+  "Juan Pérez",
   "Quito",
   "Camión",
   "Hino",
@@ -78,6 +80,11 @@ export async function GET() {
     ["6. Correos Adicionales: varios correos separados por coma."],
     ["7. Activo: escribe SI o NO. Si lo dejas vacío se asume SI."],
     ["8. Regional: escribe exactamente el nombre ya registrado (ej. Quito, Guayaquil)."],
+    [
+      "9. Nombre del Conductor (opcional): quién maneja el vehículo, puede ser distinto del " +
+        "transportista (que es el dueño/contratista, no necesariamente el chofer). El PDF de la " +
+        "prefactura usa este nombre; si se deja vacío, usa el nombre del transportista.",
+    ],
   ]);
   XLSX.utils.book_append_sheet(libro, notas, "Instrucciones");
 

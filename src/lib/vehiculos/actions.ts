@@ -8,6 +8,7 @@ import { correoFormSchema } from "@/lib/contactos/schema";
 import { createClient } from "@/lib/supabase/server";
 import type { ResultadoAccion } from "@/lib/types/acciones";
 
+import { asignarConductorSiCambio } from "./conductor";
 import { vehiculoFormSchema, type VehiculoFormValues } from "./schema";
 
 function aFilaVehiculo(valores: VehiculoFormValues) {
@@ -132,11 +133,9 @@ export async function eliminarCorreoVehiculo(vehiculoId: string, correoId: strin
 }
 
 /**
- * Registra quién maneja el vehículo ahora mismo: cierra la asignación
- * vigente anterior (si había) y crea una nueva. El PDF de prefactura usa
- * esto para el campo Conductor — sin un conductor registrado, cae de
- * vuelta a adivinar por el campo "Chofer" de las ODT del corte, que no es
- * confiable (texto libre del Excel importado, puede variar entre viajes).
+ * El PDF de prefactura usa el conductor vigente del vehículo (ver
+ * `asignarConductorSiCambio`) para el campo Conductor; sin uno registrado
+ * cae de vuelta al nombre del transportista.
  */
 export async function asignarConductorVehiculoAction(
   vehiculoId: string,
@@ -144,29 +143,9 @@ export async function asignarConductorVehiculoAction(
 ): Promise<ResultadoAccion> {
   await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
 
-  const nombre = nombreCompleto.trim();
-  if (!nombre) return { ok: false, error: "El nombre del conductor es obligatorio." };
-
   const supabase = await createClient();
-
-  const { data: conductor, error: errorConductor } = await supabase
-    .from("conductor")
-    .insert({ nombres: nombre })
-    .select("id")
-    .single();
-  if (errorConductor || !conductor) return { ok: false, error: "No se pudo registrar el conductor." };
-
-  const { error: errorCierre } = await supabase
-    .from("vehiculo_conductor")
-    .update({ vigente_hasta: new Date().toISOString().slice(0, 10) })
-    .eq("vehiculo_id", vehiculoId)
-    .is("vigente_hasta", null);
-  if (errorCierre) return { ok: false, error: "No se pudo cerrar la asignación anterior." };
-
-  const { error: errorAsignacion } = await supabase
-    .from("vehiculo_conductor")
-    .insert({ vehiculo_id: vehiculoId, conductor_id: conductor.id });
-  if (errorAsignacion) return { ok: false, error: "No se pudo asignar el conductor." };
+  const resultado = await asignarConductorSiCambio(supabase, vehiculoId, nombreCompleto);
+  if (!resultado.ok) return { ok: false, error: resultado.error };
 
   revalidatePath(`/vehiculos/${vehiculoId}`);
   return { ok: true };
