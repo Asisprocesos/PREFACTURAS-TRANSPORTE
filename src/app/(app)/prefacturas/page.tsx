@@ -5,6 +5,7 @@ import type { EstadoPrefactura } from "@/types/database.types";
 
 import { FiltrosPrefacturas } from "./filtros";
 import { GenerarPrefacturasButton } from "./generar-prefacturas-button";
+import { GenerarTodosPdfButton } from "./generar-todos-pdf-button";
 import { PrefacturasTable } from "./prefacturas-table";
 
 const TAMANO_PAGINA = 20;
@@ -37,7 +38,12 @@ export default async function PrefacturasPage({
           <h1 className="titulo-marca text-2xl">Prefacturas</h1>
           <p className="mt-2 text-sm text-muted-foreground">1 prefactura por placa por período.</p>
         </div>
-        {puedeGenerar ? <GenerarPrefacturasButton periodoId={periodoSeleccionado} /> : null}
+        {puedeGenerar ? (
+          <div className="flex flex-wrap items-start gap-2">
+            <GenerarPrefacturasButton periodoId={periodoSeleccionado} />
+            <GenerarTodosPdfButton periodoId={periodoSeleccionado} />
+          </div>
+        ) : null}
       </div>
       <FiltrosPrefacturas periodos={periodos} />
       <PrefacturasTable

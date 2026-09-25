@@ -6,9 +6,19 @@ import { requireRole } from "@/lib/auth/roles";
 import { createClient } from "@/lib/supabase/server";
 import type { ResultadoAccion } from "@/lib/types/acciones";
 
+import { listarPrefacturasParaGenerarPdf } from "./queries";
+
 export interface ResultadoGeneracion extends ResultadoAccion {
   creadas?: number;
   actualizadas?: number;
+}
+
+/** Para el botón "Generar todos los PDF del período" (ver generar-todos-pdf-button.tsx). */
+export async function listarPrefacturasParaGenerarPdfAction(
+  periodoId: string,
+): Promise<{ id: string; numero: string | null }[]> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+  return listarPrefacturasParaGenerarPdf(periodoId);
 }
 
 export async function generarPrefacturasPeriodoAction(periodoId: string): Promise<ResultadoGeneracion> {

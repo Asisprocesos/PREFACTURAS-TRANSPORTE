@@ -52,6 +52,27 @@ export async function listarPrefacturas({
   return { filas: (data ?? []) as unknown as PrefacturaConRelaciones[], total: count ?? 0 };
 }
 
+/**
+ * Prefacturas del período que todavía no tienen PDF (BORRADOR) o cuyo PDF
+ * vigente quedó desactualizado por una corrección de ODT posterior
+ * (REQUIERE_REGENERAR, ver marcarRequiereRegenerar en odt/actions.ts). Las
+ * demás ya tienen un PDF vigente y sin cambios desde entonces, así que
+ * "Generar todos" las deja intactas para no generar duplicados de más.
+ */
+export async function listarPrefacturasParaGenerarPdf(
+  periodoId: string,
+): Promise<{ id: string; numero: string | null }[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("prefactura")
+    .select("id, numero")
+    .eq("periodo_id", periodoId)
+    .in("estado", ["BORRADOR", "REQUIERE_REGENERAR"])
+    .order("numero", { ascending: true, nullsFirst: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function obtenerPrefactura(id: string): Promise<PrefacturaConRelaciones | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
