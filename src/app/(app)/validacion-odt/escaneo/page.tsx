@@ -5,21 +5,44 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { requireRole } from "@/lib/auth/roles";
 import { iniciarSesionEscaneoAction } from "@/lib/escaneo/actions";
+import { listarSesionesEscaneo } from "@/lib/escaneo/queries";
 import { listarPeriodosParaSelect } from "@/lib/importador/queries";
 
-export default async function EscaneoPage() {
+import { FiltrosSesionesEscaneo } from "./filtros-sesiones";
+import { TablaSesionesEscaneo } from "./tabla-sesiones";
+
+const TAMANO_PAGINA = 20;
+
+export default async function EscaneoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; periodo?: string; placa?: string }>;
+}) {
   await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
-  const periodos = await listarPeriodosParaSelect();
+  const params = await searchParams;
+  const pagina = Math.max(1, Number(params.page ?? "1") || 1);
+
+  const [periodos, { filas, total }] = await Promise.all([
+    listarPeriodosParaSelect(),
+    listarSesionesEscaneo({
+      pagina,
+      tamanoPagina: TAMANO_PAGINA,
+      periodoId: params.periodo,
+      placa: params.placa,
+    }),
+  ]);
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
+    <div className="space-y-6">
       <BotonVolver fallbackHref="/validacion-odt" />
       <h1 className="titulo-marca text-2xl">Escaneo de ODT físicas</h1>
-      <Card>
+
+      <Card className="max-w-lg">
         <CardHeader>
           <CardTitle className="text-lg">Iniciar sesión de escaneo</CardTitle>
           <CardDescription>
-            Con lector de código de barras USB (escribe y Enter) o pegando una lista de guías.
+            Con lector de código de barras USB (escribe y Enter) o pegando una lista de guías. Cada lectura se
+            guarda al instante — no hace falta ningún paso extra para no perderla.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -48,6 +71,18 @@ export default async function EscaneoPage() {
           </form>
         </CardContent>
       </Card>
+
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold">Repositorio de sesiones</h2>
+          <p className="text-sm text-muted-foreground">
+            Sesiones ya escaneadas (en curso o finalizadas), para revisar el resultado sin volver a escanear.
+            Búscalas por período y placa.
+          </p>
+        </div>
+        <FiltrosSesionesEscaneo periodos={periodos} />
+        <TablaSesionesEscaneo filas={filas} total={total} pagina={pagina} tamanoPagina={TAMANO_PAGINA} />
+      </div>
     </div>
   );
 }

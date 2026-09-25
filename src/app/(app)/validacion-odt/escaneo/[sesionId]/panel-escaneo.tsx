@@ -215,15 +215,19 @@ export function PanelEscaneo({
         </table>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button asChild variant="outline">
           <a href={`/api/escaneo/${sesion.id}/exportar`}>Descargar Excel</a>
         </Button>
         {!sesion.finalizada_en ? (
           <Button variant="secondary" onClick={finalizar}>
-            Finalizar sesión
+            Finalizar y guardar sesión
           </Button>
         ) : null}
+        <p className="text-xs text-muted-foreground">
+          Cada lectura ya queda guardada al momento de escanear — esta sesión ya aparece en el repositorio
+          (Validación ODT → Escaneo) para revisarla después sin volver a escanear.
+        </p>
       </div>
     </div>
   );

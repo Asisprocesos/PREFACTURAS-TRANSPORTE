@@ -15,6 +15,71 @@ export async function obtenerSesionEscaneo(id: string): Promise<SesionEscaneo | 
   return data;
 }
 
+export interface SesionEscaneoListado extends SesionEscaneo {
+  periodo: { nombre: string } | null;
+  cantidadEscaneos: number;
+}
+
+export interface ListarSesionesEscaneoParams {
+  pagina: number;
+  tamanoPagina: number;
+  periodoId?: string;
+  placa?: string;
+}
+
+/**
+ * Repositorio de sesiones de escaneo ya guardadas (Validación ODT →
+ * Escaneo): cada lectura ya se persiste al momento de escanear, así que
+ * esto es solo un listado/búsqueda — no hace falta un botón de "guardar"
+ * aparte. Búsqueda por período y placa para no tener que volver a escanear
+ * si ya se hizo antes.
+ */
+export async function listarSesionesEscaneo({
+  pagina,
+  tamanoPagina,
+  periodoId,
+  placa,
+}: ListarSesionesEscaneoParams): Promise<{ filas: SesionEscaneoListado[]; total: number }> {
+  const supabase = await createClient();
+  const desde = (pagina - 1) * tamanoPagina;
+  const hasta = desde + tamanoPagina - 1;
+
+  let query = supabase
+    .from("sesion_escaneo")
+    .select("*, periodo:periodo_id(nombre)", { count: "exact" })
+    .order("iniciada_en", { ascending: false })
+    .range(desde, hasta);
+
+  if (periodoId) query = query.eq("periodo_id", periodoId);
+  if (placa && placa.trim()) query = query.eq("placa", placa.trim().toUpperCase().replace(/[-\s]/g, ""));
+
+  const { data, error, count } = await query;
+  if (error) throw error;
+  const sesiones = (data ?? []) as unknown as (SesionEscaneo & { periodo: { nombre: string } | null })[];
+
+  // Acotado al tamaño de la página (nunca a todo el histórico), así que un
+  // .in() acá es seguro — mismo cuidado que en obtenerMatchSesion.
+  const ids = sesiones.map((s) => s.id);
+  const cantidadPorSesion = new Map<string, number>();
+  if (ids.length > 0) {
+    const { data: escaneos, error: errorEscaneos } = await supabase
+      .from("escaneo_odt")
+      .select("sesion_id")
+      .in("sesion_id", ids);
+    if (errorEscaneos) throw errorEscaneos;
+    for (const e of escaneos ?? []) {
+      cantidadPorSesion.set(e.sesion_id, (cantidadPorSesion.get(e.sesion_id) ?? 0) + 1);
+    }
+  }
+
+  const filas: SesionEscaneoListado[] = sesiones.map((s) => ({
+    ...s,
+    cantidadEscaneos: cantidadPorSesion.get(s.id) ?? 0,
+  }));
+
+  return { filas, total: count ?? 0 };
+}
+
 export async function listarEscaneosSesion(sesionId: string): Promise<EscaneoOdt[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
