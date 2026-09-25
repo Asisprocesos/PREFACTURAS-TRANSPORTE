@@ -13,7 +13,7 @@ const TAMANO_PAGINA = 20;
 export default async function PrefacturasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; periodo?: string; estado?: string }>;
+  searchParams: Promise<{ page?: string; periodo?: string; estado?: string; q?: string }>;
 }) {
   const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
   const params = await searchParams;
@@ -27,6 +27,7 @@ export default async function PrefacturasPage({
     tamanoPagina: TAMANO_PAGINA,
     periodoId: params.periodo,
     estado: params.estado as EstadoPrefactura | undefined,
+    busqueda: params.q,
   });
 
   const puedeGenerar = perfil.rol === "ADMIN" || perfil.rol === "OPERADOR_TRANSPORTE";

@@ -43,8 +43,31 @@ export async function listarPrefacturas({
 
   if (periodoId) query = query.eq("periodo_id", periodoId);
   if (estado) query = query.eq("estado", estado);
-  if (busqueda && busqueda.trim() !== "") {
-    query = query.or(`numero.ilike.%${busqueda.trim()}%`);
+
+  const termino = busqueda?.trim();
+  if (termino) {
+    // `numero` vive en prefactura, pero placa/transportista viven en las
+    // tablas relacionadas — PostgREST no permite un OR que cruce la tabla
+    // base con columnas de tablas embebidas en una sola condición, así que
+    // se resuelven los ids que hacen match aparte y se filtra prefactura
+    // por vehiculo_id/transportista_id (mismo patrón que listarDocumentos
+    // en repositorio/queries.ts). El límite de 200 es solo defensa: evita
+    // un IN gigantesco si el término coincidiera con medio maestro entero.
+    const [{ data: vehiculosMatch }, { data: transportistasMatch }] = await Promise.all([
+      supabase.from("vehiculo").select("id").ilike("placa", `%${termino}%`).limit(200),
+      supabase
+        .from("transportista")
+        .select("id")
+        .or(`razon_social.ilike.%${termino}%,nombre.ilike.%${termino}%`)
+        .limit(200),
+    ]);
+    const vehiculoIds = (vehiculosMatch ?? []).map((v) => v.id);
+    const transportistaIds = (transportistasMatch ?? []).map((t) => t.id);
+
+    const condiciones = [`numero.ilike.%${termino}%`];
+    if (vehiculoIds.length > 0) condiciones.push(`vehiculo_id.in.(${vehiculoIds.join(",")})`);
+    if (transportistaIds.length > 0) condiciones.push(`transportista_id.in.(${transportistaIds.join(",")})`);
+    query = query.or(condiciones.join(","));
   }
 
   const { data, error, count } = await query;

@@ -1,6 +1,9 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+
+import { Input } from "@/components/ui/input";
 
 const ESTADOS = [
   "BORRADOR",
@@ -17,6 +20,7 @@ const ESTADOS = [
 export function FiltrosPrefacturas({ periodos }: { periodos: { id: string; nombre: string }[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [busqueda, setBusqueda] = useState(searchParams.get("q") ?? "");
 
   function actualizar(clave: string, valor: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -28,6 +32,16 @@ export function FiltrosPrefacturas({ periodos }: { periodos: { id: string; nombr
 
   return (
     <div className="flex flex-wrap gap-3">
+      <Input
+        placeholder="Buscar por transportista, placa o número de prefactura"
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+        onBlur={() => actualizar("q", busqueda)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") actualizar("q", busqueda);
+        }}
+        className="w-full sm:w-80"
+      />
       <select
         value={searchParams.get("periodo") ?? ""}
         onChange={(e) => actualizar("periodo", e.target.value)}
