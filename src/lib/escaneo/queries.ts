@@ -55,21 +55,50 @@ export interface MatchSesion {
  * cargado en el sistema. Se calcula aparte (no en la función SQL) sumando
  * el valor de las ODT esperadas/confirmadas, para no tener que tocar la
  * función de base de datos por un cálculo que es trivial hacer aquí.
+ *
+ * El valor de las ODT esperadas (ESCANEADA_Y_CARGADA / CARGADA_SIN_FISICA)
+ * se busca filtrando `odt` por período/placa — el mismo alcance que usa la
+ * CTE "esperadas" de match_escaneo — en vez de armar un `.in(id, ...)` con
+ * los ids que trae el match: en un período grande sin filtrar por placa
+ * eso podía ser miles de ids en una sola consulta y reventaba la URL
+ * (justo el error que rompía la página al abrir una sesión nueva).
  */
 export async function obtenerMatchSesion(sesionId: string): Promise<MatchSesion> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("match_escaneo", { p_sesion_id: sesionId });
+  const [{ data, error }, { data: sesion, error: errorSesion }] = await Promise.all([
+    supabase.rpc("match_escaneo", { p_sesion_id: sesionId }),
+    supabase.from("sesion_escaneo").select("periodo_id, placa").eq("id", sesionId).maybeSingle(),
+  ]);
   if (error) throw error;
+  if (errorSesion) throw errorSesion;
   const filasCrudas = (data ?? []) as Omit<FilaMatch, "valor">[];
 
-  const odtIds = [...new Set(filasCrudas.map((f) => f.odt_id).filter((id): id is string => id !== null))];
   const valorPorOdtId = new Map<string, number>();
-  if (odtIds.length > 0) {
-    const { data: odts, error: errorOdt } = await supabase
+  if (sesion) {
+    let query = supabase.from("odt").select("id, valor, valor_final").eq("periodo_id", sesion.periodo_id);
+    if (sesion.placa) query = query.eq("placa_normalizada", sesion.placa);
+    const { data: odts, error: errorOdt } = await query;
+    if (errorOdt) throw errorOdt;
+    for (const o of odts ?? []) valorPorOdtId.set(o.id, o.valor_final ?? o.valor);
+  }
+
+  // Una guía "de otra placa/período" queda fuera del filtro de arriba a
+  // propósito (no es parte de lo esperado en esta sesión); se busca aparte,
+  // acotado por cuántas se escanearon (nunca miles), para poder mostrar su
+  // valor igual sin repetir el riesgo del `.in()` grande.
+  const idsOtraPlacaOPeriodo = [
+    ...new Set(
+      filasCrudas
+        .filter((f) => f.resultado === "OTRA_PLACA_O_PERIODO" && f.odt_id)
+        .map((f) => f.odt_id as string),
+    ),
+  ];
+  if (idsOtraPlacaOPeriodo.length > 0) {
+    const { data: odts, error: errorOtras } = await supabase
       .from("odt")
       .select("id, valor, valor_final")
-      .in("id", odtIds);
-    if (errorOdt) throw errorOdt;
+      .in("id", idsOtraPlacaOPeriodo);
+    if (errorOtras) throw errorOtras;
     for (const o of odts ?? []) valorPorOdtId.set(o.id, o.valor_final ?? o.valor);
   }
 
