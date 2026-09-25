@@ -79,7 +79,7 @@ export default async function ReportesPage({
         <p className="mt-2 text-sm text-muted-foreground">
           Reportes exportables a Excel. El monto total del período se obtiene sumando la columna Total del
           reporte de prefacturas. El resultado de escaneo de ODT se exporta desde{" "}
-          <Link href="/validacion-odt/escaneo" className="text-primary hover:underline">
+          <Link href="/validacion-odt/escaneo" className="text-primary-ink hover:underline">
             Validación ODT / Escaneo
           </Link>
           , por sesión.

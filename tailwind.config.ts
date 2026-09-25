@@ -26,6 +26,8 @@ const config: Config = {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          /** Mismo amarillo de marca, oscurecido para usarlo como texto/ícono directo sobre fondo blanco (el amarillo #FCE200 puro no cumple contraste AA ahí). */
+          ink: "hsl(var(--primary-ink))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",

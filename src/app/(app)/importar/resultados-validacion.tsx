@@ -159,7 +159,9 @@ export function ResultadosValidacion({
             }}
             className={cn(
               "border-b-2 px-3 py-2 text-sm font-medium",
-              pestana === p.id ? "border-primary text-primary" : "border-transparent text-muted-foreground",
+              pestana === p.id
+                ? "border-primary text-primary-ink"
+                : "border-transparent text-muted-foreground",
             )}
           >
             {p.etiqueta(resumen)}
@@ -421,7 +423,7 @@ function Resumen({
       <p
         className={cn(
           "text-2xl font-bold",
-          tono === "ok" && "text-primary",
+          tono === "ok" && "text-primary-ink",
           tono === "error" && "text-destructive",
           tono === "advertencia" && "text-amber-600",
         )}

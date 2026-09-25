@@ -37,7 +37,7 @@ export function InvitarUsuarioForm() {
           </Button>
         </form>
         {estado.error ? <p className="mt-2 text-sm text-destructive">{estado.error}</p> : null}
-        {estado.ok ? <p className="mt-2 text-sm text-primary">Invitación enviada.</p> : null}
+        {estado.ok ? <p className="mt-2 text-sm text-primary-ink">Invitación enviada.</p> : null}
       </CardContent>
     </Card>
   );

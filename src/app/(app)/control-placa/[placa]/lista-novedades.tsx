@@ -67,7 +67,7 @@ function FilaNovedad({ novedad, soloLectura }: { novedad: Novedad; soloLectura: 
             <p className="text-xs text-muted-foreground">Acción sugerida: {novedad.accion_sugerida}</p>
           ) : null}
           {resuelta ? (
-            <p className="text-xs text-primary">
+            <p className="text-xs text-primary-ink">
               {novedad.estado === "RESUELTA" ? "Resuelta" : "Ignorada"}: {novedad.resolucion}
             </p>
           ) : null}

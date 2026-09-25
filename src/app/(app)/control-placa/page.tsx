@@ -30,7 +30,7 @@ export default async function ControlPlacaPage({
             Semáforo de novedades por placa del período: total, ODT y novedades abiertas.
           </p>
         </div>
-        <Link href="/control-placa/correccion-masiva" className="text-sm text-primary hover:underline">
+        <Link href="/control-placa/correccion-masiva" className="text-sm text-primary-ink hover:underline">
           Corrección masiva →
         </Link>
       </div>
@@ -68,7 +68,7 @@ export default async function ControlPlacaPage({
                     <td className="px-4 py-3 font-medium">
                       <Link
                         href={`/control-placa/${f.placa}?periodo=${periodoId}`}
-                        className="text-primary hover:underline"
+                        className="text-primary-ink hover:underline"
                       >
                         {f.placa}
                       </Link>

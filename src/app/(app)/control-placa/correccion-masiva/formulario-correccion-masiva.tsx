@@ -96,7 +96,9 @@ export function FormularioCorreccionMasiva({ periodos }: { periodos: { id: strin
         />
       </div>
       {mensaje ? (
-        <p className={mensaje.ok ? "text-sm text-primary" : "text-sm text-destructive"}>{mensaje.texto}</p>
+        <p className={mensaje.ok ? "text-sm text-primary-ink" : "text-sm text-destructive"}>
+          {mensaje.texto}
+        </p>
       ) : null}
       <Button type="submit" disabled={cargando}>
         {cargando ? "Aplicando..." : "Aplicar corrección masiva"}

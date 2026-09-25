@@ -53,7 +53,10 @@ function crearColumnas(puedeEnviar: boolean): ColumnDef<PrefacturaConRelaciones>
       accessorKey: "numero",
       header: "Número",
       cell: ({ row }) => (
-        <Link href={`/prefacturas/${row.original.id}`} className="font-medium text-primary hover:underline">
+        <Link
+          href={`/prefacturas/${row.original.id}`}
+          className="font-medium text-primary-ink hover:underline"
+        >
           {row.original.numero ?? "(sin número)"}
         </Link>
       ),

@@ -158,7 +158,7 @@ export function FormularioImportarMaestros() {
                               ? "text-destructive"
                               : f.detalle
                                 ? "text-amber-600"
-                                : "text-primary"
+                                : "text-primary-ink"
                           }
                         >
                           {f.accion === "CREADO"

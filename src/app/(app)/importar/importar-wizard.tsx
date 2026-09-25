@@ -300,7 +300,9 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
               <Button variant="outline" onClick={guardarPlantilla} disabled={guardandoPlantilla}>
                 {guardandoPlantilla ? "Guardando..." : "Guardar mapeo como plantilla"}
               </Button>
-              {plantillaGuardada ? <span className="text-sm text-primary">Plantilla guardada.</span> : null}
+              {plantillaGuardada ? (
+                <span className="text-sm text-primary-ink">Plantilla guardada.</span>
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -394,7 +396,7 @@ function PasoConfirmar({
   if (resultado) {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-primary">
+        <p className="text-sm text-primary-ink">
           Importación confirmada: {resultado.odtInsertadas} ODT insertadas, {resultado.novedadesGeneradas}{" "}
           novedades generadas.
         </p>

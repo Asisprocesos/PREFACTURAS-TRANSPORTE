@@ -39,7 +39,7 @@ export function ContadorEnVivo({
   }, []);
 
   return (
-    <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+    <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary-ink">
       {conteo} {etiqueta}
     </span>
   );

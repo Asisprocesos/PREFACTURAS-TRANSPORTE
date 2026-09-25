@@ -56,7 +56,7 @@ function crearColumnas(
       cell: ({ row }) => (
         <Link
           href={`/transportistas/${row.original.id}`}
-          className="font-medium text-primary hover:underline"
+          className="font-medium text-primary-ink hover:underline"
         >
           {row.original.nombre || "(sin nombre)"}
         </Link>

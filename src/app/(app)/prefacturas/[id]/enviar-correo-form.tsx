@@ -98,7 +98,7 @@ export function EnviarCorreoForm({
           <span className="text-muted-foreground">Verificando el PDF adjunto...</span>
         ) : nombreArchivoAdjunto ? (
           <>
-            <FileText className="h-5 w-5 shrink-0 text-primary" />
+            <FileText className="h-5 w-5 shrink-0 text-primary-ink" />
             <span className="truncate">
               Adjunto: <span className="font-medium">{nombreArchivoAdjunto}</span>
             </span>
@@ -163,7 +163,9 @@ export function EnviarCorreoForm({
       </div>
 
       {mensaje ? (
-        <p className={mensaje.ok ? "text-sm text-primary" : "text-sm text-destructive"}>{mensaje.texto}</p>
+        <p className={mensaje.ok ? "text-sm text-primary-ink" : "text-sm text-destructive"}>
+          {mensaje.texto}
+        </p>
       ) : null}
 
       <div className="flex gap-2">

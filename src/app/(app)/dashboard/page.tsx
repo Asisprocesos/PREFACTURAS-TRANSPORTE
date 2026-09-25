@@ -95,7 +95,7 @@ export default async function DashboardPage({
             <p className="text-sm text-muted-foreground">
               Hay {formatoEntero.format(indicadores.novedadesAbiertasError)} novedad(es) de severidad error
               sin resolver.{" "}
-              <Link href="/control-placa" className="text-primary hover:underline">
+              <Link href="/control-placa" className="text-primary-ink hover:underline">
                 Ver en Control por placa
               </Link>
               .

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 const formatoMoneda = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD" });
 
 const ETIQUETA_RESULTADO: Record<FilaMatch["resultado"], { texto: string; icono: string; clase: string }> = {
-  ESCANEADA_Y_CARGADA: { texto: "Escaneada y cargada", icono: "✅", clase: "text-primary" },
+  ESCANEADA_Y_CARGADA: { texto: "Escaneada y cargada", icono: "✅", clase: "text-primary-ink" },
   ESCANEADA_NO_CARGADA: { texto: "Escaneada pero no cargada", icono: "⚠️", clase: "text-amber-600" },
   CARGADA_SIN_FISICA: { texto: "Cargada pero sin ODT física", icono: "❌", clase: "text-destructive" },
   OTRA_PLACA_O_PERIODO: {
@@ -122,7 +122,7 @@ export function PanelEscaneo({
             />
           </form>
           {ultimoMensaje ? (
-            <p className={cn("mt-2 text-sm", ultimoMensaje.ok ? "text-primary" : "text-destructive")}>
+            <p className={cn("mt-2 text-sm", ultimoMensaje.ok ? "text-primary-ink" : "text-destructive")}>
               {ultimoMensaje.texto}
             </p>
           ) : null}
@@ -159,7 +159,7 @@ export function PanelEscaneo({
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Confirmado con ODT física</p>
-          <p className="text-lg font-semibold text-primary">
+          <p className="text-lg font-semibold text-primary-ink">
             {formatoMoneda.format(resumenValorInicial.totalConfirmado)}
           </p>
         </div>
@@ -168,7 +168,7 @@ export function PanelEscaneo({
           <p
             className={cn(
               "text-lg font-semibold",
-              resumenValorInicial.totalFaltante > 0 ? "text-destructive" : "text-primary",
+              resumenValorInicial.totalFaltante > 0 ? "text-destructive" : "text-primary-ink",
             )}
           >
             {formatoMoneda.format(resumenValorInicial.totalFaltante)}

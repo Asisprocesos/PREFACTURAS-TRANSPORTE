@@ -113,7 +113,7 @@ export function DetalleImportacion({ importacion, esAdmin }: { importacion: Impo
         </p>
       )}
 
-      {mensaje ? <p className="text-sm text-primary">{mensaje}</p> : null}
+      {mensaje ? <p className="text-sm text-primary-ink">{mensaje}</p> : null}
 
       <div className="flex gap-2">
         {importacion.estado === "VALIDADA" ? (

@@ -51,7 +51,7 @@ function crearColumnas(
       accessorKey: "placa",
       header: "Placa",
       cell: ({ row }) => (
-        <Link href={`/vehiculos/${row.original.id}`} className="font-medium text-primary hover:underline">
+        <Link href={`/vehiculos/${row.original.id}`} className="font-medium text-primary-ink hover:underline">
           {row.original.placa}
         </Link>
       ),

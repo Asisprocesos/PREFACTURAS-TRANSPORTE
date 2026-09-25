@@ -83,7 +83,7 @@ export function PeriodosTabla({ periodos }: { periodos: Periodo[] }) {
                     </Button>
                   ) : null}
                   {mensaje?.id === p.id ? (
-                    <span className={mensaje.ok ? "text-xs text-primary" : "text-xs text-destructive"}>
+                    <span className={mensaje.ok ? "text-xs text-primary-ink" : "text-xs text-destructive"}>
                       {mensaje.texto}
                     </span>
                   ) : null}

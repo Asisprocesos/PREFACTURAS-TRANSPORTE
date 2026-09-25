@@ -23,7 +23,7 @@ export function ImportacionesRecientes({ importaciones }: { importaciones: Impor
           {importaciones.map((imp) => (
             <li key={imp.id} className="flex items-center justify-between py-2">
               <div>
-                <Link href={`/importar/${imp.id}`} className="font-medium text-primary hover:underline">
+                <Link href={`/importar/${imp.id}`} className="font-medium text-primary-ink hover:underline">
                   {imp.archivo}
                 </Link>
                 <p className="text-xs text-muted-foreground">

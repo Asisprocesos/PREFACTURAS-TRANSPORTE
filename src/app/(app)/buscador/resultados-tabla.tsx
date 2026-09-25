@@ -31,7 +31,10 @@ export function ResultadosBuscador({ filas }: { filas: OdtConRelaciones[] }) {
           {filas.map((odt) => (
             <tr key={odt.id}>
               <td className="px-4 py-3">
-                <Link href={`/odt/${odt.guia}/corregir`} className="font-medium text-primary hover:underline">
+                <Link
+                  href={`/odt/${odt.guia}/corregir`}
+                  className="font-medium text-primary-ink hover:underline"
+                >
                   {odt.guia}
                 </Link>
                 {odt.corregida ? (
@@ -42,7 +45,7 @@ export function ResultadosBuscador({ filas }: { filas: OdtConRelaciones[] }) {
                 {odt.placa_normalizada ? (
                   <Link
                     href={`/control-placa/${odt.placa_normalizada}`}
-                    className="text-primary hover:underline"
+                    className="text-primary-ink hover:underline"
                   >
                     {odt.placa_normalizada}
                   </Link>

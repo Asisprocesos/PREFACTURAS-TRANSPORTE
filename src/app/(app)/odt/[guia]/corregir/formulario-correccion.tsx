@@ -84,7 +84,7 @@ export function FormularioCorreccion({ odt }: { odt: Odt }) {
         />
       </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      {exito ? <p className="text-sm text-primary">Corrección aplicada.</p> : null}
+      {exito ? <p className="text-sm text-primary-ink">Corrección aplicada.</p> : null}
       <Button type="submit" disabled={cargando}>
         {cargando ? "Guardando..." : "Guardar corrección"}
       </Button>

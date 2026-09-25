@@ -21,7 +21,7 @@ export default async function ValidacionOdtPage() {
       <BuscadorValidacion periodos={periodos} />
       <p className="text-sm text-muted-foreground">
         ¿Vas a comparar contra las ODT físicas?{" "}
-        <Link href="/validacion-odt/escaneo" className="text-primary hover:underline">
+        <Link href="/validacion-odt/escaneo" className="text-primary-ink hover:underline">
           Ir a Escaneo de ODT
         </Link>
         .

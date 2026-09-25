@@ -121,7 +121,7 @@ export default async function DetalleVehiculoPage({ params }: { params: Promise<
               {!soloLectura ? (
                 <>
                   Selecciona uno en el campo &quot;Transportista&quot; de arriba, o{" "}
-                  <Link href="/transportistas/nuevo" className="text-primary hover:underline">
+                  <Link href="/transportistas/nuevo" className="text-primary-ink hover:underline">
                     crea uno nuevo
                   </Link>
                   .

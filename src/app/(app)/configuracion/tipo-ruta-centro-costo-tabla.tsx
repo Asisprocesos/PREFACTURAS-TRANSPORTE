@@ -88,7 +88,9 @@ export function TipoRutaCentroCostoTabla({
   return (
     <div className="space-y-3">
       {mensaje ? (
-        <p className={mensaje.ok ? "text-sm text-primary" : "text-sm text-destructive"}>{mensaje.texto}</p>
+        <p className={mensaje.ok ? "text-sm text-primary-ink" : "text-sm text-destructive"}>
+          {mensaje.texto}
+        </p>
       ) : null}
 
       <div className="overflow-x-auto rounded-lg border bg-card">
