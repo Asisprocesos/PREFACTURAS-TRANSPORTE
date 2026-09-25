@@ -70,3 +70,22 @@ export async function finalizarSesionEscaneoAction(sesionId: string): Promise<Re
   revalidatePath(`/validacion-odt/escaneo/${sesionId}`);
   return { ok: true };
 }
+
+/**
+ * Borrado permanente (no lógico: sesion_escaneo no tiene deleted_at) —
+ * pensado para limpiar sesiones de prueba del repositorio, no para el uso
+ * normal. Solo ADMIN, mismo criterio que eliminarDocumentosPdfAction en
+ * repositorio/actions.ts para otras acciones irreversibles. escaneo_odt se
+ * borra solo por el "on delete cascade" de la referencia a sesion_escaneo.
+ */
+export async function eliminarSesionesEscaneoAction(ids: string[]): Promise<ResultadoAccion> {
+  await requireRole(["ADMIN"]);
+  if (ids.length === 0) return { ok: false, error: "No hay sesiones seleccionadas." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("sesion_escaneo").delete().in("id", ids);
+  if (error) return { ok: false, error: "No se pudieron eliminar las sesiones seleccionadas." };
+
+  revalidatePath("/validacion-odt/escaneo");
+  return { ok: true };
+}

@@ -18,7 +18,7 @@ export default async function EscaneoPage({
 }: {
   searchParams: Promise<{ page?: string; periodo?: string; placa?: string }>;
 }) {
-  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+  const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
   const params = await searchParams;
   const pagina = Math.max(1, Number(params.page ?? "1") || 1);
 
@@ -81,7 +81,13 @@ export default async function EscaneoPage({
           </p>
         </div>
         <FiltrosSesionesEscaneo periodos={periodos} />
-        <TablaSesionesEscaneo filas={filas} total={total} pagina={pagina} tamanoPagina={TAMANO_PAGINA} />
+        <TablaSesionesEscaneo
+          filas={filas}
+          total={total}
+          pagina={pagina}
+          tamanoPagina={TAMANO_PAGINA}
+          puedeEliminar={perfil.rol === "ADMIN"}
+        />
       </div>
     </div>
   );
