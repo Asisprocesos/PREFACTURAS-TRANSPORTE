@@ -16,11 +16,19 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ses
   await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
   const { sesionId } = await params;
 
-  const filas = await obtenerMatchSesion(sesionId);
+  const { filas, resumenValor } = await obtenerMatchSesion(sesionId);
 
-  const hoja = XLSX.utils.json_to_sheet(
-    filas.map((f) => ({ Guía: f.guia, Resultado: ETIQUETA[f.resultado] ?? f.resultado })),
-  );
+  const hoja = XLSX.utils.json_to_sheet([
+    ...filas.map((f) => ({
+      Guía: f.guia,
+      Resultado: ETIQUETA[f.resultado] ?? f.resultado,
+      Valor: f.valor ?? "",
+    })),
+    {},
+    { Guía: "Valor esperado (ODT cargadas)", Resultado: "", Valor: resumenValor.totalEsperado },
+    { Guía: "Confirmado con ODT física", Resultado: "", Valor: resumenValor.totalConfirmado },
+    { Guía: "Falta por escanear", Resultado: "", Valor: resumenValor.totalFaltante },
+  ]);
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, hoja, "Escaneo");
   const buffer = XLSX.write(libro, { type: "buffer", bookType: "xlsx" }) as Buffer;

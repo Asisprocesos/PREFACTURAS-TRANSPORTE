@@ -5,8 +5,10 @@ import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { finalizarSesionEscaneoAction, registrarEscaneoAction } from "@/lib/escaneo/actions";
-import type { EscaneoOdt, FilaMatch, SesionEscaneo } from "@/lib/escaneo/queries";
+import type { EscaneoOdt, FilaMatch, ResumenValorEscaneo, SesionEscaneo } from "@/lib/escaneo/queries";
 import { cn } from "@/lib/utils";
+
+const formatoMoneda = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD" });
 
 const ETIQUETA_RESULTADO: Record<FilaMatch["resultado"], { texto: string; icono: string; clase: string }> = {
   ESCANEADA_Y_CARGADA: { texto: "Escaneada y cargada", icono: "✅", clase: "text-primary" },
@@ -43,10 +45,12 @@ export function PanelEscaneo({
   sesion,
   escaneosIniciales,
   matchInicial,
+  resumenValorInicial,
 }: {
   sesion: SesionEscaneo;
   escaneosIniciales: EscaneoOdt[];
   matchInicial: FilaMatch[];
+  resumenValorInicial: ResumenValorEscaneo;
 }) {
   const router = useRouter();
   const [valor, setValor] = useState("");
@@ -148,6 +152,30 @@ export function PanelEscaneo({
         </div>
       </div>
 
+      <div className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-3">
+        <div>
+          <p className="text-xs text-muted-foreground">Valor esperado (ODT cargadas)</p>
+          <p className="text-lg font-semibold">{formatoMoneda.format(resumenValorInicial.totalEsperado)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Confirmado con ODT física</p>
+          <p className="text-lg font-semibold text-primary">
+            {formatoMoneda.format(resumenValorInicial.totalConfirmado)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Falta por escanear</p>
+          <p
+            className={cn(
+              "text-lg font-semibold",
+              resumenValorInicial.totalFaltante > 0 ? "text-destructive" : "text-primary",
+            )}
+          >
+            {formatoMoneda.format(resumenValorInicial.totalFaltante)}
+          </p>
+        </div>
+      </div>
+
       <div className="flex flex-wrap gap-3 text-sm">
         {Object.entries(ETIQUETA_RESULTADO).map(([clave, etiqueta]) => (
           <span key={clave} className={cn("rounded-full bg-muted px-3 py-1", etiqueta.clase)}>
@@ -162,12 +190,13 @@ export function PanelEscaneo({
             <tr>
               <th className="px-3 py-2 font-medium">Guía</th>
               <th className="px-3 py-2 font-medium">Resultado</th>
+              <th className="px-3 py-2 font-medium">Valor</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {matchInicial.length === 0 ? (
               <tr>
-                <td colSpan={2} className="px-3 py-6 text-center text-muted-foreground">
+                <td colSpan={3} className="px-3 py-6 text-center text-muted-foreground">
                   Todavía no hay lecturas ni ODT esperadas.
                 </td>
               </tr>
@@ -178,6 +207,7 @@ export function PanelEscaneo({
                   <td className={cn("px-3 py-2", ETIQUETA_RESULTADO[m.resultado].clase)}>
                     {ETIQUETA_RESULTADO[m.resultado].icono} {ETIQUETA_RESULTADO[m.resultado].texto}
                   </td>
+                  <td className="px-3 py-2">{m.valor != null ? formatoMoneda.format(m.valor) : "—"}</td>
                 </tr>
               ))
             )}

@@ -13,7 +13,10 @@ export default async function SesionEscaneoPage({ params }: { params: Promise<{ 
   const sesion = await obtenerSesionEscaneo(sesionId);
   if (!sesion) notFound();
 
-  const [escaneos, match] = await Promise.all([listarEscaneosSesion(sesionId), obtenerMatchSesion(sesionId)]);
+  const [escaneos, { filas: match, resumenValor }] = await Promise.all([
+    listarEscaneosSesion(sesionId),
+    obtenerMatchSesion(sesionId),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -25,7 +28,12 @@ export default async function SesionEscaneoPage({ params }: { params: Promise<{ 
           {sesion.finalizada_en ? "Finalizada" : "En curso"}
         </p>
       </div>
-      <PanelEscaneo sesion={sesion} escaneosIniciales={escaneos} matchInicial={match} />
+      <PanelEscaneo
+        sesion={sesion}
+        escaneosIniciales={escaneos}
+        matchInicial={match}
+        resumenValorInicial={resumenValor}
+      />
     </div>
   );
 }
