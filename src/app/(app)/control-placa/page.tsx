@@ -5,21 +5,29 @@ import { obtenerControlPlaca } from "@/lib/control-placa/queries";
 import { listarPeriodosParaSelect } from "@/lib/importador/queries";
 import { cn } from "@/lib/utils";
 
-import { SelectorPeriodo } from "./selector-periodo";
+import { FiltrosControlPlaca } from "./filtros";
 
 const formatoMoneda = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD" });
 
 export default async function ControlPlacaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ periodo?: string }>;
+  searchParams: Promise<{ periodo?: string; severidad?: string; categoria?: string }>;
 }) {
   await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
   const params = await searchParams;
   const periodos = await listarPeriodosParaSelect();
   const periodoId = params.periodo || periodos.find((p) => p.estado === "ABIERTO")?.id;
 
-  const filas = periodoId ? await obtenerControlPlaca(periodoId) : [];
+  const severidad =
+    params.severidad === "ERROR" || params.severidad === "ADVERTENCIA" || params.severidad === "SIN_NOVEDADES"
+      ? params.severidad
+      : undefined;
+
+  const hayFiltrosNovedad = !!(severidad || params.categoria);
+  const filas = periodoId
+    ? await obtenerControlPlaca(periodoId, { severidad, categoria: params.categoria || undefined })
+    : [];
 
   return (
     <div className="space-y-6">
@@ -35,7 +43,7 @@ export default async function ControlPlacaPage({
         </Link>
       </div>
 
-      <SelectorPeriodo periodos={periodos} periodoActual={periodoId} />
+      <FiltrosControlPlaca periodos={periodos} periodoActual={periodoId} />
 
       <div className="overflow-x-auto rounded-lg border bg-card">
         <table className="w-full text-sm">
@@ -52,7 +60,11 @@ export default async function ControlPlacaPage({
             {filas.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
-                  {periodoId ? "Sin actividad en este período." : "Elige un período."}
+                  {!periodoId
+                    ? "Elige un período."
+                    : hayFiltrosNovedad
+                      ? "Ninguna placa coincide con los filtros de novedad."
+                      : "Sin actividad en este período."}
                 </td>
               </tr>
             ) : (
