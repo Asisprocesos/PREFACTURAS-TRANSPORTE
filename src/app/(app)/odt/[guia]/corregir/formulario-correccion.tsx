@@ -18,6 +18,9 @@ const CAMPOS: { valor: keyof Odt; etiqueta: string }[] = [
   { valor: "regional_origen_texto", etiqueta: "Regional" },
 ];
 
+/** Estos campos siempre se guardan en mayúsculas (ver también corregirOdtAction). */
+const CAMPOS_MAYUSCULAS = new Set<keyof Odt>(["placa_normalizada", "tipo_ruta", "centro_costo_final"]);
+
 export function FormularioCorreccion({ odt }: { odt: Odt }) {
   const router = useRouter();
   const [campo, setCampo] = useState<string>(CAMPOS[0]!.valor);
@@ -67,7 +70,11 @@ export function FormularioCorreccion({ odt }: { odt: Odt }) {
           <Input
             id="valorNuevo"
             value={valorNuevo}
-            onChange={(e) => setValorNuevo(e.target.value)}
+            onChange={(e) =>
+              setValorNuevo(
+                CAMPOS_MAYUSCULAS.has(campo as keyof Odt) ? e.target.value.toUpperCase() : e.target.value,
+              )
+            }
             required
           />
         </div>

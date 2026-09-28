@@ -109,3 +109,23 @@ describe("validarFila — tipo de ruta", () => {
     expect(r.advertencias.some((a) => a.includes("por revisar"))).toBe(true);
   });
 });
+
+describe("validarFila — mayúsculas", () => {
+  it("guarda la guía siempre en mayúsculas, sin importar cómo venga", () => {
+    const r = validarFila(1, { ...filaValidaBase, guia: "odtlc00000001" }, contextoBase(), new Set());
+    expect(r.datosNormalizados.guia).toBe("ODTLC00000001");
+  });
+
+  it("guarda el tipo de ruta siempre en mayúsculas y lo cruza igual contra el catálogo", () => {
+    const r = validarFila(1, { ...filaValidaBase, tipo_ruta: "distribucion" }, contextoBase(), new Set());
+    expect(r.datosNormalizados.tipoRuta).toBe("DISTRIBUCION");
+    // El catálogo tiene "DISTRIBUCION" con centro de costo asignado: no debe
+    // advertir "por revisar" aunque el archivo lo traiga en minúsculas.
+    expect(r.advertencias.some((a) => a.includes("por revisar"))).toBe(false);
+  });
+
+  it("la placa recuperada desde Chofer también queda en mayúsculas", () => {
+    const r = validarFila(1, { ...filaValidaBase, placa: "gsg9141" }, contextoBase(), new Set());
+    expect(r.datosNormalizados.placaNormalizada).toBe("GSG9141");
+  });
+});

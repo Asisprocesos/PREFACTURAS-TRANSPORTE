@@ -23,6 +23,9 @@ function esCampoCorregible(campo: string): campo is CampoCorregible {
   return (CAMPOS_CORREGIBLES as readonly string[]).includes(campo);
 }
 
+/** Campos que deben quedar siempre en mayúsculas para uniformidad (ver también validarFila, vehiculoFormSchema y tipoRutaCentroCostoSchema). */
+const CAMPOS_MAYUSCULAS = new Set<CampoCorregible>(["placa_normalizada", "tipo_ruta", "centro_costo_final"]);
+
 async function marcarRequiereRegenerar(odtId: string) {
   const supabase = await createClient();
   const { data: detalle } = await supabase
@@ -66,10 +69,11 @@ export async function corregirOdtAction(
   if (errorLectura || !odt) return { ok: false, error: "ODT no encontrada." };
 
   const valorAnterior = String((odt as Record<string, unknown>)[campo] ?? "");
+  const valorFinal = CAMPOS_MAYUSCULAS.has(campo) ? valorNuevo.trim().toUpperCase() : valorNuevo;
 
   const { error: errorUpdate } = await supabase
     .from("odt")
-    .update({ [campo]: valorNuevo, corregida: true } as OdtUpdate)
+    .update({ [campo]: valorFinal, corregida: true } as OdtUpdate)
     .eq("id", odtId);
   if (errorUpdate) return { ok: false, error: "No se pudo corregir la ODT." };
 
@@ -77,7 +81,7 @@ export async function corregirOdtAction(
     odt_id: odtId,
     campo,
     valor_anterior: valorAnterior,
-    valor_nuevo: valorNuevo,
+    valor_nuevo: valorFinal,
     motivo,
     usuario: perfil.userId,
   });
@@ -108,6 +112,9 @@ export async function corregirOdtMasivoAction(datos: {
   const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
   if (!datos.motivo.trim()) return { ok: false, error: "El motivo es obligatorio." };
 
+  const nuevoTipoRuta = datos.nuevoTipoRuta.trim().toUpperCase();
+  const nuevoCentroCosto = datos.nuevoCentroCosto.trim().toUpperCase();
+
   const supabase = await createClient();
   const { data: odts, error } = await supabase
     .from("odt")
@@ -120,7 +127,7 @@ export async function corregirOdtMasivoAction(datos: {
   const ids = odts.map((o) => o.id);
   const { error: errorUpdate } = await supabase
     .from("odt")
-    .update({ tipo_ruta: datos.nuevoTipoRuta, centro_costo_final: datos.nuevoCentroCosto })
+    .update({ tipo_ruta: nuevoTipoRuta, centro_costo_final: nuevoCentroCosto })
     .in("id", ids);
   if (errorUpdate) return { ok: false, error: "No se pudo aplicar la corrección masiva." };
 
@@ -128,7 +135,7 @@ export async function corregirOdtMasivoAction(datos: {
     odt_id: o.id,
     campo: "tipo_ruta",
     valor_anterior: o.tipo_ruta,
-    valor_nuevo: datos.nuevoTipoRuta,
+    valor_nuevo: nuevoTipoRuta,
     motivo: datos.motivo,
     usuario: perfil.userId,
   }));

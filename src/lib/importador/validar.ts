@@ -72,7 +72,9 @@ export function validarFila(
   const errores: string[] = [];
   const advertencias: string[] = [];
 
-  const guia = (fila.guia ?? "").trim();
+  // Mayúsculas para que la guía quede uniforme sin importar cómo venga en el
+  // archivo o el ingreso manual (misma regla que placa y tipo de ruta).
+  const guia = (fila.guia ?? "").trim().toUpperCase();
   if (!guia) {
     errores.push("Falta la Guía (clave única de la ODT).");
   }
@@ -151,9 +153,12 @@ export function validarFila(
     advertencias.push("Tipo de Costo vacío.");
   }
 
-  const tipoRuta = normalizarTexto(fila.tipo_ruta);
+  // Mayúsculas para que quede uniforme (mismo criterio que guía y placa) y
+  // para que coincida con la clave del catálogo tipo_ruta_centro_costo, que
+  // también se guarda en mayúsculas.
+  const tipoRuta = normalizarTexto(fila.tipo_ruta)?.toUpperCase() ?? null;
   if (tipoRuta) {
-    const info = contexto.tiposRuta.get(tipoRuta.toUpperCase());
+    const info = contexto.tiposRuta.get(tipoRuta);
     if (!info || info.requiereRevision || !info.centroCosto) {
       advertencias.push(mensajeTipoRutaPorRevisar(tipoRuta));
     }

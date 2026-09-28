@@ -356,7 +356,7 @@ function FormularioCorreccion({
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
         <Campo etiqueta="Guía">
-          <Input value={guia} onChange={(e) => setGuia(e.target.value)} />
+          <Input value={guia} onChange={(e) => setGuia(e.target.value.toUpperCase())} />
         </Campo>
         <Campo etiqueta="Placa">
           <Input value={placa} onChange={(e) => setPlaca(e.target.value.toUpperCase())} />
@@ -368,7 +368,7 @@ function FormularioCorreccion({
           <Input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} />
         </Campo>
         <Campo etiqueta="Tipo de Ruta">
-          <Input value={tipoRuta} onChange={(e) => setTipoRuta(e.target.value)} />
+          <Input value={tipoRuta} onChange={(e) => setTipoRuta(e.target.value.toUpperCase())} />
         </Campo>
         <Campo etiqueta="Tipo de Costo">
           <Input value={tipoCosto} onChange={(e) => setTipoCosto(e.target.value)} />

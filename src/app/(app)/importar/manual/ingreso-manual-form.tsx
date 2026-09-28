@@ -30,6 +30,9 @@ interface FilaEnLista {
 
 const DRAFT_INICIAL: Partial<Record<CampoOdt, string>> = { estado: "Entregado" };
 
+/** Se guardan siempre en mayúsculas (ver validarFila), así que se reflejan igual mientras se escriben. */
+const CAMPOS_MAYUSCULAS = new Set<CampoOdt>(["guia", "placa", "tipo_ruta"]);
+
 function isoADdMmAaaa(iso: string): string {
   const [anio, mes, dia] = iso.split("-");
   return `${dia}/${mes}/${anio}`;
@@ -77,7 +80,7 @@ export function IngresoManualForm({
   } | null>(null);
 
   function actualizarDraft(campo: CampoOdt, valor: string) {
-    setDraft((d) => ({ ...d, [campo]: valor }));
+    setDraft((d) => ({ ...d, [campo]: CAMPOS_MAYUSCULAS.has(campo) ? valor.toUpperCase() : valor }));
   }
 
   async function agregarFila() {
