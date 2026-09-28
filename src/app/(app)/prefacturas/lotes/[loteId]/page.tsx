@@ -22,7 +22,8 @@ export default async function LoteEnvioPage({ params }: { params: Promise<{ lote
         <h1 className="titulo-marca text-2xl">Progreso del envío masivo</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           El worker <code>/api/jobs/email</code> procesa la cola cada minuto (pg_cron). Esta pantalla se
-          actualiza en tiempo real vía Supabase Realtime.
+          actualiza sola (en vivo si funciona Realtime, y en todo caso cada pocos segundos) — puedes salir y
+          volver, o recargar, sin que eso reenvíe nada: solo consulta el estado guardado en la cola.
         </p>
       </div>
       <ProgresoLote lote={lote} enviosIniciales={envios} />

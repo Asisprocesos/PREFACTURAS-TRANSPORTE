@@ -12,7 +12,13 @@ import { obtenerPrefactura } from "@/lib/prefacturas/queries";
 import { generarYGuardarPdf } from "@/pdf/generar-y-guardar";
 
 import { construirVariablesPlantilla } from "./plantilla-variables";
-import { obtenerContactosPrefactura } from "./queries";
+import {
+  obtenerContactosPrefactura,
+  obtenerLoteProceso,
+  listarEnviosLote,
+  type EnvioCorreo,
+  type LoteProceso,
+} from "./queries";
 import { crearZipPrefacturas } from "./zip";
 
 async function obtenerPdfVigenteOGenerar(
@@ -318,4 +324,25 @@ export async function reintentarFallidosLoteAction(loteId: string): Promise<Resu
 
   revalidatePath(`/prefacturas/lotes/${loteId}`);
   return { ok: true, reintentadas };
+}
+
+export interface EstadoLote {
+  lote: LoteProceso;
+  envios: EnvioCorreo[];
+}
+
+/**
+ * Para el sondeo de la pantalla de progreso (ver progreso-lote.tsx): la
+ * suscripción de Supabase Realtime es la vía rápida, pero no es 100%
+ * confiable (depende del websocket del navegador y de que la publicación
+ * esté bien configurada), así que esta acción sirve de respaldo para que
+ * el estado mostrado nunca se quede pegado aunque Realtime no entregue
+ * ningún evento.
+ */
+export async function obtenerEstadoLoteAction(loteId: string): Promise<EstadoLote | null> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
+  const lote = await obtenerLoteProceso(loteId);
+  if (!lote) return null;
+  const envios = await listarEnviosLote(loteId);
+  return { lote, envios };
 }

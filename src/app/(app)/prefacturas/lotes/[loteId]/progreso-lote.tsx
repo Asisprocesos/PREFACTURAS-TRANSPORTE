@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { reintentarFallidosLoteAction } from "@/lib/correo/actions";
+import { obtenerEstadoLoteAction, reintentarFallidosLoteAction } from "@/lib/correo/actions";
 import type { EnvioCorreo, LoteProceso } from "@/lib/correo/queries";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
 const ETIQUETA_ESTADO: Record<string, string> = {
   PENDIENTE: "Pendiente",
@@ -14,6 +15,10 @@ const ETIQUETA_ESTADO: Record<string, string> = {
   ERROR: "Error",
   REINTENTAR: "Reintentando",
 };
+
+const ESTADOS_TERMINALES = new Set(["COMPLETADO", "COMPLETADO_CON_ERRORES"]);
+
+const INTERVALO_SONDEO_MS = 4000;
 
 export function ProgresoLote({
   lote: loteInicial,
@@ -26,7 +31,15 @@ export function ProgresoLote({
   const [envios, setEnvios] = useState(enviosIniciales);
   const [reintentando, setReintentando] = useState(false);
   const [mensajeReintento, setMensajeReintento] = useState<string | null>(null);
+  const terminado = ESTADOS_TERMINALES.has(lote.estado);
+  const loteIdRef = useRef(lote.id);
 
+  // Realtime es la vía rápida (actualiza apenas cambia una fila), pero no es
+  // 100% confiable — depende del websocket del navegador y de que la
+  // publicación esté bien configurada. El sondeo de abajo es el respaldo
+  // que garantiza que esta pantalla nunca se quede pegada aunque Realtime no
+  // entregue ningún evento (fue justo lo que pasó: se enviaron los
+  // correos pero la pantalla se quedó en "0 procesados").
   useEffect(() => {
     const supabase = createClient();
     const canal = supabase
@@ -50,6 +63,18 @@ export function ProgresoLote({
       supabase.removeChannel(canal);
     };
   }, [lote.id]);
+
+  useEffect(() => {
+    if (terminado) return;
+    const intervalo = setInterval(async () => {
+      const estado = await obtenerEstadoLoteAction(loteIdRef.current).catch(() => null);
+      if (estado) {
+        setLote(estado.lote);
+        setEnvios(estado.envios);
+      }
+    }, INTERVALO_SONDEO_MS);
+    return () => clearInterval(intervalo);
+  }, [terminado]);
 
   async function reintentar() {
     setReintentando(true);
@@ -76,11 +101,23 @@ export function ProgresoLote({
           <span>
             {procesados} / {lote.total} procesados · {lote.exitosos} enviados / {lote.fallidos} con error
           </span>
-          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{lote.estado}</span>
+          <span
+            className={cn(
+              "rounded-full px-2 py-0.5 text-xs font-medium",
+              terminado ? "bg-primary/20 text-primary-ink" : "bg-muted text-muted-foreground",
+            )}
+          >
+            {lote.estado}
+          </span>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
           <div className="h-full bg-primary transition-all" style={{ width: `${porcentaje}%` }} />
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {terminado
+            ? "Envío terminado. Recargar esta página es seguro: solo consulta lo ya guardado, no vuelve a enviar nada."
+            : `Se actualiza sola cada ${INTERVALO_SONDEO_MS / 1000}s. Recargar la página también es seguro: no reenvía nada, esta pantalla solo consulta el estado guardado en la cola.`}
+        </p>
       </div>
 
       {lote.fallidos > 0 ? (
