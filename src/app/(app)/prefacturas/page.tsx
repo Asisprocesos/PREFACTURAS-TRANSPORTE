@@ -8,6 +8,11 @@ import { GenerarPrefacturasButton } from "./generar-prefacturas-button";
 import { GenerarTodosPdfButton } from "./generar-todos-pdf-button";
 import { PrefacturasTable } from "./prefacturas-table";
 
+// encolarEnviosAction (botón "Enviar seleccionados") puede descargar varios
+// PDF y armar un ZIP para las prefacturas sin correo registrado; hereda
+// este límite de la página que la invoca.
+export const maxDuration = 60;
+
 const TAMANO_PAGINA = 20;
 
 export default async function PrefacturasPage({

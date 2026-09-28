@@ -13,6 +13,7 @@ import { generarYGuardarPdf } from "@/pdf/generar-y-guardar";
 
 import { construirVariablesPlantilla } from "./plantilla-variables";
 import { obtenerContactosPrefactura } from "./queries";
+import { crearZipPrefacturas } from "./zip";
 
 async function obtenerPdfVigenteOGenerar(
   prefacturaId: string,
@@ -119,9 +120,25 @@ export interface ResultadoEncolar extends ResultadoAccion {
   loteId?: string;
   encoladas?: number;
   omitidas?: number;
+  /** Cuántas de las omitidas se consolidaron en el ZIP de respaldo (ver EMAIL_FALLBACK_RECIPIENT). */
+  consolidadasSinCorreo?: number;
 }
 
-/** "Enviar seleccionados": crea un lote_proceso y encola 1 envio_correo por prefactura con PDF vigente y correo. */
+interface PrefacturaSinCorreo {
+  prefacturaId: string;
+  storageKey: string;
+  nombreArchivo: string;
+  etiqueta: string;
+}
+
+/**
+ * "Enviar seleccionados": crea un lote_proceso y encola 1 envio_correo por
+ * prefactura con PDF vigente y correo registrado. Las que tienen PDF pero
+ * NINGÚN correo registrado (ni en el vehículo ni en el transportista) no se
+ * omiten: se agrupan y se encolan como UN solo envío consolidado (ZIP) a
+ * EMAIL_FALLBACK_RECIPIENT — evita tanto perder esas prefacturas en silencio
+ * como bombardear esa cuenta de respaldo con un correo por cada una.
+ */
 export async function encolarEnviosAction(prefacturaIds: string[]): Promise<ResultadoEncolar> {
   const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
   if (prefacturaIds.length === 0) return { ok: false, error: "No hay prefacturas seleccionadas." };
@@ -136,6 +153,7 @@ export async function encolarEnviosAction(prefacturaIds: string[]): Promise<Resu
 
   let encoladas = 0;
   let omitidas = 0;
+  const sinCorreo: PrefacturaSinCorreo[] = [];
 
   for (const prefacturaId of prefacturaIds) {
     const prefactura = await obtenerPrefactura(prefacturaId);
@@ -146,17 +164,27 @@ export async function encolarEnviosAction(prefacturaIds: string[]): Promise<Resu
 
     const { data: doc } = await supabase
       .from("documento_pdf")
-      .select("id")
+      .select("id, storage_key, nombre_archivo")
       .eq("prefactura_id", prefacturaId)
       .eq("estado", "VIGENTE")
       .maybeSingle();
+    if (!doc) {
+      omitidas++;
+      continue;
+    }
+
     const contactos = await obtenerContactosPrefactura(
       prefactura.vehiculo?.id ?? null,
       prefactura.transportista?.id ?? null,
     );
 
-    if (!doc || !contactos.principal) {
-      omitidas++;
+    if (!contactos.principal) {
+      sinCorreo.push({
+        prefacturaId,
+        storageKey: doc.storage_key,
+        nombreArchivo: doc.nombre_archivo,
+        etiqueta: `${prefactura.vehiculo?.placa ?? "(sin placa)"} - ${prefactura.numero ?? "(sin número)"}`,
+      });
       continue;
     }
 
@@ -175,26 +203,119 @@ export async function encolarEnviosAction(prefacturaIds: string[]): Promise<Resu
     encoladas++;
   }
 
-  await supabase.from("lote_proceso").update({ total: encoladas, fallidos: omitidas }).eq("id", lote.id);
+  const consolidadasSinCorreo = await encolarConsolidadoSinCorreo(supabase, lote.id, sinCorreo);
+  omitidas += sinCorreo.length - consolidadasSinCorreo;
+
+  await supabase
+    .from("lote_proceso")
+    .update({ total: encoladas + (consolidadasSinCorreo > 0 ? 1 : 0) })
+    .eq("id", lote.id);
 
   revalidatePath("/prefacturas");
-  return { ok: true, loteId: lote.id, encoladas, omitidas };
+  return { ok: true, loteId: lote.id, encoladas, omitidas, consolidadasSinCorreo };
 }
 
-/** "Reintentar fallidos": vuelve a PENDIENTE los envíos en ERROR de un lote para que el worker los retome. */
-export async function reintentarFallidosLoteAction(loteId: string): Promise<ResultadoAccion> {
+/**
+ * Descarga los PDF de `sinCorreo`, los empaqueta en un ZIP y encola un único
+ * envio_correo consolidado a EMAIL_FALLBACK_RECIPIENT. Devuelve cuántas
+ * prefacturas quedaron efectivamente cubiertas (0 si la variable no está
+ * configurada, no hay nada que enviar, o falla la subida del ZIP — en esos
+ * casos el llamador las cuenta como omitidas, igual que antes de este
+ * mecanismo).
+ */
+async function encolarConsolidadoSinCorreo(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  loteId: string,
+  sinCorreo: PrefacturaSinCorreo[],
+): Promise<number> {
+  if (sinCorreo.length === 0) return 0;
+
+  const destinatarioRespaldo = process.env.EMAIL_FALLBACK_RECIPIENT?.trim();
+  if (!destinatarioRespaldo) return 0;
+
+  // Solo cuentan (y se listan) las que realmente se pudieron descargar y
+  // meter al ZIP — si alguna falla, queda como omitida en vez de aparentar
+  // que se envió sin estarlo realmente adjunta.
+  const cubiertas: PrefacturaSinCorreo[] = [];
+  const archivos: { nombreArchivo: string; contenido: Buffer }[] = [];
+  for (const item of sinCorreo) {
+    const { data: blob } = await supabase.storage.from("prefacturas").download(item.storageKey);
+    if (blob) {
+      archivos.push({ nombreArchivo: item.nombreArchivo, contenido: Buffer.from(await blob.arrayBuffer()) });
+      cubiertas.push(item);
+    }
+  }
+  if (archivos.length === 0) return 0;
+
+  const zipBuffer = await crearZipPrefacturas(archivos);
+  const zipStorageKey = `zips/sin-correo/${loteId}.zip`;
+  const { error: errorSubida } = await supabase.storage
+    .from("prefacturas")
+    .upload(zipStorageKey, zipBuffer, { contentType: "application/zip", upsert: true });
+  if (errorSubida) return 0;
+
+  const listado = cubiertas.map((s) => `- ${s.etiqueta}`).join("\n");
+  const { error: errorEnvio } = await supabase.from("envio_correo").insert({
+    lote_id: loteId,
+    destinatarios_to: [destinatarioRespaldo],
+    destinatarios_cc: [],
+    asunto: `Prefacturas sin correo registrado (${cubiertas.length})`,
+    cuerpo:
+      `Estas ${cubiertas.length} prefacturas no tienen correo registrado (ni en el vehículo ni en el ` +
+      `transportista), así que se agrupan en el ZIP adjunto para revisión y envío manual:\n\n${listado}\n\n` +
+      "Registra un correo en Vehículos o Transportistas para que la próxima vez se envíen directo a su destinatario.",
+    estado: "PENDIENTE",
+    zip_storage_key: zipStorageKey,
+    zip_nombre_archivo: `prefacturas-sin-correo-${loteId}.zip`,
+    prefactura_ids: cubiertas.map((s) => s.prefacturaId),
+  });
+  if (errorEnvio) return 0;
+
+  for (const item of cubiertas) {
+    await supabase.from("prefactura").update({ estado: "EN_COLA_ENVIO" }).eq("id", item.prefacturaId);
+  }
+  return cubiertas.length;
+}
+
+export interface ResultadoReintento extends ResultadoAccion {
+  reintentadas?: number;
+}
+
+/**
+ * "Reintentar fallidos": vuelve a PENDIENTE los envíos en ERROR de un lote
+ * para que el worker los retome en su próximo ciclo (hasta 1 minuto, pg_cron
+ * — este botón no envía nada al instante). No borra `error`: así el mensaje
+ * del último intento sigue visible mientras el envío espera su turno, en vez
+ * de desaparecer sin dejar rastro de qué había fallado.
+ */
+export async function reintentarFallidosLoteAction(loteId: string): Promise<ResultadoReintento> {
   await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
   const supabase = await createClient();
 
+  const { data: lote } = await supabase
+    .from("lote_proceso")
+    .select("fallidos")
+    .eq("id", loteId)
+    .maybeSingle();
+
   const { error, count } = await supabase
     .from("envio_correo")
-    .update({ estado: "PENDIENTE", intentos: 0, proximo_intento: null, error: null }, { count: "exact" })
+    .update({ estado: "PENDIENTE", intentos: 0, proximo_intento: null }, { count: "exact" })
     .eq("lote_id", loteId)
     .eq("estado", "ERROR");
   if (error) return { ok: false, error: "No se pudo reintentar los envíos fallidos." };
 
-  await supabase.from("lote_proceso").update({ estado: "PROCESANDO" }).eq("id", loteId);
+  const reintentadas = count ?? 0;
+  // El contador "fallidos" del lote es acumulado, nunca se decrementa solo:
+  // sin este ajuste, los envíos que ya se devolvieron a PENDIENTE seguirían
+  // contando como error en el resumen de arriba hasta que el worker los
+  // vuelva a intentar (hasta 1 minuto después), dando la impresión de que
+  // el botón no hizo nada.
+  await supabase
+    .from("lote_proceso")
+    .update({ estado: "PROCESANDO", fallidos: Math.max(0, (lote?.fallidos ?? reintentadas) - reintentadas) })
+    .eq("id", loteId);
 
   revalidatePath(`/prefacturas/lotes/${loteId}`);
-  return { ok: true, id: String(count ?? 0) };
+  return { ok: true, reintentadas };
 }

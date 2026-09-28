@@ -142,9 +142,14 @@ export function PrefacturasTable({
       setMensaje(resultado.error ?? "No se pudo encolar el envío.");
       return;
     }
-    setMensaje(
-      `${resultado.encoladas} encoladas para envío, ${resultado.omitidas} omitidas (sin PDF vigente o sin correo).`,
-    );
+    const partes = [`${resultado.encoladas} encoladas para envío individual`];
+    if (resultado.consolidadasSinCorreo) {
+      partes.push(`${resultado.consolidadasSinCorreo} consolidadas en un ZIP (sin correo registrado)`);
+    }
+    if (resultado.omitidas) {
+      partes.push(`${resultado.omitidas} omitidas (sin PDF vigente, o sin correo y sin correo de respaldo)`);
+    }
+    setMensaje(`${partes.join(", ")}.`);
     setSeleccion({});
     if (resultado.loteId) router.push(`/prefacturas/lotes/${resultado.loteId}`);
     else router.refresh();

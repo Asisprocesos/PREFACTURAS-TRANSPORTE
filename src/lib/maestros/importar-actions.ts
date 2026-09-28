@@ -5,6 +5,7 @@ import * as XLSX from "xlsx";
 
 import { requireRole } from "@/lib/auth/roles";
 import { defaultAppConfig } from "@/config/app.config";
+import { limpiarEmail } from "@/lib/contactos/validar-email";
 import { createClient } from "@/lib/supabase/server";
 import { asignarConductorSiCambio } from "@/lib/vehiculos/conductor";
 import type { Database } from "@/types/database.types";
@@ -36,7 +37,6 @@ export interface ResultadoImportarLote {
   resultados: ResultadoFilaMaestro[];
 }
 
-const REGEX_EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const REGEX_RUC = /^\d{10,13}$/;
 
 function leerBooleano(v: unknown): boolean {
@@ -109,11 +109,12 @@ async function sincronizarCorreos(
   correoPrincipal: unknown,
   correosAdicionales: unknown,
 ) {
-  const principal = String(correoPrincipal ?? "").trim();
+  const principal = limpiarEmail(correoPrincipal);
   const candidatos: { email: string; tipo: "PRINCIPAL" | "ADICIONAL" }[] = [];
-  if (principal && REGEX_EMAIL.test(principal)) candidatos.push({ email: principal, tipo: "PRINCIPAL" });
+  if (principal) candidatos.push({ email: principal, tipo: "PRINCIPAL" });
   for (const email of separarCorreos(correosAdicionales)) {
-    if (REGEX_EMAIL.test(email)) candidatos.push({ email, tipo: "ADICIONAL" });
+    const limpio = limpiarEmail(email);
+    if (limpio) candidatos.push({ email: limpio, tipo: "ADICIONAL" });
   }
   if (candidatos.length === 0) return;
 

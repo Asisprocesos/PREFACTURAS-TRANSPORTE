@@ -46,7 +46,12 @@ export async function obtenerUltimosErroresEnvio(prefacturaIds: string[]): Promi
   if (error) throw error;
   const mapa = new Map<string, string>();
   for (const fila of data ?? []) {
-    if (!mapa.has(fila.prefactura_id) && fila.error) mapa.set(fila.prefactura_id, fila.error);
+    // prefactura_id es null en los envíos consolidados (ZIP a prefacturas
+    // sin correo registrado, ver encolarEnviosAction); esos no aplican acá,
+    // que busca el último error por prefactura individual.
+    if (fila.prefactura_id && !mapa.has(fila.prefactura_id) && fila.error) {
+      mapa.set(fila.prefactura_id, fila.error);
+    }
   }
   return mapa;
 }

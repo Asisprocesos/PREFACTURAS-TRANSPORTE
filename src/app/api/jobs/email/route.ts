@@ -71,6 +71,10 @@ export async function POST(request: Request) {
     // atascada en ENVIANDO: cualquier error inesperado la manda a
     // REINTENTAR (o a ERROR si ya agotó los reintentos) en vez de dejarla
     // sin resolver.
+    // Individual: una fila = una prefactura. Consolidado (sin correo
+    // registrado, ver encolarEnviosAction): una fila = un ZIP con varias.
+    const prefacturaIds = envio.prefactura_id ? [envio.prefactura_id] : (envio.prefactura_ids ?? []);
+
     try {
       let adjuntos;
       if (envio.documento_pdf_id) {
@@ -90,6 +94,17 @@ export async function POST(request: Request) {
               },
             ];
           }
+        }
+      } else if (envio.zip_storage_key) {
+        const { data: blob } = await supabase.storage.from("prefacturas").download(envio.zip_storage_key);
+        if (blob) {
+          adjuntos = [
+            {
+              nombreArchivo: envio.zip_nombre_archivo ?? "prefacturas.zip",
+              contenido: Buffer.from(await blob.arrayBuffer()),
+              contentType: "application/zip",
+            },
+          ];
         }
       }
 
@@ -112,7 +127,9 @@ export async function POST(request: Request) {
             error: null,
           })
           .eq("id", envio.id);
-        await supabase.from("prefactura").update({ estado: "ENVIADA" }).eq("id", envio.prefactura_id);
+        if (prefacturaIds.length > 0) {
+          await supabase.from("prefactura").update({ estado: "ENVIADA" }).in("id", prefacturaIds);
+        }
       } else {
         const intentos = envio.intentos + 1;
         const agotado = resultado.permanente || intentos >= maxReintentos;
@@ -126,8 +143,8 @@ export async function POST(request: Request) {
             proximo_intento: agotado ? null : new Date(Date.now() + 2 ** intentos * 60_000).toISOString(),
           })
           .eq("id", envio.id);
-        if (agotado) {
-          await supabase.from("prefactura").update({ estado: "ERROR_ENVIO" }).eq("id", envio.prefactura_id);
+        if (agotado && prefacturaIds.length > 0) {
+          await supabase.from("prefactura").update({ estado: "ERROR_ENVIO" }).in("id", prefacturaIds);
         }
       }
 
@@ -138,7 +155,9 @@ export async function POST(request: Request) {
         });
       }
 
-      const guias = await obtenerGuiasPrefactura(supabase, envio.prefactura_id);
+      const guias = (
+        await Promise.all(prefacturaIds.map((id) => obtenerGuiasPrefactura(supabase, id)))
+      ).flat();
       await registrarLogEjecucion(
         supabase,
         envio.id,
@@ -146,9 +165,7 @@ export async function POST(request: Request) {
         guias.map((guia) => ({
           guia,
           estado: resultado.ok ? "OK" : "ERROR",
-          detalle: resultado.ok
-            ? { prefacturaId: envio.prefactura_id }
-            : { prefacturaId: envio.prefactura_id, error: resultado.error },
+          detalle: resultado.ok ? { prefacturaIds } : { prefacturaIds, error: resultado.error },
         })),
       );
     } catch (error) {
@@ -166,8 +183,8 @@ export async function POST(request: Request) {
           proximo_intento: agotado ? null : new Date(Date.now() + 2 ** intentos * 60_000).toISOString(),
         })
         .eq("id", envio.id);
-      if (agotado) {
-        await supabase.from("prefactura").update({ estado: "ERROR_ENVIO" }).eq("id", envio.prefactura_id);
+      if (agotado && prefacturaIds.length > 0) {
+        await supabase.from("prefactura").update({ estado: "ERROR_ENVIO" }).in("id", prefacturaIds);
       }
       if (envio.lote_id) {
         await supabase.rpc("incrementar_progreso_lote", { p_lote_id: envio.lote_id, p_exitoso: false });

@@ -25,6 +25,7 @@ export function ProgresoLote({
   const [lote, setLote] = useState(loteInicial);
   const [envios, setEnvios] = useState(enviosIniciales);
   const [reintentando, setReintentando] = useState(false);
+  const [mensajeReintento, setMensajeReintento] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -52,8 +53,17 @@ export function ProgresoLote({
 
   async function reintentar() {
     setReintentando(true);
-    await reintentarFallidosLoteAction(lote.id);
+    setMensajeReintento(null);
+    const resultado = await reintentarFallidosLoteAction(lote.id);
     setReintentando(false);
+    if (!resultado.ok) {
+      setMensajeReintento(resultado.error ?? "No se pudo reintentar los envíos fallidos.");
+      return;
+    }
+    setMensajeReintento(
+      `${resultado.reintentadas ?? 0} envío(s) vuelto(s) a Pendiente. El worker los retoma en su próximo ` +
+        "ciclo (hasta 1 minuto) — esta pantalla se actualiza sola cuando eso pase.",
+    );
   }
 
   const procesados = lote.exitosos + lote.fallidos;
@@ -74,13 +84,16 @@ export function ProgresoLote({
       </div>
 
       {lote.fallidos > 0 ? (
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={reintentar} disabled={reintentando}>
-            {reintentando ? "Reintentando..." : "Reintentar fallidos"}
-          </Button>
-          <Button asChild variant="outline">
-            <a href={`/api/lotes/${lote.id}/exportar`}>Descargar reporte de errores</a>
-          </Button>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={reintentar} disabled={reintentando}>
+              {reintentando ? "Reintentando..." : "Reintentar fallidos"}
+            </Button>
+            <Button asChild variant="outline">
+              <a href={`/api/lotes/${lote.id}/exportar`}>Descargar reporte de errores</a>
+            </Button>
+          </div>
+          {mensajeReintento ? <p className="text-sm text-muted-foreground">{mensajeReintento}</p> : null}
         </div>
       ) : null}
 
@@ -98,7 +111,14 @@ export function ProgresoLote({
             {envios.map((e) => (
               <tr key={e.id}>
                 <td className="px-3 py-2">{(e.destinatarios_to as unknown as string[]).join(", ")}</td>
-                <td className="px-3 py-2">{e.asunto}</td>
+                <td className="px-3 py-2">
+                  {e.asunto}
+                  {e.zip_storage_key ? (
+                    <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      ZIP · {e.prefactura_ids?.length ?? 0} prefacturas
+                    </span>
+                  ) : null}
+                </td>
                 <td className="px-3 py-2">{ETIQUETA_ESTADO[e.estado] ?? e.estado}</td>
                 <td className="px-3 py-2 text-xs text-destructive">{e.error ?? "—"}</td>
               </tr>

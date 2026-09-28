@@ -638,7 +638,7 @@ export interface Database {
       envio_correo: {
         Row: {
           id: string;
-          prefactura_id: string;
+          prefactura_id: string | null;
           documento_pdf_id: string | null;
           lote_id: string | null;
           destinatarios_to: Json;
@@ -652,10 +652,13 @@ export interface Database {
           error: string | null;
           enviado_por: string | null;
           enviado_en: string | null;
+          zip_storage_key: string | null;
+          zip_nombre_archivo: string | null;
+          prefactura_ids: string[] | null;
         } & Auditable;
         Insert: {
           id?: string;
-          prefactura_id: string;
+          prefactura_id?: string | null;
           documento_pdf_id?: string | null;
           lote_id?: string | null;
           destinatarios_to?: Json;
@@ -669,6 +672,9 @@ export interface Database {
           error?: string | null;
           enviado_por?: string | null;
           enviado_en?: string | null;
+          zip_storage_key?: string | null;
+          zip_nombre_archivo?: string | null;
+          prefactura_ids?: string[] | null;
           created_at?: string;
           updated_at?: string;
         };
