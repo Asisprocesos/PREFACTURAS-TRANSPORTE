@@ -34,6 +34,37 @@ comment on column public.envio_correo.prefactura_ids is
 -- src/lib/contactos/validar-email.ts). El proveedor SMTP rechaza esas
 -- direcciones como destinatario inválido, causando envíos que fallan a
 -- pesar de que el correo "existe".
+--
+-- Como esa misma validación floja ya dejaba pasar la versión sucia, en
+-- varios casos YA existe también la versión limpia como otra fila (el
+-- mismo correo quedó registrado dos veces: con y sin el separador pegado).
+-- Antes de normalizar hay que quedarse con una sola fila por (dueño, correo
+-- normalizado) para no violar contacto_correo_vehiculo_email_key /
+-- contacto_correo_transportista_email_key — se prefiere conservar la fila
+-- que ya estaba limpia; si ninguna lo estaba, se conserva la más antigua.
+with agrupado as (
+  select
+    id,
+    row_number() over (
+      partition by
+        coalesce(vehiculo_id, transportista_id),
+        lower(regexp_replace(trim(email), '^[;,\s]+|[;,\s]+$', '', 'g'))
+      order by (email ~ '^[;,\s]+|[;,\s]+$') asc, created_at asc
+    ) as orden
+  from public.contacto_correo
+)
+delete from public.contacto_correo c
+using agrupado a
+where c.id = a.id and a.orden > 1;
+
 update public.contacto_correo
 set email = regexp_replace(trim(email), '^[;,\s]+|[;,\s]+$', '', 'g')
 where email ~ '^[;,\s]+|[;,\s]+$';
+
+-- Ya con los datos limpios, se endurece el check de formato (el original
+-- tenía el mismo hueco que limpiarEmail() corrige: no excluía ";"/"," del
+-- carácter válido) para que un insert/update futuro que no pase por la
+-- aplicación no pueda reintroducir el problema.
+alter table public.contacto_correo drop constraint contacto_correo_email_check;
+alter table public.contacto_correo add constraint contacto_correo_email_check
+  check (email ~* '^[^@\s;,]+@[^@\s;,]+\.[^@\s;,]+$');
