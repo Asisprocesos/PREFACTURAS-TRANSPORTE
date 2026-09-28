@@ -12,7 +12,7 @@ type OdtUpdate = Database["public"]["Tables"]["odt"]["Update"];
 const CAMPOS_CORREGIBLES = [
   "placa_normalizada",
   "fecha_creacion",
-  "valor",
+  "valor_final",
   "tipo_ruta",
   "centro_costo_final",
   "regional_origen_texto",
@@ -26,7 +26,12 @@ function esCampoCorregible(campo: string): campo is CampoCorregible {
 /** Campos que deben quedar siempre en mayúsculas para uniformidad (ver también validarFila, vehiculoFormSchema y tipoRutaCentroCostoSchema). */
 const CAMPOS_MAYUSCULAS = new Set<CampoCorregible>(["placa_normalizada", "tipo_ruta", "centro_costo_final"]);
 
-async function marcarRequiereRegenerar(odtId: string) {
+/**
+ * Marca REQUIERE_REGENERAR las prefacturas con PDF vigente que incluyen esta
+ * ODT, y devuelve los ids de TODAS las prefacturas afectadas (tengan o no
+ * PDF vigente) para poder revalidar sus páginas de detalle.
+ */
+async function marcarRequiereRegenerar(odtId: string): Promise<string[]> {
   const supabase = await createClient();
   const { data: detalle } = await supabase
     .from("prefactura_detalle")
@@ -43,6 +48,7 @@ async function marcarRequiereRegenerar(odtId: string) {
       await supabase.from("prefactura").update({ estado: "REQUIERE_REGENERAR" }).eq("id", d.prefactura_id);
     }
   }
+  return (detalle ?? []).map((d) => d.prefactura_id);
 }
 
 export async function corregirOdtAction(
@@ -86,14 +92,15 @@ export async function corregirOdtAction(
     usuario: perfil.userId,
   });
 
-  await marcarRequiereRegenerar(odtId);
+  const prefacturaIds = await marcarRequiereRegenerar(odtId);
 
-  if ((campo === "valor" || campo === "placa_normalizada") && odt.periodo_id) {
+  if ((campo === "valor_final" || campo === "placa_normalizada") && odt.periodo_id) {
     await supabase.rpc("generar_prefacturas_periodo", { p_periodo_id: odt.periodo_id });
   }
 
   revalidatePath("/control-placa");
   revalidatePath("/prefacturas");
+  for (const id of prefacturaIds) revalidatePath(`/prefacturas/${id}`);
   return { ok: true };
 }
 

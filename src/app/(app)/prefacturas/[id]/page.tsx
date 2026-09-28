@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,8 +27,9 @@ export const maxDuration = 60;
 const formatoMoneda = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD" });
 
 export default async function DetallePrefacturaPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
+  const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
   const { id } = await params;
+  const puedeEditarOdt = perfil.rol === "ADMIN" || perfil.rol === "OPERADOR_TRANSPORTE";
 
   const prefactura = await obtenerPrefactura(id);
   if (!prefactura) notFound();
@@ -174,6 +176,12 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Detalle de ODT</CardTitle>
+          {puedeEditarOdt ? (
+            <p className="text-xs text-muted-foreground">
+              ¿Un valor mal ingresado? Usa &quot;Editar&quot; y luego genera de nuevo el PDF para que se
+              refleje.
+            </p>
+          ) : null}
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -185,6 +193,7 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
                   <th className="px-3 py-2 font-medium">Ruta</th>
                   <th className="px-3 py-2 font-medium">Centro de costo</th>
                   <th className="px-3 py-2 font-medium">Valor</th>
+                  {puedeEditarOdt ? <th className="px-3 py-2 font-medium">Acciones</th> : null}
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -195,6 +204,16 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
                     <td className="px-3 py-2">{o.ruta ?? o.ruta_macro ?? "—"}</td>
                     <td className="px-3 py-2">{o.centro_costo_final ?? "—"}</td>
                     <td className="px-3 py-2">{formatoMoneda.format(o.valor_final ?? o.valor)}</td>
+                    {puedeEditarOdt ? (
+                      <td className="px-3 py-2">
+                        <Link
+                          href={`/odt/${encodeURIComponent(o.guia)}/corregir?volver=${encodeURIComponent(`/prefacturas/${id}`)}`}
+                          className="text-primary-ink hover:underline"
+                        >
+                          Editar ODT
+                        </Link>
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>

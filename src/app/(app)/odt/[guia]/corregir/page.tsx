@@ -7,9 +7,16 @@ import { listarCorreccionesOdt, obtenerOdtPorGuia } from "@/lib/odt/queries";
 
 import { FormularioCorreccion } from "./formulario-correccion";
 
-export default async function CorregirOdtPage({ params }: { params: Promise<{ guia: string }> }) {
+export default async function CorregirOdtPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ guia: string }>;
+  searchParams: Promise<{ volver?: string }>;
+}) {
   await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
   const { guia } = await params;
+  const { volver } = await searchParams;
 
   const odt = await obtenerOdtPorGuia(decodeURIComponent(guia));
   if (!odt) notFound();
@@ -18,11 +25,12 @@ export default async function CorregirOdtPage({ params }: { params: Promise<{ gu
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <BotonVolver fallbackHref="/validacion-odt" />
+      <BotonVolver fallbackHref={volver ?? "/validacion-odt"} />
       <div>
         <h1 className="titulo-marca text-2xl">Corregir ODT {odt.guia}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Placa {odt.placa_normalizada ?? "—"} · Fecha creación {odt.fecha_creacion} · Valor {odt.valor}
+          Placa {odt.placa_normalizada ?? "—"} · Fecha creación {odt.fecha_creacion} · Valor{" "}
+          {odt.valor_final ?? odt.valor}
         </p>
       </div>
 
@@ -31,7 +39,7 @@ export default async function CorregirOdtPage({ params }: { params: Promise<{ gu
           <CardTitle className="text-lg">Corregir un campo</CardTitle>
         </CardHeader>
         <CardContent>
-          <FormularioCorreccion odt={odt} />
+          <FormularioCorreccion odt={odt} volver={volver} />
         </CardContent>
       </Card>
 

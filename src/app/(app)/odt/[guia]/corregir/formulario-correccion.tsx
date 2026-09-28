@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -12,7 +13,7 @@ import type { Odt } from "@/lib/odt/queries";
 const CAMPOS: { valor: keyof Odt; etiqueta: string }[] = [
   { valor: "placa_normalizada", etiqueta: "Placa" },
   { valor: "fecha_creacion", etiqueta: "Fecha Creación (aaaa-mm-dd)" },
-  { valor: "valor", etiqueta: "Valor" },
+  { valor: "valor_final", etiqueta: "Valor" },
   { valor: "tipo_ruta", etiqueta: "Tipo de Ruta" },
   { valor: "centro_costo_final", etiqueta: "Centro de Costo" },
   { valor: "regional_origen_texto", etiqueta: "Regional" },
@@ -21,7 +22,7 @@ const CAMPOS: { valor: keyof Odt; etiqueta: string }[] = [
 /** Estos campos siempre se guardan en mayúsculas (ver también corregirOdtAction). */
 const CAMPOS_MAYUSCULAS = new Set<keyof Odt>(["placa_normalizada", "tipo_ruta", "centro_costo_final"]);
 
-export function FormularioCorreccion({ odt }: { odt: Odt }) {
+export function FormularioCorreccion({ odt, volver }: { odt: Odt; volver?: string }) {
   const router = useRouter();
   const [campo, setCampo] = useState<string>(CAMPOS[0]!.valor);
   const [valorNuevo, setValorNuevo] = useState("");
@@ -91,7 +92,19 @@ export function FormularioCorreccion({ odt }: { odt: Odt }) {
         />
       </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      {exito ? <p className="text-sm text-primary-ink">Corrección aplicada.</p> : null}
+      {exito ? (
+        <div className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3">
+          <p className="text-sm text-primary-ink">
+            Corrección aplicada. Si la prefactura ya tenía un PDF generado, quedó marcada para regenerar —
+            vuelve a darle &quot;Generar PDF&quot; para que el documento refleje el cambio.
+          </p>
+          {volver ? (
+            <Button asChild size="sm" variant="outline">
+              <Link href={volver}>Volver a la prefactura</Link>
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
       <Button type="submit" disabled={cargando}>
         {cargando ? "Guardando..." : "Guardar corrección"}
       </Button>
