@@ -8,6 +8,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+// Márgen de seguridad bajo maxDuration: hay que dejar tiempo para que el
+// envío en curso termine y la función devuelva respuesta antes de que
+// Vercel la mate por timeout. Si eso pasara a mitad de un envío, esa fila
+// quedaría en ENVIANDO sin que nadie la retome (ver limpieza de huérfanos
+// más abajo) — mejor cortar el lote antes de llegar a ese límite.
+const PRESUPUESTO_MS = 45_000;
+
 /**
  * Worker de la cola de correo. Lo dispara pg_cron cada minuto (ver
  * supabase/migrations/20260918090020_pg_cron_envio_correo.sql) y,
@@ -16,6 +23,7 @@ export const maxDuration = 60;
  * usa el cliente admin (service_role), nunca expuesto al navegador.
  */
 export async function POST(request: Request) {
+  const inicio = Date.now();
   const secreto = process.env.CRON_SECRET;
   const autorizacion = request.headers.get("authorization");
   if (!secreto || autorizacion !== `Bearer ${secreto}`) {
@@ -27,6 +35,19 @@ export async function POST(request: Request) {
   const ritmoPorMinuto = Number(process.env.EMAIL_RATE_PER_MINUTE ?? defaultAppConfig.correo.ritmoPorMinuto);
   const maxReintentos = Number(process.env.EMAIL_MAX_RETRIES ?? defaultAppConfig.correo.maxReintentos);
   const esperaEntreCorreosMs = Math.max(0, Math.ceil(60000 / Math.max(1, ritmoPorMinuto)));
+
+  // Filas huérfanas: un tick anterior las marcó ENVIANDO (tomar_lote_envio_correo
+  // lo hace de una para todo el lote reclamado, antes de procesar fila por
+  // fila) y la función se cortó a mitad de camino — por timeout de Vercel o
+  // por caerse el proceso — sin llegar a devolverlas a PENDIENTE. Nadie más
+  // las reclama (tomar_lote_envio_correo solo toma PENDIENTE/REINTENTAR), así
+  // que sin este barrido quedarían "enviando" para siempre. 3 minutos es
+  // tiempo de sobra frente al PRESUPUESTO_MS de este mismo worker.
+  await supabase
+    .from("envio_correo")
+    .update({ estado: "PENDIENTE" })
+    .eq("estado", "ENVIANDO")
+    .lt("updated_at", new Date(Date.now() - 3 * 60_000).toISOString());
 
   const { data: lote, error: errorLote } = await supabase.rpc("tomar_lote_envio_correo", {
     p_limite: tamanoLote,
@@ -64,6 +85,24 @@ export async function POST(request: Request) {
   let fallidos = 0;
 
   for (let i = 0; i < lote.length; i++) {
+    // Un lote grande a un ritmo lento (ej. 20 correos a 10/min = 6s entre
+    // cada uno = ~114s) puede no alcanzar a terminar dentro de maxDuration.
+    // En vez de dejar que Vercel mate la función a mitad de un envío (la
+    // fila en curso quedaría en ENVIANDO huérfana), se corta antes: lo ya
+    // procesado queda guardado, y el resto del lote reclamado vuelve a
+    // PENDIENTE para que el próximo tick (máx. 1 minuto después) lo retome.
+    if (i > 0 && Date.now() - inicio > PRESUPUESTO_MS) {
+      await supabase
+        .from("envio_correo")
+        .update({ estado: "PENDIENTE" })
+        .in(
+          "id",
+          lote.slice(i).map((e) => e.id),
+        )
+        .eq("estado", "ENVIANDO");
+      return NextResponse.json({ procesados: i, exitosos, fallidos, cortado: true });
+    }
+
     const envio = lote[i]!;
     if (i > 0) await new Promise((resolve) => setTimeout(resolve, esperaEntreCorreosMs));
 
