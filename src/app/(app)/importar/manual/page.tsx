@@ -16,7 +16,7 @@ export default async function IngresoManualPage({
 
   return (
     <div className="space-y-4">
-      <BotonVolver fallbackHref="/prefacturas" />
+      <BotonVolver fallbackHref="/importar" />
       <div>
         <h1 className="titulo-marca text-2xl">Ingreso manual de ODT</h1>
         <p className="mt-2 text-sm text-muted-foreground">

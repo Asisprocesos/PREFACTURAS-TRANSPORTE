@@ -359,8 +359,11 @@ export function IngresoManualForm({
               <Button variant="outline" onClick={ingresarOtra}>
                 Ingresar otra ODT
               </Button>
+              <Button variant="outline" asChild>
+                <Link href="/importar">Volver a Importar</Link>
+              </Button>
               <Button asChild>
-                <Link href={`/prefacturas?periodo=${periodoId}`}>Volver a Prefacturas</Link>
+                <Link href={`/prefacturas?periodo=${periodoId}`}>Ver en Prefacturas</Link>
               </Button>
             </div>
           </div>

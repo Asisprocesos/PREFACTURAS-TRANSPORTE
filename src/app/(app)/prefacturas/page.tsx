@@ -1,6 +1,3 @@
-import Link from "next/link";
-
-import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth/roles";
 import { listarPeriodosParaSelect } from "@/lib/importador/queries";
 import { listarPrefacturas } from "@/lib/prefacturas/queries";
@@ -44,17 +41,6 @@ export default async function PrefacturasPage({
         </div>
         {puedeGenerar ? (
           <div className="flex flex-wrap items-start gap-2">
-            <Button variant="outline" asChild>
-              <Link
-                href={
-                  periodoSeleccionado
-                    ? `/prefacturas/manual?periodo=${periodoSeleccionado}`
-                    : "/prefacturas/manual"
-                }
-              >
-                Ingresar ODT manualmente
-              </Link>
-            </Button>
             <GenerarPrefacturasButton periodoId={periodoSeleccionado} />
             <GenerarTodosPdfButton periodoId={periodoSeleccionado} />
           </div>

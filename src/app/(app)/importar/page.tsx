@@ -1,3 +1,6 @@
+import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth/roles";
 import { listarImportacionesRecientes, listarPeriodosParaSelect } from "@/lib/importador/queries";
 
@@ -20,12 +23,17 @@ export default async function ImportarPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="titulo-marca text-2xl">Importar</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Cargar → Leer → Mapear → Validar → Confirmar. El archivo se sube directo a Storage y nunca pasa por
-          el body de la API.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="titulo-marca text-2xl">Importar</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Cargar → Leer → Mapear → Validar → Confirmar. El archivo se sube directo a Storage y nunca pasa
+            por el body de la API.
+          </p>
+        </div>
+        <Button variant="outline" asChild>
+          <Link href="/importar/manual">Ingresar ODT manualmente</Link>
+        </Button>
       </div>
       <ImportarWizard periodos={periodos} esAdmin={perfil.rol === "ADMIN"} />
       <ImportacionesRecientes importaciones={recientes} />
