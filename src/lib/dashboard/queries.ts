@@ -103,6 +103,46 @@ export async function obtenerMontoPorRegional(periodoId: string | null): Promise
   return (data ?? []).map((f) => ({ nombre: f.regional, monto: f.monto, cantidad: f.cantidad }));
 }
 
+/**
+ * Prefacturas del período sin NINGÚN correo de contacto registrado (ni en
+ * el vehículo ni en el transportista) — se detectarían recién al intentar
+ * enviar (ver encolarEnviosAction), así que este indicador sirve de aviso
+ * temprano para ir a completar el dato en Vehículos/Transportistas.
+ */
+export async function contarPrefacturasSinCorreo(periodoId: string | null): Promise<number> {
+  if (!periodoId) return 0;
+  const supabase = await createClient();
+  const { data: prefacturas, error } = await supabase
+    .from("prefactura")
+    .select("vehiculo_id, transportista_id")
+    .eq("periodo_id", periodoId);
+  if (error) throw error;
+  if (!prefacturas || prefacturas.length === 0) return 0;
+
+  const vehiculoIds = [...new Set(prefacturas.map((p) => p.vehiculo_id).filter((id): id is string => !!id))];
+  const transportistaIds = [
+    ...new Set(prefacturas.map((p) => p.transportista_id).filter((id): id is string => !!id)),
+  ];
+
+  const [{ data: contactosVehiculo }, { data: contactosTransportista }] = await Promise.all([
+    vehiculoIds.length > 0
+      ? supabase.from("contacto_correo").select("vehiculo_id").in("vehiculo_id", vehiculoIds)
+      : Promise.resolve({ data: [] as { vehiculo_id: string | null }[] }),
+    transportistaIds.length > 0
+      ? supabase.from("contacto_correo").select("transportista_id").in("transportista_id", transportistaIds)
+      : Promise.resolve({ data: [] as { transportista_id: string | null }[] }),
+  ]);
+
+  const vehiculosConCorreo = new Set((contactosVehiculo ?? []).map((c) => c.vehiculo_id));
+  const transportistasConCorreo = new Set((contactosTransportista ?? []).map((c) => c.transportista_id));
+
+  return prefacturas.filter(
+    (p) =>
+      !(p.vehiculo_id && vehiculosConCorreo.has(p.vehiculo_id)) &&
+      !(p.transportista_id && transportistasConCorreo.has(p.transportista_id)),
+  ).length;
+}
+
 export interface PuntoTopPlaca {
   placa: string;
   transportista: string | null;

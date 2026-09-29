@@ -31,9 +31,14 @@ export default async function ImportarPage() {
             por el body de la API.
           </p>
         </div>
-        <Button variant="outline" asChild>
-          <Link href="/importar/manual">Ingresar ODT manualmente</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/buscador">Ver ODT importadas</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/importar/manual">Ingresar ODT manualmente</Link>
+          </Button>
+        </div>
       </div>
       <ImportarWizard periodos={periodos} esAdmin={perfil.rol === "ADMIN"} />
       <ImportacionesRecientes importaciones={recientes} />

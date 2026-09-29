@@ -24,14 +24,16 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import type { cerrarSesionAction } from "@/lib/auth/actions";
+import type { AlertasGlobales } from "@/lib/alertas/queries";
 import { cn } from "@/lib/utils";
 
-const MENU: { href: string; label: string; icon: LucideIcon }[] = [
+/** `alerta` mapea el href a la clave de AlertasGlobales cuyo conteo se muestra como badge (ninguna = sin badge). */
+const MENU: { href: string; label: string; icon: LucideIcon; alerta?: keyof AlertasGlobales }[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/buscador", label: "Buscador", icon: Search },
-  { href: "/prefacturas", label: "Prefacturas", icon: Receipt },
+  { href: "/prefacturas", label: "Prefacturas", icon: Receipt, alerta: "prefacturasErrorEnvio" },
   { href: "/importar", label: "Importar", icon: FileUp },
-  { href: "/control-placa", label: "Control por placa", icon: IdCard },
+  { href: "/control-placa", label: "Control por placa", icon: IdCard, alerta: "novedadesError" },
   { href: "/validacion-odt", label: "Validación ODT / Escaneo", icon: ClipboardCheck },
   { href: "/transportistas", label: "Transportistas", icon: Users },
   { href: "/vehiculos", label: "Vehículos", icon: Truck },
@@ -47,9 +49,11 @@ const CLAVE_COLAPSADO = "laar_sidebar_colapsada";
 export function Sidebar({
   perfil,
   cerrarSesion,
+  alertas,
 }: {
   perfil: { nombre: string | null; email: string | null } | null;
   cerrarSesion: typeof cerrarSesionAction;
+  alertas: AlertasGlobales | null;
 }) {
   // Arranca expandida en el server y en el primer render del cliente (para
   // que coincidan y no haya warning de hidratación); el useEffect de abajo
@@ -124,21 +128,35 @@ export function Sidebar({
       <nav className="flex-1 space-y-1 px-3 py-4">
         {MENU.map((item) => {
           const Icono = item.icon;
+          const conteo = item.alerta && alertas ? alertas[item.alerta] : 0;
           return (
             <Link
               key={item.href}
               href={item.href}
-              title={colapsada ? item.label : undefined}
+              title={
+                colapsada ? (conteo > 0 ? `${item.label} (${conteo} pendiente(s))` : item.label) : undefined
+              }
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm text-white/80 transition-colors hover:bg-white/10 hover:text-laar-amarillo",
+                "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm text-white/80 transition-colors hover:bg-white/10 hover:text-laar-amarillo",
                 colapsada && "justify-center px-2",
               )}
             >
-              <Icono className="h-4 w-4 shrink-0" />
+              <span className="relative shrink-0">
+                <Icono className="h-4 w-4" />
+                {conteo > 0 && colapsada ? (
+                  <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-destructive" />
+                ) : null}
+              </span>
               {!colapsada ? (
                 <>
                   <span className="flex-1">{item.label}</span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-white/30" />
+                  {conteo > 0 ? (
+                    <span className="rounded-full bg-destructive px-1.5 py-0.5 text-xs font-semibold leading-none text-destructive-foreground">
+                      {conteo > 99 ? "99+" : conteo}
+                    </span>
+                  ) : (
+                    <ChevronRight className="h-4 w-4 shrink-0 text-white/30" />
+                  )}
                 </>
               ) : null}
             </Link>

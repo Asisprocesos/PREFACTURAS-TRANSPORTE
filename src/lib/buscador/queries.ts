@@ -27,6 +27,8 @@ export interface FiltrosBuscadorOdt {
 export interface ResultadoBuscadorOdt {
   filas: OdtConRelaciones[];
   cursorSiguiente: string | null;
+  /** Total de filas que calzan con los filtros (sin contar el cursor de paginación). */
+  total: number;
 }
 
 const TAMANO_PAGINA = 30;
@@ -87,8 +89,12 @@ export async function buscarOdt(
     vehiculoIds = restriccionesVehiculo.reduce((interseccion, ids) =>
       interseccion.filter((id) => ids.includes(id)),
     );
-    if (vehiculoIds.length === 0) return { filas: [], cursorSiguiente: null };
+    if (vehiculoIds.length === 0) return { filas: [], cursorSiguiente: null, total: 0 };
   }
+
+  const texto = filtros.texto?.trim();
+  const placaNormalizada = filtros.placa ? filtros.placa.toUpperCase().replace(/[-\s]/g, "") : undefined;
+  const estadoFenix = filtros.estadoFenix?.trim();
 
   let query = supabase
     .from("odt")
@@ -96,15 +102,36 @@ export async function buscarOdt(
     .order("fecha_creacion", { ascending: false })
     .order("id", { ascending: false })
     .limit(TAMANO_PAGINA);
+  let consultaTotal = supabase.from("odt").select("id", { count: "exact", head: true });
 
-  const texto = filtros.texto?.trim();
-  if (texto) query = query.ilike("guia", `%${texto}%`);
-  if (filtros.periodoId) query = query.eq("periodo_id", filtros.periodoId);
-  if (filtros.placa) query = query.eq("placa_normalizada", filtros.placa.toUpperCase().replace(/[-\s]/g, ""));
-  if (filtros.estadoFenix?.trim()) query = query.ilike("estado_fenix", `%${filtros.estadoFenix.trim()}%`);
-  if (filtros.fechaDesde) query = query.gte("fecha_creacion", filtros.fechaDesde);
-  if (filtros.fechaHasta) query = query.lte("fecha_creacion", filtros.fechaHasta);
-  if (vehiculoIds) query = query.in("vehiculo_id", vehiculoIds);
+  if (texto) {
+    query = query.ilike("guia", `%${texto}%`);
+    consultaTotal = consultaTotal.ilike("guia", `%${texto}%`);
+  }
+  if (filtros.periodoId) {
+    query = query.eq("periodo_id", filtros.periodoId);
+    consultaTotal = consultaTotal.eq("periodo_id", filtros.periodoId);
+  }
+  if (placaNormalizada) {
+    query = query.eq("placa_normalizada", placaNormalizada);
+    consultaTotal = consultaTotal.eq("placa_normalizada", placaNormalizada);
+  }
+  if (estadoFenix) {
+    query = query.ilike("estado_fenix", `%${estadoFenix}%`);
+    consultaTotal = consultaTotal.ilike("estado_fenix", `%${estadoFenix}%`);
+  }
+  if (filtros.fechaDesde) {
+    query = query.gte("fecha_creacion", filtros.fechaDesde);
+    consultaTotal = consultaTotal.gte("fecha_creacion", filtros.fechaDesde);
+  }
+  if (filtros.fechaHasta) {
+    query = query.lte("fecha_creacion", filtros.fechaHasta);
+    consultaTotal = consultaTotal.lte("fecha_creacion", filtros.fechaHasta);
+  }
+  if (vehiculoIds) {
+    query = query.in("vehiculo_id", vehiculoIds);
+    consultaTotal = consultaTotal.in("vehiculo_id", vehiculoIds);
+  }
 
   if (cursor) {
     const decodificado = decodificarCursor(cursor);
@@ -114,12 +141,13 @@ export async function buscarOdt(
     }
   }
 
-  const { data, error } = await query;
+  const [{ data, error }, { count, error: errorTotal }] = await Promise.all([query, consultaTotal]);
   if (error) throw error;
+  if (errorTotal) throw errorTotal;
   const filas = (data ?? []) as unknown as OdtConRelaciones[];
   const ultima = filas.length === TAMANO_PAGINA ? filas[filas.length - 1] : undefined;
   const cursorSiguiente = ultima ? codificarCursor(ultima.fecha_creacion, ultima.id) : null;
-  return { filas, cursorSiguiente };
+  return { filas, cursorSiguiente, total: count ?? 0 };
 }
 
 function codificarCursor(fecha: string, id: string): string {

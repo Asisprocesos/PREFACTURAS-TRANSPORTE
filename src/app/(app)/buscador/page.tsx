@@ -30,7 +30,7 @@ export default async function BuscadorPage({
     listarTransportistasParaSelect(),
   ]);
 
-  const { filas, cursorSiguiente } = await buscarOdt(
+  const { filas, cursorSiguiente, total } = await buscarOdt(
     {
       texto: params.texto,
       placa: params.placa,
@@ -49,10 +49,13 @@ export default async function BuscadorPage({
       <div>
         <h1 className="titulo-marca text-2xl">Buscador</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Búsqueda global de ODT por guía, placa, correo electrónico, transportista, período, estado o fecha.
+          Repositorio de todas las ODT cargadas (masivo o manual): búsqueda por guía, placa, correo,
+          transportista, período, estado o fecha. Sin filtros muestra las más recientes — la guía es un enlace
+          directo para corregirla.
         </p>
       </div>
       <FiltrosBuscador periodos={periodos} transportistas={transportistas} />
+      <p className="text-sm text-muted-foreground">{total.toLocaleString("es-EC")} resultado(s)</p>
       <ResultadosBuscador filas={filas} />
       <PaginacionBuscador cursorSiguiente={cursorSiguiente} />
     </div>

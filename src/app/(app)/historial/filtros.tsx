@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 const ETAPAS = ["IMPORTACION", "VALIDACION", "PDF", "CORREO"] as const;
 const ESTADOS = ["OK", "ADVERTENCIA", "ERROR"] as const;
 
-export function FiltrosHistorial() {
+export function FiltrosHistorial({ periodos }: { periodos: { id: string; nombre: string }[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -26,6 +26,18 @@ export function FiltrosHistorial() {
         placeholder="Buscar guía..."
         className="h-10 rounded-md border border-input bg-background px-3 text-sm"
       />
+      <select
+        value={searchParams.get("periodo") ?? ""}
+        onChange={(e) => actualizar("periodo", e.target.value)}
+        className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+      >
+        <option value="">Todos los períodos</option>
+        {periodos.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.nombre}
+          </option>
+        ))}
+      </select>
       <select
         value={searchParams.get("etapa") ?? ""}
         onChange={(e) => actualizar("etapa", e.target.value)}

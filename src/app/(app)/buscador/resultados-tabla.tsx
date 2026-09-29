@@ -25,6 +25,7 @@ export function ResultadosBuscador({ filas }: { filas: OdtConRelaciones[] }) {
             <th className="px-4 py-3 font-medium">Estado (Fénix)</th>
             <th className="px-4 py-3 font-medium">Centro de costo</th>
             <th className="px-4 py-3 font-medium">Valor</th>
+            <th className="px-4 py-3 font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody className="divide-y">
@@ -58,6 +59,14 @@ export function ResultadosBuscador({ filas }: { filas: OdtConRelaciones[] }) {
               <td className="px-4 py-3">{odt.estado_fenix ?? "—"}</td>
               <td className="px-4 py-3">{odt.centro_costo_final ?? "—"}</td>
               <td className="px-4 py-3">{formatoMoneda.format(odt.valor_final ?? odt.valor)}</td>
+              <td className="px-4 py-3">
+                <Link
+                  href={`/odt/${encodeURIComponent(odt.guia)}/corregir?volver=${encodeURIComponent("/buscador")}`}
+                  className="text-primary-ink hover:underline"
+                >
+                  Editar
+                </Link>
+              </td>
             </tr>
           ))}
         </tbody>
