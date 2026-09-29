@@ -2,9 +2,11 @@ import { defaultAppConfig } from "@/config/app.config";
 import { VolverAImportacion } from "@/components/ui/volver-a-importacion";
 import { listarTipoRutaCentroCosto } from "@/lib/catalogos/tipo-ruta-centro-costo/queries";
 import { requireRole } from "@/lib/auth/roles";
+import { calcularSiguienteRango } from "@/lib/periodos/nombre";
 import { listarPeriodosAdmin } from "@/lib/periodos/queries";
 
 import { ArchivarAntiguosButton } from "./archivar-antiguos-button";
+import { CrearPeriodoForm } from "./crear-periodo-form";
 import { PeriodosTabla } from "./periodos-tabla";
 import { TipoRutaCentroCostoTabla } from "./tipo-ruta-centro-costo-tabla";
 
@@ -19,6 +21,10 @@ export default async function ConfiguracionPage({
     listarPeriodosAdmin(),
     listarTipoRutaCentroCosto(),
   ]);
+
+  const ultimoPeriodo = periodos[0] ?? null;
+  const siguienteNumero = Math.max(0, ...periodos.map((p) => p.numero)) + 1;
+  const sugerenciaRango = ultimoPeriodo ? calcularSiguienteRango(ultimoPeriodo.fecha_fin) : null;
 
   return (
     <div className="space-y-6">
@@ -39,6 +45,7 @@ export default async function ConfiguracionPage({
           bucket <code>archivo</code> antes de marcarlo como archivado.
         </p>
         <PeriodosTabla periodos={periodos} />
+        <CrearPeriodoForm siguienteNumero={siguienteNumero} sugerencia={sugerenciaRango} />
       </section>
 
       <section className="space-y-3">
