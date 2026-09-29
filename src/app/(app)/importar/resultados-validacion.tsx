@@ -5,6 +5,7 @@ import { Fragment, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Paginacion } from "@/components/ui/paginacion";
 import { establecerDecisionFilaAction } from "@/lib/importador/confirmar-action";
 import { corregirFilaImportacionAction, type CorreccionFila } from "@/lib/importador/correccion-action";
 import { listarFilasImportacionAction } from "@/lib/importador/lectura-actions";
@@ -290,23 +291,8 @@ export function ResultadosValidacion({
         </table>
       </div>
 
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>
-          Página {pagina} de {totalPaginas}
-        </span>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled={pagina <= 1} onClick={() => setPagina((p) => p - 1)}>
-            Anterior
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={pagina >= totalPaginas}
-            onClick={() => setPagina((p) => p + 1)}
-          >
-            Siguiente
-          </Button>
-        </div>
+      <div className="flex justify-end">
+        <Paginacion pagina={pagina} totalPaginas={totalPaginas} onCambiarPagina={setPagina} />
       </div>
     </div>
   );

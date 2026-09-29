@@ -14,6 +14,7 @@ import { useState } from "react";
 import { BotonAccionConfirmada } from "@/components/ui/boton-accion-confirmada";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Paginacion } from "@/components/ui/paginacion";
 import {
   eliminarTransportistaAction,
   eliminarTransportistasAction,
@@ -259,22 +260,8 @@ export function TransportistasTable({
       </div>
 
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>
-          Página {pagina} de {totalPaginas} · {total} transportistas
-        </span>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled={pagina <= 1} onClick={() => irAPagina(pagina - 1)}>
-            Anterior
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={pagina >= totalPaginas}
-            onClick={() => irAPagina(pagina + 1)}
-          >
-            Siguiente
-          </Button>
-        </div>
+        <span>{total} transportistas</span>
+        <Paginacion pagina={pagina} totalPaginas={totalPaginas} onCambiarPagina={irAPagina} />
       </div>
     </div>
   );
