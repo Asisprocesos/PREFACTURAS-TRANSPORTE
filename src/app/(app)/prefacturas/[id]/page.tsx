@@ -17,6 +17,7 @@ import {
 import { nombreTransportista } from "@/lib/transportistas/display";
 
 import { AccionesPdf } from "./acciones-pdf";
+import { AnularPrefacturaButton } from "./anular-prefactura-button";
 import { EnviarCorreoForm } from "./enviar-correo-form";
 import { PdfPreview } from "./pdf-preview";
 
@@ -33,6 +34,7 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
 
   const prefactura = await obtenerPrefactura(id);
   if (!prefactura) notFound();
+  const anulada = prefactura.estado === "ANULADA";
 
   const [resumen, detalleOdt, todasLasNovedades, contactos] = await Promise.all([
     obtenerResumenFacturacion(id),
@@ -52,6 +54,12 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
   return (
     <div className="space-y-6">
       <BotonVolver fallbackHref="/prefacturas" />
+      {anulada ? (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          Esta prefactura está <strong>anulada</strong>. No se puede enviar por correo hasta reactivarla o
+          eliminarla.
+        </div>
+      ) : null}
       <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
         <div className="space-y-3">
           <div>
@@ -72,14 +80,17 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
         <div className="flex flex-col items-end gap-2">
           <div className="flex gap-2">
             <AccionesPdf prefacturaId={id} tieneVigente={prefactura.version_actual > 0} />
+            {puedeEditarOdt ? <AnularPrefacturaButton prefacturaId={id} anulada={anulada} /> : null}
           </div>
-          <EnviarCorreoForm
-            prefacturaId={id}
-            correoPrincipal={contactos.principal}
-            correosAdicionales={contactos.adicionales}
-            asuntoInicial={asuntoInicial}
-            cuerpoInicial={cuerpoInicial}
-          />
+          {anulada ? null : (
+            <EnviarCorreoForm
+              prefacturaId={id}
+              correoPrincipal={contactos.principal}
+              correosAdicionales={contactos.adicionales}
+              asuntoInicial={asuntoInicial}
+              cuerpoInicial={cuerpoInicial}
+            />
+          )}
         </div>
       </div>
 

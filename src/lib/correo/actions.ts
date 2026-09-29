@@ -57,6 +57,9 @@ export async function enviarCorreoIndividualAction(
   try {
     const prefactura = await obtenerPrefactura(prefacturaId);
     if (!prefactura) return { ok: false, error: "Prefactura no encontrada." };
+    if (prefactura.estado === "ANULADA") {
+      return { ok: false, error: "La prefactura está anulada. Reactívala antes de enviarla por correo." };
+    }
 
     const pdf = await obtenerPdfVigenteOGenerar(prefacturaId, perfil.userId);
     if (!pdf.ok) return { ok: false, error: pdf.error };
@@ -163,7 +166,7 @@ export async function encolarEnviosAction(prefacturaIds: string[]): Promise<Resu
 
   for (const prefacturaId of prefacturaIds) {
     const prefactura = await obtenerPrefactura(prefacturaId);
-    if (!prefactura) {
+    if (!prefactura || prefactura.estado === "ANULADA") {
       omitidas++;
       continue;
     }

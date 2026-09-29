@@ -14,6 +14,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Paginacion } from "@/components/ui/paginacion";
 import { encolarEnviosAction } from "@/lib/correo/actions";
+import { anularPrefacturasAction } from "@/lib/prefacturas/actions";
 import type { PrefacturaConRelaciones } from "@/lib/prefacturas/queries";
 import { nombreTransportista } from "@/lib/transportistas/display";
 import { cn } from "@/lib/utils";
@@ -105,6 +106,7 @@ export function PrefacturasTable({
   const searchParams = useSearchParams();
   const [seleccion, setSeleccion] = useState<RowSelectionState>({});
   const [enviando, setEnviando] = useState(false);
+  const [anulando, setAnulando] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [generandoPdf, setGenerandoPdf] = useState(false);
   const [progresoPdf, setProgresoPdf] = useState<{
@@ -156,6 +158,25 @@ export function PrefacturasTable({
     else router.refresh();
   }
 
+  async function anularSeleccionadas() {
+    const ids = Object.keys(seleccion);
+    if (ids.length === 0) return;
+    if (!confirm(`¿Anular ${ids.length} prefactura(s)?`)) return;
+    if (!confirm("Mientras estén anuladas no se podrán enviar por correo hasta reactivarlas. ¿Continuar?"))
+      return;
+    setAnulando(true);
+    setMensaje(null);
+    const resultado = await anularPrefacturasAction(ids);
+    setAnulando(false);
+    if (!resultado.ok) {
+      setMensaje(resultado.error ?? "No se pudieron anular las prefacturas.");
+      return;
+    }
+    setMensaje(`${resultado.anuladas} anulada(s).`);
+    setSeleccion({});
+    router.refresh();
+  }
+
   async function generarPdfSeleccionados() {
     const seleccionadas = filas.filter((f) => seleccion[f.id]);
     if (seleccionadas.length === 0) return;
@@ -205,6 +226,9 @@ export function PrefacturasTable({
             </Button>
             <Button size="sm" onClick={enviarSeleccionados} disabled={enviando}>
               {enviando ? "Encolando..." : "Enviar seleccionados"}
+            </Button>
+            <Button size="sm" variant="destructive" onClick={anularSeleccionadas} disabled={anulando}>
+              {anulando ? "Anulando..." : "Anular seleccionadas"}
             </Button>
             {mensaje ? <span className="text-muted-foreground">{mensaje}</span> : null}
           </div>
