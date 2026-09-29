@@ -12,7 +12,7 @@ const formatoMoneda = new Intl.NumberFormat("es-EC", { style: "currency", curren
 export default async function ControlPlacaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ periodo?: string; severidad?: string; categoria?: string }>;
+  searchParams: Promise<{ periodo?: string; severidad?: string; categoria?: string; q?: string }>;
 }) {
   await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
   const params = await searchParams;
@@ -24,9 +24,13 @@ export default async function ControlPlacaPage({
       ? params.severidad
       : undefined;
 
-  const hayFiltrosNovedad = !!(severidad || params.categoria);
+  const hayFiltrosNovedad = !!(severidad || params.categoria || params.q);
   const filas = periodoId
-    ? await obtenerControlPlaca(periodoId, { severidad, categoria: params.categoria || undefined })
+    ? await obtenerControlPlaca(periodoId, {
+        severidad,
+        categoria: params.categoria || undefined,
+        busqueda: params.q,
+      })
     : [];
 
   return (
@@ -63,7 +67,7 @@ export default async function ControlPlacaPage({
                   {!periodoId
                     ? "Elige un período."
                     : hayFiltrosNovedad
-                      ? "Ninguna placa coincide con los filtros de novedad."
+                      ? "Ninguna placa coincide con los filtros aplicados."
                       : "Sin actividad en este período."}
                 </td>
               </tr>

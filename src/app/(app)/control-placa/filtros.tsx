@@ -1,8 +1,10 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { OPCIONES_CATEGORIA_NOVEDAD } from "@/lib/novedades/categorias";
 
 export function FiltrosControlPlaca({
@@ -14,6 +16,7 @@ export function FiltrosControlPlaca({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [busqueda, setBusqueda] = useState(searchParams.get("q") ?? "");
 
   function actualizar(cambios: Record<string, string>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -28,6 +31,16 @@ export function FiltrosControlPlaca({
 
   return (
     <div className="flex flex-wrap items-end gap-3">
+      <Input
+        placeholder="Buscar por placa o número de prefactura"
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+        onBlur={() => actualizar({ q: busqueda })}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") actualizar({ q: busqueda });
+        }}
+        className="w-full sm:w-72"
+      />
       <select
         value={periodoActual ?? ""}
         onChange={(e) => actualizar({ periodo: e.target.value })}

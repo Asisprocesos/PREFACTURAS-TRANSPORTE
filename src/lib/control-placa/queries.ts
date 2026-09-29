@@ -19,6 +19,8 @@ export interface FiltrosControlPlaca {
   severidad?: "ERROR" | "ADVERTENCIA" | "SIN_NOVEDADES";
   /** Id de categoría (ver src/lib/novedades/categorias.ts). Solo deja placas con ≥1 novedad de ese tipo. */
   categoria?: string;
+  /** Filtra por placa o número de prefactura (substring, sin distinguir mayúsculas). */
+  busqueda?: string;
 }
 
 /**
@@ -103,6 +105,13 @@ export async function obtenerControlPlaca(
       novedadesAdvertencia: nov.advertencia,
     };
   });
+
+  const busqueda = filtros.busqueda?.trim().toUpperCase();
+  if (busqueda) {
+    resultado = resultado.filter(
+      (f) => f.placa.includes(busqueda) || (f.numero ?? "").toUpperCase().includes(busqueda),
+    );
+  }
 
   // Con categoría activa, solo interesan las placas que tienen novedades de
   // ese tipo (el conteo ya viene filtrado por categoría desde el map de arriba).
