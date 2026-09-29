@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -13,6 +13,10 @@ import {
   type CampoOdt,
 } from "@/lib/importador/campos";
 import { confirmarLoteImportacionAction } from "@/lib/importador/confirmar-action";
+import {
+  detectarOCrearPeriodoAction,
+  type ResultadoDeteccionPeriodo,
+} from "@/lib/importador/detectar-periodo-action";
 import { calcularHashArchivo } from "@/lib/importador/hash";
 import { guardarAliasMapeoAction, obtenerAliasMapeoAction } from "@/lib/importador/lectura-actions";
 import { sugerirMapeo } from "@/lib/importador/mapeo";
@@ -42,11 +46,40 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
   const [avisoDuplicado, setAvisoDuplicado] = useState<string | null>(null);
   const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
   const [plantillaGuardada, setPlantillaGuardada] = useState(false);
+  const [deteccionPeriodo, setDeteccionPeriodo] = useState<ResultadoDeteccionPeriodo | null>(null);
+  const [detectandoPeriodo, setDetectandoPeriodo] = useState(false);
+  const [periodoManual, setPeriodoManual] = useState(false);
   const { analizar, previsualizar } = useExcelWorker();
 
   function actualizar(cambios: Partial<EstadoImportador>) {
     setEstado((prev) => ({ ...prev, ...cambios }));
   }
+
+  const columnaFecha =
+    Object.entries(estado.mapeo).find(([, campo]) => campo === "fecha_creacion")?.[0] ?? null;
+
+  // Apenas se mapea la columna de Fecha Creación, se detecta/crea el período
+  // solo — el dropdown manual (más abajo) queda solo para corregirlo.
+  useEffect(() => {
+    if (estado.paso !== 3 || !columnaFecha || !estado.importacionId || !estado.hojaElegida) return;
+    if (periodoManual) return;
+    let cancelado = false;
+    setDetectandoPeriodo(true);
+    setDeteccionPeriodo(null);
+    detectarOCrearPeriodoAction({
+      importacionId: estado.importacionId,
+      hoja: estado.hojaElegida,
+      columnaFecha,
+    }).then((resultado) => {
+      if (cancelado) return;
+      setDetectandoPeriodo(false);
+      setDeteccionPeriodo(resultado);
+      if (resultado.ok && resultado.periodoId) actualizar({ periodoId: resultado.periodoId });
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [estado.paso, columnaFecha, estado.importacionId, estado.hojaElegida, periodoManual]);
 
   // ---- Paso 1: Cargar ----
   async function subirArchivo() {
@@ -226,23 +259,72 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
                 </p>
               ) : null;
             })()}
-            <div className="max-w-xs space-y-2">
+            <div className="max-w-sm space-y-2">
               <label className="text-sm font-medium">Período del corte</label>
-              <select
-                value={estado.periodoId}
-                onChange={(e) => actualizar({ periodoId: e.target.value })}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              >
-                <option value="">Selecciona un período</option>
-                {periodos.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre} ({p.estado})
-                  </option>
-                ))}
-              </select>
-              {periodos.length === 0 ? (
+              {!columnaFecha ? (
+                <p className="text-xs text-muted-foreground">
+                  Mapea la columna &quot;Fecha Creación&quot; para que el sistema detecte el período solo.
+                </p>
+              ) : periodoManual ? (
+                <div className="space-y-1">
+                  <select
+                    value={estado.periodoId}
+                    onChange={(e) => actualizar({ periodoId: e.target.value })}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="">Selecciona un período</option>
+                    {periodos.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre} ({p.estado})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="text-xs text-primary-ink hover:underline"
+                    onClick={() => setPeriodoManual(false)}
+                  >
+                    Volver a detección automática
+                  </button>
+                </div>
+              ) : detectandoPeriodo ? (
+                <p className="text-sm text-muted-foreground">Detectando período a partir del archivo...</p>
+              ) : deteccionPeriodo?.ok ? (
+                <div className="space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm">
+                  <p>
+                    <span className="font-medium">{deteccionPeriodo.periodoNombre}</span>{" "}
+                    {deteccionPeriodo.creado ? "(creado automáticamente)" : "(ya existía)"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {deteccionPeriodo.filasEnVentana} fila(s) en este período
+                    {deteccionPeriodo.filasFueraDeVentana
+                      ? `, ${deteccionPeriodo.filasFueraDeVentana} fuera de rango (quedarán marcadas como advertencia)`
+                      : ""}
+                    .
+                  </p>
+                  <button
+                    type="button"
+                    className="text-xs text-primary-ink hover:underline"
+                    onClick={() => setPeriodoManual(true)}
+                  >
+                    Cambiar manualmente
+                  </button>
+                </div>
+              ) : deteccionPeriodo && !deteccionPeriodo.ok ? (
+                <div className="space-y-1">
+                  <p className="text-xs text-destructive">{deteccionPeriodo.error}</p>
+                  <button
+                    type="button"
+                    className="text-xs text-primary-ink hover:underline"
+                    onClick={() => setPeriodoManual(true)}
+                  >
+                    Elegir período manualmente
+                  </button>
+                </div>
+              ) : null}
+              {periodos.length === 0 && periodoManual ? (
                 <p className="text-xs text-destructive">
-                  No hay períodos creados. Créalos en Configuración → Catálogos antes de continuar.
+                  No hay períodos creados. Créalos en Configuración antes de continuar.
                 </p>
               ) : null}
             </div>
@@ -293,7 +375,12 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
             <div className="flex flex-wrap items-center gap-3">
               <Button
                 onClick={validar}
-                disabled={cargando || camposObligatoriosFaltantes(estado.mapeo).length > 0}
+                disabled={
+                  cargando ||
+                  detectandoPeriodo ||
+                  !estado.periodoId ||
+                  camposObligatoriosFaltantes(estado.mapeo).length > 0
+                }
               >
                 {cargando ? "Validando..." : "Validar"}
               </Button>

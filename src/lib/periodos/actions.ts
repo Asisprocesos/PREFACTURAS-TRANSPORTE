@@ -12,7 +12,7 @@ import { obtenerPrefacturasReporte } from "@/lib/reportes/queries";
 import { createClient } from "@/lib/supabase/server";
 import type { ResultadoAccion } from "@/lib/types/acciones";
 
-import { construirNombrePeriodo } from "./nombre";
+import { crearPeriodoConRango } from "./crear";
 import { contarNovedadesErrorAbiertas, listarPeriodosAdmin, obtenerOdtPeriodoParaArchivo } from "./queries";
 
 export interface ResultadoCrearPeriodo extends ResultadoAccion {
@@ -20,48 +20,23 @@ export interface ResultadoCrearPeriodo extends ResultadoAccion {
 }
 
 /**
- * Crea el siguiente período de facturación. El número se asigna solo
- * (siguiente al mayor existente); el nombre se arma del rango con el mismo
- * patrón que los períodos ya cargados (ver periodos/nombre.ts). El rango en
- * sí lo decide el formulario — normalmente la sugerencia de
+ * Crea el siguiente período de facturación a mano desde Configuración. El
+ * rango lo decide el formulario — normalmente la sugerencia de
  * calcularSiguienteRango, pero editable por si el corte real no cae exacto
- * un mes después.
+ * un mes después. Ver también detectarOCrearPeriodoAction (importador/), que
+ * crea períodos automáticamente a partir de las fechas del archivo.
  */
 export async function crearPeriodoAction(datos: {
   fechaInicio: string;
   fechaFin: string;
 }): Promise<ResultadoCrearPeriodo> {
   await requireRole(["ADMIN"]);
-  if (datos.fechaFin <= datos.fechaInicio) {
-    return { ok: false, error: "La fecha de fin debe ser posterior a la fecha de inicio." };
-  }
-
   const supabase = await createClient();
-  const { data: ultimo } = await supabase
-    .from("periodo")
-    .select("numero")
-    .order("numero", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const numero = (ultimo?.numero ?? 0) + 1;
-  const nombre = construirNombrePeriodo(numero, datos.fechaInicio, datos.fechaFin);
-
-  const { data, error } = await supabase
-    .from("periodo")
-    .insert({ numero, nombre, fecha_inicio: datos.fechaInicio, fecha_fin: datos.fechaFin, estado: "ABIERTO" })
-    .select("id")
-    .single();
-  if (error) {
-    return {
-      ok: false,
-      error: error.message.includes("periodo_rango_key")
-        ? "Ya existe un período con ese rango de fechas."
-        : "No se pudo crear el período.",
-    };
-  }
+  const resultado = await crearPeriodoConRango(supabase, datos.fechaInicio, datos.fechaFin);
+  if (!resultado.ok) return resultado;
 
   revalidatePath("/configuracion");
-  return { ok: true, periodoId: data.id };
+  return resultado;
 }
 
 /** Cierra un período ABIERTO. Bloqueado si tiene novedades de severidad ERROR sin resolver. */

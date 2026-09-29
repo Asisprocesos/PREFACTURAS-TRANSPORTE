@@ -1,13 +1,12 @@
 "use server";
 
-import * as XLSX from "xlsx";
-
 import { defaultAppConfig } from "@/config/app.config";
 import { requireRole } from "@/lib/auth/roles";
 import { createClient } from "@/lib/supabase/server";
 import type { DecisionFila, Json } from "@/types/database.types";
 
 import { camposObligatoriosFaltantes, ETIQUETA_CAMPO, type CampoOdt } from "./campos";
+import { leerFilasCrudasImportacion } from "./leer-archivo";
 import { aplicarMapeo } from "./mapeo";
 import { validarFila, type ContextoValidacion } from "./validar";
 
@@ -101,28 +100,7 @@ export async function validarImportacionAction(datos: {
   if (errorImportacion || !importacion) throw new Error("Importación no encontrada.");
 
   // 1. Descargar el archivo (server-side) y parsear la hoja elegida.
-  const { data: archivoBlob, error: errorDescarga } = await supabase.storage
-    .from("imports")
-    .download(importacion.storage_key);
-  if (errorDescarga || !archivoBlob) throw new Error("No se pudo descargar el archivo desde Storage.");
-
-  const buffer = await archivoBlob.arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true });
-  const hoja = workbook.Sheets[datos.hoja];
-  if (!hoja) throw new Error(`La hoja "${datos.hoja}" no existe en el archivo.`);
-
-  const todasLasFilas: unknown[][] = XLSX.utils.sheet_to_json(hoja, { header: 1, raw: false, defval: "" });
-  const filaEncabezado = detectarFilaEncabezado(todasLasFilas);
-  const encabezados = (todasLasFilas[filaEncabezado] ?? []).map((h) => String(h ?? "").trim());
-  const cuerpo = todasLasFilas
-    .slice(filaEncabezado + 1)
-    .filter((f) => f.some((c) => String(c ?? "").trim() !== ""));
-
-  const filasCrudas = cuerpo.map((fila) => {
-    const obj: Record<string, unknown> = {};
-    encabezados.forEach((h, i) => (obj[h] = fila[i]));
-    return obj;
-  });
+  const filasCrudas = await leerFilasCrudasImportacion(supabase, importacion.storage_key, datos.hoja);
 
   // 2. Construir el contexto de validación (catálogos + placas conocidas).
   const guiasEnArchivo = new Set<string>();
@@ -205,16 +183,4 @@ export async function validarImportacionAction(datos: {
     .eq("id", datos.importacionId);
 
   return resumen;
-}
-
-function detectarFilaEncabezado(filas: unknown[][]): number {
-  for (let i = 0; i < Math.min(filas.length, 30); i++) {
-    const fila = filas[i] ?? [];
-    const noVacias = fila.filter((c) => c !== undefined && c !== null && String(c).trim() !== "");
-    if (noVacias.length >= 3) {
-      const siguiente = filas[i + 1] ?? [];
-      if (siguiente.some((c) => c !== undefined && c !== null && String(c).trim() !== "")) return i;
-    }
-  }
-  return 0;
 }
