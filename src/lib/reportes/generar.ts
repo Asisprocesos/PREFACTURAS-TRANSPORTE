@@ -68,6 +68,7 @@ export function filasRezagos(novedades: NovedadFueraDePeriodo[]): FilaExcel[] {
     PROVEEDOR: n.transportista ?? "",
     Placa: n.placa ?? "",
     "PERIODO DE FAC": n.periodo ?? "",
+    "PERIODO REAL": n.periodoReal ?? "",
     Valor: n.valor ?? 0,
     FACTURADO: n.facturado ? "Sí" : "No",
     Diferencias: n.resolucion ?? (n.estado === "ABIERTA" ? "Pendiente de resolución" : ""),

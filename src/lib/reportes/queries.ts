@@ -61,6 +61,8 @@ export interface NovedadFueraDePeriodo {
   placa: string | null;
   transportista: string | null;
   periodo: string | null;
+  /** Nombre del período (real, existente en la tabla `periodo`) al que corresponde la Fecha Creación de la ODT — null si ningún período registrado cubre esa fecha. */
+  periodoReal: string | null;
   valor: number | null;
   facturado: boolean;
   resolucion: string | null;
@@ -99,6 +101,7 @@ export async function obtenerNovedadesFueraDePeriodo(periodoId: string): Promise
     {
       valor_final: number | null;
       valor: number;
+      fecha_creacion: string;
       vehiculo: { transportista: { razon_social: string; nombre: string | null } | null } | null;
     }
   >();
@@ -106,13 +109,14 @@ export async function obtenerNovedadesFueraDePeriodo(periodoId: string): Promise
     const { data: odtData } = await supabase
       .from("odt")
       .select(
-        "id, valor_final, valor, vehiculo:vehiculo_id(transportista:transportista_id(razon_social, nombre))",
+        "id, valor_final, valor, fecha_creacion, vehiculo:vehiculo_id(transportista:transportista_id(razon_social, nombre))",
       )
       .in("id", odtIds);
     for (const o of (odtData ?? []) as unknown as {
       id: string;
       valor_final: number | null;
       valor: number;
+      fecha_creacion: string;
       vehiculo: { transportista: { razon_social: string; nombre: string | null } | null } | null;
     }[]) {
       odtPorId.set(o.id, o);
@@ -128,6 +132,16 @@ export async function obtenerNovedadesFueraDePeriodo(periodoId: string): Promise
     for (const d of detalles ?? []) prefacturadas.add(d.odt_id);
   }
 
+  const { data: periodos } = await supabase.from("periodo").select("nombre, fecha_inicio, fecha_fin");
+
+  function periodoRealParaFecha(fechaCreacion: string | undefined): string | null {
+    if (!fechaCreacion) return null;
+    const periodo = (periodos ?? []).find(
+      (p) => fechaCreacion >= p.fecha_inicio && fechaCreacion <= p.fecha_fin,
+    );
+    return periodo?.nombre ?? null;
+  }
+
   return filas.map((f) => {
     const odt = f.entidad_id ? odtPorId.get(f.entidad_id) : undefined;
     return {
@@ -135,6 +149,7 @@ export async function obtenerNovedadesFueraDePeriodo(periodoId: string): Promise
       placa: f.placa,
       transportista: nombreTransportista(odt?.vehiculo?.transportista),
       periodo: f.periodo?.nombre ?? null,
+      periodoReal: periodoRealParaFecha(odt?.fecha_creacion),
       valor: odt ? (odt.valor_final ?? odt.valor) : null,
       facturado: f.entidad_id ? prefacturadas.has(f.entidad_id) : false,
       resolucion: f.resolucion,

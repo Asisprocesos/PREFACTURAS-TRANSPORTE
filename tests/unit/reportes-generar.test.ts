@@ -108,6 +108,7 @@ describe("filasRezagos", () => {
       placa: "ABC1234",
       transportista: "Transportes Demo",
       periodo: "Período 13/08 - 12/09",
+      periodoReal: "2-13-Jul-12-Ago",
       valor: 25.5,
       facturado: false,
       resolucion: null,
@@ -120,6 +121,17 @@ describe("filasRezagos", () => {
     const filas = filasRezagos([novedad({})]);
     expect(filas[0]?.["Diferencias"]).toBe("Pendiente de resolución");
     expect(filas[0]?.["FACTURADO"]).toBe("No");
+  });
+
+  it("agrega el período real de creación de la ODT junto al período de facturación", () => {
+    const filas = filasRezagos([novedad({})]);
+    expect(filas[0]?.["PERIODO DE FAC"]).toBe("Período 13/08 - 12/09");
+    expect(filas[0]?.["PERIODO REAL"]).toBe("2-13-Jul-12-Ago");
+  });
+
+  it("deja 'PERIODO REAL' vacío cuando ningún período registrado cubre la fecha de creación", () => {
+    const filas = filasRezagos([novedad({ periodoReal: null })]);
+    expect(filas[0]?.["PERIODO REAL"]).toBe("");
   });
 
   it("usa el texto de la resolución cuando ya fue resuelta", () => {
