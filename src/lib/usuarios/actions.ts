@@ -98,7 +98,11 @@ export async function invitarUsuario(
 
   const admin = createAdminClient();
   const { error } = await admin.auth.admin.inviteUserByEmail(parsed.data.email, {
-    data: { nombre: parsed.data.nombre },
+    // permitir_otro_dominio: leído por el trigger validar_dominio_correo
+    // (ver migración 20260930140000) para no rechazar la excepción ahí
+    // también — la validación de la app sola no alcanza, es defensa en
+    // profundidad a nivel de base de datos.
+    data: { nombre: parsed.data.nombre, permitir_otro_dominio: parsed.data.permitirOtroDominio },
   });
 
   if (error) {
