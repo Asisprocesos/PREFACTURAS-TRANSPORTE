@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { defaultAppConfig } from "@/config/app.config";
 import { requireRole } from "@/lib/auth/roles";
-import { correoPermitido, mensajeCorreoNoPermitido } from "@/lib/auth/correo-permitido";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -62,13 +62,24 @@ export async function cambiarActivoUsuario(
   return { ok: true };
 }
 
-const invitacionSchema = z.object({
-  email: z
-    .string()
-    .email("Ingresa un correo válido.")
-    .refine(correoPermitido, { message: mensajeCorreoNoPermitido }),
-  nombre: z.string().min(1, "Ingresa un nombre."),
-});
+// permitirOtroDominio: casilla del formulario para que un ADMIN autorice,
+// caso por caso, un correo que no sea @grupolaar.com (ej. un usuario de
+// respaldo). Sin la casilla se mantiene la restricción de siempre.
+const invitacionSchema = z
+  .object({
+    email: z.string().email("Ingresa un correo válido."),
+    nombre: z.string().min(1, "Ingresa un nombre."),
+    permitirOtroDominio: z.boolean(),
+  })
+  .refine(
+    (datos) =>
+      datos.permitirOtroDominio ||
+      datos.email.toLowerCase().endsWith(`@${defaultAppConfig.dominioCorreoPermitido}`),
+    {
+      message: `El correo debe ser @${defaultAppConfig.dominioCorreoPermitido}, o marca la casilla para autorizar una excepción.`,
+      path: ["email"],
+    },
+  );
 
 export async function invitarUsuario(
   _estado: EstadoAccionUsuario,
@@ -79,6 +90,7 @@ export async function invitarUsuario(
   const parsed = invitacionSchema.safeParse({
     email: formData.get("email"),
     nombre: formData.get("nombre"),
+    permitirOtroDominio: formData.get("permitirOtroDominio") === "on",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };

@@ -23,18 +23,27 @@ export function InvitarUsuarioForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="flex-1 space-y-2">
-            <Label htmlFor="nombre">Nombre</Label>
-            <Input id="nombre" name="nombre" required placeholder="Nombre y apellido" />
+        <form action={formAction} className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="nombre">Nombre</Label>
+              <Input id="nombre" name="nombre" required placeholder="Nombre y apellido" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="email">Correo</Label>
+              <Input id="email" name="email" type="email" required placeholder="nombre@grupolaar.com" />
+            </div>
+            <Button type="submit" disabled={enviando}>
+              {enviando ? "Invitando..." : "Invitar"}
+            </Button>
           </div>
-          <div className="flex-1 space-y-2">
-            <Label htmlFor="email">Correo</Label>
-            <Input id="email" name="email" type="email" required placeholder="nombre@grupolaar.com" />
-          </div>
-          <Button type="submit" disabled={enviando}>
-            {enviando ? "Invitando..." : "Invitar"}
-          </Button>
+          <label
+            htmlFor="permitirOtroDominio"
+            className="flex items-center gap-2 text-sm text-muted-foreground"
+          >
+            <input id="permitirOtroDominio" name="permitirOtroDominio" type="checkbox" className="h-4 w-4" />
+            Autorizar correo de otro dominio (excepción, ej. un usuario de respaldo)
+          </label>
         </form>
         {estado.error ? <p className="mt-2 text-sm text-destructive">{estado.error}</p> : null}
         {estado.ok ? <p className="mt-2 text-sm text-primary-ink">Invitación enviada.</p> : null}

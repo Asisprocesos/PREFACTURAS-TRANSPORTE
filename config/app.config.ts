@@ -97,16 +97,6 @@ export const appConfigSchema = z.object({
   duplicados: duplicadosSchema,
   periodo: periodoSchema,
   dominioCorreoPermitido: z.string(),
-  /**
-   * Excepciones al dominio permitido, para usuarios de respaldo que no
-   * tienen correo @grupolaar.com (ver src/lib/auth/correo-permitido.ts).
-   * No es overrideable desde la tabla `configuracion` como el resto de esta
-   * config: el login ocurre sin sesión, y RLS exige un usuario autenticado
-   * para leer esa tabla, así que un cambio acá requiere editar este archivo
-   * y desplegar. Cada entrada es un correo completo ("nombre@gmail.com")
-   * o, si empieza con "@", un dominio adicional completo ("@otraempresa.com").
-   */
-  correosPermitidosAdicionales: z.array(z.string()),
 });
 
 export type AppConfig = z.infer<typeof appConfigSchema>;
@@ -177,9 +167,6 @@ export const defaultAppConfig: AppConfig = {
     periodosCalientes: 3,
   },
   dominioCorreoPermitido: "grupolaar.com",
-  // Ejemplo para agregar un usuario de respaldo puntual:
-  // correosPermitidosAdicionales: ["respaldo@gmail.com"],
-  correosPermitidosAdicionales: [],
 };
 
 // Valida en tiempo de carga del módulo que los defaults cumplan el schema.
