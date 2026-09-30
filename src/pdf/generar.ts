@@ -98,6 +98,7 @@ export async function generarBufferPdf(prefactura: PrefacturaConRelaciones): Pro
       centroCosto: o.centro_costo_final ?? "—",
       guia: o.guia,
       valor: o.valor_final ?? o.valor,
+      descuento: o.descuentoTotal,
     })),
     resumenCentroCosto: resumen.map((r) => ({
       centroCosto: r.centro_costo_final ?? "—",

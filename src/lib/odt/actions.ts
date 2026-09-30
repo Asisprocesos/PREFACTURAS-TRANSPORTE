@@ -31,7 +31,7 @@ const CAMPOS_MAYUSCULAS = new Set<CampoCorregible>(["placa_normalizada", "tipo_r
  * ODT, y devuelve los ids de TODAS las prefacturas afectadas (tengan o no
  * PDF vigente) para poder revalidar sus páginas de detalle.
  */
-async function marcarRequiereRegenerar(odtId: string): Promise<string[]> {
+export async function marcarRequiereRegenerar(odtId: string): Promise<string[]> {
   const supabase = await createClient();
   const { data: detalle } = await supabase
     .from("prefactura_detalle")

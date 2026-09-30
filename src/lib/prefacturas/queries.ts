@@ -1,11 +1,17 @@
 import "server-only";
 
+import { obtenerDescuentosPorOdt } from "@/lib/descuentos/queries";
 import { createClient } from "@/lib/supabase/server";
 import type { Database, EstadoPrefactura } from "@/types/database.types";
 
 export type Prefactura = Database["public"]["Tables"]["prefactura"]["Row"];
 export type Odt = Database["public"]["Tables"]["odt"]["Row"];
 export type Novedad = Database["public"]["Tables"]["novedad"]["Row"];
+
+export interface OdtConDescuento extends Odt {
+  descuentoTotal: number;
+  descuentoMotivos: string[];
+}
 
 export interface PrefacturaConRelaciones extends Prefactura {
   vehiculo: { id: string; placa: string } | null;
@@ -128,15 +134,22 @@ export async function obtenerResumenFacturacion(prefacturaId: string): Promise<F
   return data ?? [];
 }
 
-export async function obtenerDetalleOdt(prefacturaId: string): Promise<Odt[]> {
+export async function obtenerDetalleOdt(prefacturaId: string): Promise<OdtConDescuento[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("prefactura_detalle")
     .select("odt:odt_id(*)")
     .eq("prefactura_id", prefacturaId);
   if (error) throw error;
-  return ((data ?? []) as unknown as { odt: Odt }[])
-    .map((f) => f.odt)
+  const odts = ((data ?? []) as unknown as { odt: Odt }[]).map((f) => f.odt);
+
+  const descuentos = await obtenerDescuentosPorOdt(odts.map((o) => o.id));
+
+  return odts
+    .map((odt) => {
+      const d = descuentos.get(odt.id);
+      return { ...odt, descuentoTotal: d?.total ?? 0, descuentoMotivos: d?.motivos ?? [] };
+    })
     .sort((a, b) => a.fecha_creacion.localeCompare(b.fecha_creacion));
 }
 

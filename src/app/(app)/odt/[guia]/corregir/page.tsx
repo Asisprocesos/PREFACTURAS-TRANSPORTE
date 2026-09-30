@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
+import { listarDescuentosOdt } from "@/lib/descuentos/queries";
 import { listarCorreccionesOdt, obtenerOdtPorGuia } from "@/lib/odt/queries";
 
 import { FormularioCorreccion } from "./formulario-correccion";
+import { FormularioDescuento } from "./formulario-descuento";
 
 export default async function CorregirOdtPage({
   params,
@@ -22,6 +24,7 @@ export default async function CorregirOdtPage({
   if (!odt) notFound();
 
   const correcciones = await listarCorreccionesOdt(odt.id);
+  const descuentos = await listarDescuentosOdt(odt.id);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -40,6 +43,15 @@ export default async function CorregirOdtPage({
         </CardHeader>
         <CardContent>
           <FormularioCorreccion odt={odt} volver={volver} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Descuentos aplicados</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <FormularioDescuento odtId={odt.id} descuentos={descuentos} />
         </CardContent>
       </Card>
 

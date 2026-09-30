@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireRole } from "@/lib/auth/roles";
+import { obtenerDescuentosPorOdt } from "@/lib/descuentos/queries";
 import { createClient } from "@/lib/supabase/server";
 import type { ResultadoAccion } from "@/lib/types/acciones";
 import { generarYGuardarPdf } from "@/pdf/generar-y-guardar";
@@ -59,6 +60,8 @@ export async function generarPrefacturaSecundariaAction(sesionId: string): Promi
     (f) => f.resultado === "ESCANEADA_Y_CARGADA" || f.resultado === "CARGADA_SIN_FISICA",
   ).length;
   const totalOdt = confirmadas.reduce((acc, f) => acc + (f.valor ?? 0), 0);
+  const descuentos = await obtenerDescuentosPorOdt(confirmadas.map((f) => f.odt_id));
+  const totalDescuentos = [...descuentos.values()].reduce((acc, d) => acc + d.total, 0);
 
   const { data: nueva, error: errorInsert } = await supabase
     .from("prefactura")
@@ -67,7 +70,8 @@ export async function generarPrefacturaSecundariaAction(sesionId: string): Promi
       vehiculo_id: vehiculo.id,
       transportista_id: vehiculo.transportista_id,
       total_odt: totalOdt,
-      total: totalOdt,
+      total_descuentos: totalDescuentos,
+      total: totalOdt - totalDescuentos,
       cantidad_odt: confirmadas.length,
       estado: "BORRADOR",
       es_principal: false,

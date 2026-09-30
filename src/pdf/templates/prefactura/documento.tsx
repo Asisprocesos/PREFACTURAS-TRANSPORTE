@@ -126,15 +126,36 @@ export function DocumentoPrefactura({ datos }: { datos: DatosPdfPrefactura }) {
                 <Text style={[estilos.celda, { width: "16%" }]}>{o.regional}</Text>
                 <Text style={[estilos.celda, { width: "20%" }]}>{o.centroCosto}</Text>
                 <Text style={[estilos.celda, { width: "14%" }]}>{o.guia}</Text>
-                <Text style={[estilos.celdaNumerica, { width: "10%" }]}>{formatoMoneda.format(o.valor)}</Text>
+                <View style={[{ width: "10%" }]}>
+                  <Text style={estilos.celdaNumerica}>{formatoMoneda.format(o.valor)}</Text>
+                  {o.descuento > 0 ? (
+                    <Text style={[estilos.celdaDescuento, { textAlign: "right", paddingRight: 4 }]}>
+                      -{formatoMoneda.format(o.descuento)}
+                    </Text>
+                  ) : null}
+                </View>
               </View>
             ))}
           </View>
         </View>
 
-        <View style={estilos.totalFila}>
-          <Text style={estilos.totalEtiqueta}>TOTAL</Text>
-          <Text style={estilos.totalValor}>{formatoMoneda.format(datos.total)}</Text>
+        <View>
+          <View style={estilos.subtotalFila}>
+            <Text style={estilos.subtotalEtiqueta}>Total ODT</Text>
+            <Text style={estilos.subtotalValor}>{formatoMoneda.format(datos.totalOdt)}</Text>
+          </View>
+          {datos.totalDescuentos > 0 ? (
+            <View style={estilos.subtotalFila}>
+              <Text style={estilos.subtotalEtiqueta}>Descuentos</Text>
+              <Text style={estilos.subtotalValorDescuento}>
+                -{formatoMoneda.format(datos.totalDescuentos)}
+              </Text>
+            </View>
+          ) : null}
+          <View style={estilos.totalFila}>
+            <Text style={estilos.totalEtiqueta}>TOTAL</Text>
+            <Text style={estilos.totalValor}>{formatoMoneda.format(datos.total)}</Text>
+          </View>
         </View>
 
         <PiePagina datos={datos} />

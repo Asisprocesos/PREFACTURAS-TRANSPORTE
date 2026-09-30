@@ -221,7 +221,17 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
                     <td className="px-3 py-2">{o.guia}</td>
                     <td className="px-3 py-2">{o.ruta ?? o.ruta_macro ?? "—"}</td>
                     <td className="px-3 py-2">{o.centro_costo_final ?? "—"}</td>
-                    <td className="px-3 py-2">{formatoMoneda.format(o.valor_final ?? o.valor)}</td>
+                    <td className="px-3 py-2">
+                      {formatoMoneda.format(o.valor_final ?? o.valor)}
+                      {o.descuentoTotal > 0 ? (
+                        <span
+                          className="ml-2 rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-medium text-destructive"
+                          title={`Descuento: -${formatoMoneda.format(o.descuentoTotal)} (${o.descuentoMotivos.join(", ")})`}
+                        >
+                          -{formatoMoneda.format(o.descuentoTotal)}
+                        </span>
+                      ) : null}
+                    </td>
                     {puedeEditarOdt ? (
                       <td className="px-3 py-2">
                         <Link

@@ -542,22 +542,28 @@ export interface Database {
       descuento: {
         Row: {
           id: string;
-          prefactura_id: string;
+          prefactura_id: string | null;
+          odt_id: string | null;
           item: string | null;
           fecha: string | null;
           concepto: string | null;
           valor: number;
+          deleted_at: string | null;
           created_at: string;
+          updated_at: string;
           created_by: string | null;
         };
         Insert: {
           id?: string;
-          prefactura_id: string;
+          prefactura_id?: string | null;
+          odt_id?: string | null;
           item?: string | null;
           fecha?: string | null;
           concepto?: string | null;
           valor: number;
+          deleted_at?: string | null;
           created_at?: string;
+          updated_at?: string;
           created_by?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["descuento"]["Insert"]>;

@@ -17,6 +17,7 @@ export interface DatosPdfPrefactura {
     centroCosto: string;
     guia: string;
     valor: number;
+    descuento: number;
   }[];
   resumenCentroCosto: {
     centroCosto: string;

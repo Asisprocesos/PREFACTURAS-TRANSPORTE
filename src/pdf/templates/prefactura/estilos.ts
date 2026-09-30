@@ -143,6 +143,28 @@ export const estilos = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Helvetica-Bold",
   },
+  subtotalFila: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 3,
+  },
+  subtotalEtiqueta: {
+    fontSize: 9,
+    color: COLOR.grisTexto,
+    marginRight: 12,
+  },
+  subtotalValor: {
+    fontSize: 9,
+    color: COLOR.grisTexto,
+  },
+  subtotalValorDescuento: {
+    fontSize: 9,
+    color: "#B91C1C",
+  },
+  celdaDescuento: {
+    fontSize: 6.5,
+    color: "#B91C1C",
+  },
   piePagina: {
     position: "absolute",
     bottom: 24,
