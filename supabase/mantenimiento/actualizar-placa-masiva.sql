@@ -1,0 +1,32 @@
+-- ============================================================================
+-- SCRIPT DE RESERVA — NO ES UNA MIGRACIÓN, NO SE EJECUTA SOLO.
+-- No corre en el pipeline de migraciones (supabase/migrations) ni en el
+-- despliegue normal. Guárdalo tal cual hasta que haga falta.
+-- ============================================================================
+--
+-- CUÁNDO USARLO: si algún día renombran la placa de un vehículo ya existente
+-- en el módulo Vehículos (ej. corrigen un error de tipeo en la placa
+-- original). Eso actualiza vehiculo.placa, pero las ODT que ya se
+-- importaron con la placa vieja guardan su propio texto en
+-- odt.placa_normalizada, que NO se actualiza solo (es una columna
+-- independiente, copiada al importar — el vínculo real es por vehiculo_id,
+-- que no se rompe). Mientras no corras esto, Buscador y Control por Placa
+-- pueden seguir mostrando la placa vieja en esas ODT históricas.
+--
+-- QUÉ HACE: para UN vehículo puntual (identificado por su id), iguala
+-- odt.placa_normalizada al valor ACTUAL de vehiculo.placa en todas las ODT
+-- ya vinculadas a ese vehiculo_id. No toca ODT de otros vehículos, no crea
+-- vínculos nuevos, no afecta totales ni prefacturas (placa_normalizada es
+-- solo texto de búsqueda/visualización).
+--
+-- CÓMO USARLO:
+--   1. Entra a /vehiculos en el sistema, abre el vehículo ya renombrado y
+--      copia su id desde la URL (/vehiculos/<ESE-ID>).
+--   2. Reemplaza las DOS ocurrencias de 00000000-0000-0000-0000-000000000000
+--      de abajo por ese id (debe quedar igual en ambas).
+--   3. Pega el bloque completo en el editor SQL de Supabase y corre primero
+--      solo el SELECT para confirmar cuántas ODT y qué placa nueva va a
+--      aplicar. Si el número tiene sentido, corre el UPDATE.
+--
+-- select count(*) as odt_a_actualizar, (select placa from public.vehiculo where id = '00000000-0000-0000-0000-000000000000') as placa_nueva from public.odt where vehiculo_id = '00000000-0000-0000-0000-000000000000';
+-- update public.odt set placa_normalizada = (select placa from public.vehiculo where id = '00000000-0000-0000-0000-000000000000') where vehiculo_id = '00000000-0000-0000-0000-000000000000';
