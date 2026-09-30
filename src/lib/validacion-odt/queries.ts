@@ -9,13 +9,15 @@ export interface ResultadoBusquedaPrefactura {
 }
 
 /**
- * Busca la prefactura de una placa en un período. `placa` puede coincidir
- * con más de una fila de `vehiculo` (el índice único ignora las eliminadas,
- * ver vehiculo_placa_key: `where deleted_at is null` — una placa eliminada y
- * vuelta a cargar deja dos filas), así que se trae la lista completa en vez
- * de `.maybeSingle()` sobre `vehiculo` directamente, que fallaba en
- * silencio con más de una fila y hacía ver "no hay prefactura" aunque sí
- * existiera.
+ * Busca la prefactura de una placa en un período. Mira solo el vehículo
+ * ACTIVO de esa placa (`deleted_at is null`) — igual que confirmar
+ * importación, generar_prefacturas_periodo y la prefactura secundaria — en
+ * vez de juntar también las filas eliminadas (una placa eliminada y vuelta
+ * a cargar deja más de una fila con el mismo texto de placa, ver
+ * vehiculo_placa_key: el índice único ignora las eliminadas). Mezclar esas
+ * filas en el diagnóstico podía dar un mensaje equivocado: ej. si la fila
+ * eliminada tenía transportista asignado pero la activa no, el aviso "sin
+ * transportista" nunca se disparaba aunque la placa realmente lo necesitara.
  *
  * Cuando no hay prefactura, diagnostica la causa más probable en vez de
  * repetir siempre "genera las prefacturas primero" — ese mensaje era
@@ -32,23 +34,24 @@ export async function buscarPrefactura(
   const supabase = await createClient();
   const placaNormalizada = placa.toUpperCase().replace(/[-\s]/g, "");
 
-  const { data: vehiculos } = await supabase
+  const { data: vehiculo } = await supabase
     .from("vehiculo")
     .select("id, transportista_id")
-    .eq("placa", placaNormalizada);
+    .eq("placa", placaNormalizada)
+    .is("deleted_at", null)
+    .maybeSingle();
 
-  if (!vehiculos || vehiculos.length === 0) {
+  if (!vehiculo) {
     return {
       prefacturaId: null,
-      diagnostico: `No hay ningún vehículo registrado con la placa ${placaNormalizada}. Regístralo en Vehículos.`,
+      diagnostico: `No hay ningún vehículo activo registrado con la placa ${placaNormalizada}. Regístralo en Vehículos.`,
     };
   }
 
-  const vehiculoIds = vehiculos.map((v) => v.id);
   const { data: prefactura } = await supabase
     .from("prefactura")
     .select("id")
-    .in("vehiculo_id", vehiculoIds)
+    .eq("vehiculo_id", vehiculo.id)
     .eq("periodo_id", periodoId)
     // Solo la principal: puede haber además 0..N secundarias/ajuste (ver
     // Validación ODT / Escaneo) para la misma placa/período, y esta
@@ -58,7 +61,7 @@ export async function buscarPrefactura(
     .maybeSingle();
   if (prefactura) return { prefacturaId: prefactura.id };
 
-  if (vehiculos.every((v) => !v.transportista_id)) {
+  if (!vehiculo.transportista_id) {
     return {
       prefacturaId: null,
       diagnostico: `El vehículo ${placaNormalizada} no tiene transportista asignado. Asígnaselo en Vehículos y vuelve a generar las prefacturas del período.`,
@@ -69,7 +72,7 @@ export async function buscarPrefactura(
     .from("odt")
     .select("id", { count: "exact", head: true })
     .eq("periodo_id", periodoId)
-    .in("vehiculo_id", vehiculoIds);
+    .eq("vehiculo_id", vehiculo.id);
 
   if (!cantidadOdt) {
     return {
