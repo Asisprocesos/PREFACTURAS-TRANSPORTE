@@ -9,17 +9,20 @@
 -- escaneo que las generó.
 --
 -- Nota: los alias de una sola letra (o, v, p) van seguidos de la siguiente
--- palabra en la MISMA línea a propósito, en vez del salto de línea
--- habitual — el editor SQL de Supabase interpretaba mal un salto de línea
--- justo después de un alias corto y rompía el pegado del script.
+-- palabra en la MISMA línea a propósito (el editor SQL de Supabase
+-- interpretaba mal un salto de línea justo después de un alias corto y
+-- rompía el pegado). Además, cada sentencia es IDEMPOTENTE (IF NOT
+-- EXISTS / IF EXISTS / CREATE OR REPLACE): el editor de Supabase no corre
+-- el script pegado como una sola transacción, así que si una corrida
+-- anterior se quedó a medias, volver a correr todo el archivo completa lo
+-- que falte sin fallar por "ya existe" en lo que sí se alcanzó a aplicar.
 
-alter table public.prefactura
-  add column es_principal boolean not null default true,
-  add column prefactura_original_id uuid references public.prefactura (id),
-  add column sesion_escaneo_id uuid references public.sesion_escaneo (id),
-  add column motivo text;
+alter table public.prefactura add column if not exists es_principal boolean not null default true;
+alter table public.prefactura add column if not exists prefactura_original_id uuid references public.prefactura (id);
+alter table public.prefactura add column if not exists sesion_escaneo_id uuid references public.sesion_escaneo (id);
+alter table public.prefactura add column if not exists motivo text;
 
-create index prefactura_original_idx on public.prefactura (prefactura_original_id)
+create index if not exists prefactura_original_idx on public.prefactura (prefactura_original_id)
   where prefactura_original_id is not null;
 
 comment on column public.prefactura.es_principal is
@@ -34,8 +37,8 @@ comment on column public.prefactura.motivo is
 -- El UNIQUE original exigía como máximo 1 fila por (vehículo, período) sin
 -- importar nada más; se reemplaza por un índice parcial que solo aplica a
 -- las principales, para permitir 0..N secundarias del mismo vehículo/período.
-alter table public.prefactura drop constraint prefactura_vehiculo_periodo_key;
-create unique index prefactura_vehiculo_periodo_principal_key
+alter table public.prefactura drop constraint if exists prefactura_vehiculo_periodo_key;
+create unique index if not exists prefactura_vehiculo_periodo_principal_key
   on public.prefactura (vehiculo_id, periodo_id)
   where es_principal;
 
