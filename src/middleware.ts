@@ -1,7 +1,12 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const RUTAS_PUBLICAS = ["/login", "/auth/callback"];
+// /auth/activar: la sesión de la invitación llega como fragmento de URL
+// (#access_token=...), que el navegador recién fija en cookies DESPUÉS de
+// que esta primera petición ya se resolvió — si no fuera pública, el
+// middleware rebotaría esa primera carga a /login antes de que el cliente
+// alcance a establecer la sesión.
+const RUTAS_PUBLICAS = ["/login", "/auth/callback", "/auth/activar"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });

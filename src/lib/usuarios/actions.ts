@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { defaultAppConfig } from "@/config/app.config";
+import { obtenerOrigen } from "@/lib/auth/origen";
 import { requireRole } from "@/lib/auth/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -96,6 +97,7 @@ export async function invitarUsuario(
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
   }
 
+  const origen = await obtenerOrigen();
   const admin = createAdminClient();
   const { error } = await admin.auth.admin.inviteUserByEmail(parsed.data.email, {
     // permitir_otro_dominio: leído por el trigger validar_dominio_correo
@@ -103,6 +105,14 @@ export async function invitarUsuario(
     // también — la validación de la app sola no alcanza, es defensa en
     // profundidad a nivel de base de datos.
     data: { nombre: parsed.data.nombre, permitir_otro_dominio: parsed.data.permitirOtroDominio },
+    // Supabase no soporta PKCE en invitaciones (ver tipos de
+    // inviteUserByEmail): el enlace del correo entrega la sesión como hash
+    // (#access_token=...), no como ?code=, así que NO pasa por
+    // /auth/callback (ese solo sabe leer ?code=) sino directo a
+    // /auth/activar, que la toma del hash en el navegador. Ahí el invitado
+    // define su propia contraseña — hasta ahora no existía esa pantalla y
+    // el enlace lo dejaba sin forma de entrar.
+    redirectTo: `${origen}/auth/activar`,
   });
 
   if (error) {
