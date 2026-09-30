@@ -24,7 +24,11 @@ export default async function DetalleImportacionPage({ params }: { params: Promi
         <h1 className="titulo-marca text-2xl">{importacion.archivo}</h1>
         <p className="mt-1 text-sm text-muted-foreground">Estado: {importacion.estado}</p>
       </div>
-      <DetalleImportacion importacion={importacion} esAdmin={perfil.rol === "ADMIN"} />
+      <DetalleImportacion
+        importacion={importacion}
+        esAdmin={perfil.rol === "ADMIN"}
+        puedeGestionar={perfil.rol === "ADMIN" || perfil.rol === "OPERADOR_TRANSPORTE"}
+      />
     </div>
   );
 }

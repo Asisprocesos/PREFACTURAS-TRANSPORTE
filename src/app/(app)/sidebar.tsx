@@ -26,22 +26,58 @@ import { useEffect, useState } from "react";
 import type { cerrarSesionAction } from "@/lib/auth/actions";
 import type { AlertasGlobales } from "@/lib/alertas/queries";
 import { cn } from "@/lib/utils";
+import type { RolUsuario } from "@/types/database.types";
 
-/** `alerta` mapea el href a la clave de AlertasGlobales cuyo conteo se muestra como badge (ninguna = sin badge). */
-const MENU: { href: string; label: string; icon: LucideIcon; alerta?: keyof AlertasGlobales }[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/buscador", label: "Buscador", icon: Search },
-  { href: "/prefacturas", label: "Prefacturas", icon: Receipt, alerta: "prefacturasErrorEnvio" },
-  { href: "/importar", label: "Importar", icon: FileUp },
-  { href: "/control-placa", label: "Control por placa", icon: IdCard, alerta: "novedadesError" },
-  { href: "/validacion-odt", label: "Validación ODT / Escaneo", icon: ClipboardCheck },
-  { href: "/transportistas", label: "Transportistas", icon: Users },
-  { href: "/vehiculos", label: "Vehículos", icon: Truck },
-  { href: "/repositorio", label: "Repositorio PDF", icon: Folder },
-  { href: "/historial", label: "Historial / Log", icon: History },
-  { href: "/reportes", label: "Reportes", icon: BarChart3 },
-  { href: "/usuarios", label: "Usuarios", icon: UserCog },
-  { href: "/configuracion", label: "Configuración", icon: Settings },
+const TODOS_LOS_ROLES: RolUsuario[] = ["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"];
+const SIN_CONSULTA: RolUsuario[] = ["ADMIN", "OPERADOR_TRANSPORTE"];
+const SOLO_ADMIN: RolUsuario[] = ["ADMIN"];
+
+/**
+ * `alerta` mapea el href a la clave de AlertasGlobales cuyo conteo se
+ * muestra como badge (ninguna = sin badge). `roles` son los roles que ven
+ * el ítem — debe reflejar el `requireRole` del page.tsx de destino, para no
+ * mostrar un enlace que el usuario no puede abrir (rebote a /no-autorizado).
+ */
+const MENU: {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  alerta?: keyof AlertasGlobales;
+  roles: RolUsuario[];
+}[] = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: TODOS_LOS_ROLES },
+  { href: "/buscador", label: "Buscador", icon: Search, roles: TODOS_LOS_ROLES },
+  {
+    href: "/prefacturas",
+    label: "Prefacturas",
+    icon: Receipt,
+    alerta: "prefacturasErrorEnvio",
+    roles: TODOS_LOS_ROLES,
+  },
+  // El wizard de /importar es de ADMIN/OPERADOR_TRANSPORTE; CONSULTA solo
+  // puede ver el detalle de una importación ya hecha (/importar/[id]), a
+  // la que no hay enlace directo desde el menú.
+  { href: "/importar", label: "Importar", icon: FileUp, roles: SIN_CONSULTA },
+  {
+    href: "/control-placa",
+    label: "Control por placa",
+    icon: IdCard,
+    alerta: "novedadesError",
+    roles: TODOS_LOS_ROLES,
+  },
+  {
+    href: "/validacion-odt",
+    label: "Validación ODT / Escaneo",
+    icon: ClipboardCheck,
+    roles: TODOS_LOS_ROLES,
+  },
+  { href: "/transportistas", label: "Transportistas", icon: Users, roles: TODOS_LOS_ROLES },
+  { href: "/vehiculos", label: "Vehículos", icon: Truck, roles: TODOS_LOS_ROLES },
+  { href: "/repositorio", label: "Repositorio PDF", icon: Folder, roles: TODOS_LOS_ROLES },
+  { href: "/historial", label: "Historial / Log", icon: History, roles: TODOS_LOS_ROLES },
+  { href: "/reportes", label: "Reportes", icon: BarChart3, roles: TODOS_LOS_ROLES },
+  { href: "/usuarios", label: "Usuarios", icon: UserCog, roles: SOLO_ADMIN },
+  { href: "/configuracion", label: "Configuración", icon: Settings, roles: SOLO_ADMIN },
 ];
 
 const CLAVE_COLAPSADO = "laar_sidebar_colapsada";
@@ -51,7 +87,7 @@ export function Sidebar({
   cerrarSesion,
   alertas,
 }: {
-  perfil: { nombre: string | null; email: string | null } | null;
+  perfil: { nombre: string | null; email: string | null; rol: RolUsuario } | null;
   cerrarSesion: typeof cerrarSesionAction;
   alertas: AlertasGlobales | null;
 }) {
@@ -126,7 +162,7 @@ export function Sidebar({
       ) : null}
 
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {MENU.map((item) => {
+        {MENU.filter((item) => perfil && item.roles.includes(perfil.rol)).map((item) => {
           const Icono = item.icon;
           const conteo = item.alerta && alertas ? alertas[item.alerta] : 0;
           return (

@@ -11,7 +11,15 @@ import type { ResumenValidacion } from "@/lib/importador/validar-action";
 
 import { ResultadosValidacion } from "../resultados-validacion";
 
-export function DetalleImportacion({ importacion, esAdmin }: { importacion: Importacion; esAdmin: boolean }) {
+export function DetalleImportacion({
+  importacion,
+  esAdmin,
+  puedeGestionar,
+}: {
+  importacion: Importacion;
+  esAdmin: boolean;
+  puedeGestionar: boolean;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [cargando, setCargando] = useState(false);
@@ -115,18 +123,20 @@ export function DetalleImportacion({ importacion, esAdmin }: { importacion: Impo
 
       {mensaje ? <p className="text-sm text-primary-ink">{mensaje}</p> : null}
 
-      <div className="flex gap-2">
-        {importacion.estado === "VALIDADA" ? (
-          <Button onClick={confirmar} disabled={cargando}>
-            {cargando ? "Confirmando..." : "Confirmar importación"}
-          </Button>
-        ) : null}
-        {importacion.estado === "CONFIRMADA" ? (
-          <Button variant="destructive" onClick={revertir} disabled={cargando}>
-            Revertir importación
-          </Button>
-        ) : null}
-      </div>
+      {puedeGestionar ? (
+        <div className="flex gap-2">
+          {importacion.estado === "VALIDADA" ? (
+            <Button onClick={confirmar} disabled={cargando}>
+              {cargando ? "Confirmando..." : "Confirmar importación"}
+            </Button>
+          ) : null}
+          {importacion.estado === "CONFIRMADA" ? (
+            <Button variant="destructive" onClick={revertir} disabled={cargando}>
+              Revertir importación
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

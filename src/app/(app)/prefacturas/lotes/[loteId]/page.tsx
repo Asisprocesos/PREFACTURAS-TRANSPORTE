@@ -7,13 +7,14 @@ import { listarEnviosLote, obtenerLoteProceso } from "@/lib/correo/queries";
 import { ProgresoLote } from "./progreso-lote";
 
 export default async function LoteEnvioPage({ params }: { params: Promise<{ loteId: string }> }) {
-  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
+  const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
   const { loteId } = await params;
 
   const lote = await obtenerLoteProceso(loteId);
   if (!lote) notFound();
 
   const envios = await listarEnviosLote(loteId);
+  const puedeReintentar = perfil.rol === "ADMIN" || perfil.rol === "OPERADOR_TRANSPORTE";
 
   return (
     <div className="space-y-6">
@@ -26,7 +27,7 @@ export default async function LoteEnvioPage({ params }: { params: Promise<{ lote
           volver, o recargar, sin que eso reenvíe nada: solo consulta el estado guardado en la cola.
         </p>
       </div>
-      <ProgresoLote lote={lote} enviosIniciales={envios} />
+      <ProgresoLote lote={lote} enviosIniciales={envios} puedeReintentar={puedeReintentar} />
     </div>
   );
 }

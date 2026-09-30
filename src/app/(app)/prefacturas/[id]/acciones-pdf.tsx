@@ -5,7 +5,15 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
-export function AccionesPdf({ prefacturaId, tieneVigente }: { prefacturaId: string; tieneVigente: boolean }) {
+export function AccionesPdf({
+  prefacturaId,
+  tieneVigente,
+  puedeGenerar,
+}: {
+  prefacturaId: string;
+  tieneVigente: boolean;
+  puedeGenerar: boolean;
+}) {
   const router = useRouter();
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,9 +54,11 @@ export function AccionesPdf({ prefacturaId, tieneVigente }: { prefacturaId: stri
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex gap-2">
-        <Button size="sm" onClick={generar} disabled={cargando}>
-          {cargando ? "Generando..." : tieneVigente ? "Regenerar PDF" : "Generar PDF"}
-        </Button>
+        {puedeGenerar ? (
+          <Button size="sm" onClick={generar} disabled={cargando}>
+            {cargando ? "Generando..." : tieneVigente ? "Regenerar PDF" : "Generar PDF"}
+          </Button>
+        ) : null}
         {tieneVigente ? (
           <Button size="sm" variant="outline" onClick={descargar}>
             Ver / descargar PDF

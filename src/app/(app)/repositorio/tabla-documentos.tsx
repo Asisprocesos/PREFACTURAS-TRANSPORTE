@@ -19,12 +19,14 @@ export function TablaDocumentos({
   pagina,
   tamanoPagina,
   puedeEliminar,
+  puedeReenviar,
 }: {
   filas: DocumentoConRelaciones[];
   total: number;
   pagina: number;
   tamanoPagina: number;
   puedeEliminar: boolean;
+  puedeReenviar: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -159,7 +161,7 @@ export function TablaDocumentos({
                             <Link href={`/repositorio/${d.prefactura.id}/versiones`}>Versiones</Link>
                           </Button>
                         ) : null}
-                        {d.estado === "VIGENTE" && d.prefactura ? (
+                        {puedeReenviar && d.estado === "VIGENTE" && d.prefactura ? (
                           <Button variant="ghost" size="sm" onClick={() => reenviar(d.prefactura!.id)}>
                             Reenviar
                           </Button>

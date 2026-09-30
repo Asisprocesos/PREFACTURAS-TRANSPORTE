@@ -6,7 +6,8 @@ import { listarPeriodosParaSelect } from "@/lib/importador/queries";
 import { BuscadorValidacion } from "./buscador-validacion";
 
 export default async function ValidacionOdtPage() {
-  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
+  const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
+  const puedeEscanear = perfil.rol === "ADMIN" || perfil.rol === "OPERADOR_TRANSPORTE";
   const periodos = await listarPeriodosParaSelect();
 
   return (
@@ -19,13 +20,15 @@ export default async function ValidacionOdtPage() {
         </p>
       </div>
       <BuscadorValidacion periodos={periodos} />
-      <p className="text-sm text-muted-foreground">
-        ¿Vas a comparar contra las ODT físicas?{" "}
-        <Link href="/validacion-odt/escaneo" className="text-primary-ink hover:underline">
-          Ir a Escaneo de ODT
-        </Link>
-        .
-      </p>
+      {puedeEscanear ? (
+        <p className="text-sm text-muted-foreground">
+          ¿Vas a comparar contra las ODT físicas?{" "}
+          <Link href="/validacion-odt/escaneo" className="text-primary-ink hover:underline">
+            Ir a Escaneo de ODT
+          </Link>
+          .
+        </p>
+      ) : null}
     </div>
   );
 }

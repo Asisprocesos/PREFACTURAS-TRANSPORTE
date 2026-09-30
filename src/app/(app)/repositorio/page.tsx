@@ -63,6 +63,7 @@ export default async function RepositorioPage({
         pagina={pagina}
         tamanoPagina={TAMANO_PAGINA}
         puedeEliminar={perfil.rol === "ADMIN"}
+        puedeReenviar={perfil.rol === "ADMIN" || perfil.rol === "OPERADOR_TRANSPORTE"}
       />
     </div>
   );

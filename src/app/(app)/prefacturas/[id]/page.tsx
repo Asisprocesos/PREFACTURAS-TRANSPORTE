@@ -86,10 +86,14 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
         </div>
         <div className="flex flex-col items-end gap-2">
           <div className="flex gap-2">
-            <AccionesPdf prefacturaId={id} tieneVigente={prefactura.version_actual > 0} />
+            <AccionesPdf
+              prefacturaId={id}
+              tieneVigente={prefactura.version_actual > 0}
+              puedeGenerar={puedeEditarOdt}
+            />
             {puedeEditarOdt ? <AnularPrefacturaButton prefacturaId={id} anulada={anulada} /> : null}
           </div>
-          {anulada ? null : (
+          {anulada || !puedeEditarOdt ? null : (
             <EnviarCorreoForm
               prefacturaId={id}
               correoPrincipal={contactos.principal}

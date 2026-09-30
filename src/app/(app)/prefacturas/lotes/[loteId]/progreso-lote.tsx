@@ -23,9 +23,11 @@ const INTERVALO_SONDEO_MS = 4000;
 export function ProgresoLote({
   lote: loteInicial,
   enviosIniciales,
+  puedeReintentar,
 }: {
   lote: LoteProceso;
   enviosIniciales: EnvioCorreo[];
+  puedeReintentar: boolean;
 }) {
   const [lote, setLote] = useState(loteInicial);
   const [envios, setEnvios] = useState(enviosIniciales);
@@ -123,9 +125,11 @@ export function ProgresoLote({
       {lote.fallidos > 0 ? (
         <div className="space-y-2">
           <div className="flex gap-2">
-            <Button variant="outline" onClick={reintentar} disabled={reintentando}>
-              {reintentando ? "Reintentando..." : "Reintentar fallidos"}
-            </Button>
+            {puedeReintentar ? (
+              <Button variant="outline" onClick={reintentar} disabled={reintentando}>
+                {reintentando ? "Reintentando..." : "Reintentar fallidos"}
+              </Button>
+            ) : null}
             <Button asChild variant="outline">
               <a href={`/api/lotes/${lote.id}/exportar`}>Descargar reporte de errores</a>
             </Button>

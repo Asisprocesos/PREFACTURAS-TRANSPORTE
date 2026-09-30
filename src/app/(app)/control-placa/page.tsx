@@ -14,7 +14,8 @@ export default async function ControlPlacaPage({
 }: {
   searchParams: Promise<{ periodo?: string; severidad?: string; categoria?: string; q?: string }>;
 }) {
-  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
+  const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
+  const puedeCorregir = perfil.rol === "ADMIN" || perfil.rol === "OPERADOR_TRANSPORTE";
   const params = await searchParams;
   const periodos = await listarPeriodosParaSelect();
   const periodoId = params.periodo || periodos.find((p) => p.estado === "ABIERTO")?.id;
@@ -42,9 +43,11 @@ export default async function ControlPlacaPage({
             Semáforo de novedades por placa del período: total, ODT y novedades abiertas.
           </p>
         </div>
-        <Link href="/control-placa/correccion-masiva" className="text-sm text-primary-ink hover:underline">
-          Corrección masiva →
-        </Link>
+        {puedeCorregir ? (
+          <Link href="/control-placa/correccion-masiva" className="text-sm text-primary-ink hover:underline">
+            Corrección masiva →
+          </Link>
+        ) : null}
       </div>
 
       <FiltrosControlPlaca periodos={periodos} periodoActual={periodoId} />
