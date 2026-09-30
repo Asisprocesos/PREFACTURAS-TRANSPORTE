@@ -109,48 +109,6 @@ export async function obtenerPrefactura(id: string): Promise<PrefacturaConRelaci
   return data as unknown as PrefacturaConRelaciones | null;
 }
 
-/** Solo el número, para el aviso de ajuste del PDF secundario (ver pdf/generar.ts) — evita traer toda la prefactura original. */
-export async function obtenerPrefacturaNumero(id: string): Promise<string | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.from("prefactura").select("numero").eq("id", id).maybeSingle();
-  if (error) throw error;
-  return data?.numero ?? null;
-}
-
-export interface PrefacturaVinculada {
-  id: string;
-  numero: string | null;
-  estado: string;
-  cantidad_odt: number;
-  total: number;
-}
-
-/** Para el banner "esta es una secundaria de..." en la página de detalle. */
-export async function obtenerPrefacturaVinculada(id: string): Promise<PrefacturaVinculada | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("prefactura")
-    .select("id, numero, estado, cantidad_odt, total")
-    .eq("id", id)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
-}
-
-/** Para la lista "prefacturas secundarias de esta" en la página de detalle de una principal. */
-export async function listarPrefacturasSecundarias(
-  prefacturaOriginalId: string,
-): Promise<PrefacturaVinculada[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("prefactura")
-    .select("id, numero, estado, cantidad_odt, total")
-    .eq("prefactura_original_id", prefacturaOriginalId)
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  return data ?? [];
-}
-
 export interface FilaResumenFacturacion {
   centro_costo_final: string | null;
   regional: string | null;

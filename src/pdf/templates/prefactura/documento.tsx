@@ -38,7 +38,7 @@ function AvisoAjuste({ ajuste }: { ajuste: NonNullable<DatosPdfPrefactura["ajust
   return (
     <View style={estilos.avisoAjuste}>
       <Text style={estilos.avisoAjusteTitulo}>
-        DOCUMENTO DE AJUSTE — corrige la prefactura N.º {ajuste.numeroOriginal}
+        PREFACTURA DE AJUSTE — solo ODT confirmadas físicamente en el escaneo
       </Text>
       {ajuste.motivo ? <Text style={estilos.avisoAjusteTexto}>{ajuste.motivo}</Text> : null}
     </View>

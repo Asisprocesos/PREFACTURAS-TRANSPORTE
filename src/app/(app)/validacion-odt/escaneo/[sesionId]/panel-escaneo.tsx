@@ -252,15 +252,15 @@ export function PanelEscaneo({
 
       {sesion.placa ? (
         <div className="rounded-lg border bg-card p-4">
-          <h2 className="mb-1 text-sm font-semibold">Prefactura secundaria (ajuste)</h2>
+          <h2 className="mb-1 text-sm font-semibold">Prefactura de ajuste</h2>
           <p className="mb-3 text-sm text-muted-foreground">
             Para cuando lo cargado en el sistema no coincide con lo físico (ej. 10 ODT cargadas, 9 en papel):
-            genera una prefactura aparte con solo las ODT confirmadas por este escaneo, numerada distinto y
-            sin tocar la prefactura ni el PDF originales.
+            genera una prefactura nueva e independiente, con solo las ODT confirmadas por este escaneo — no
+            depende de ninguna otra prefactura de este vehículo/período ni la modifica.
           </p>
           {prefacturaSecundariaId ? (
             <p className="text-sm text-primary-ink">
-              Prefactura secundaria creada.{" "}
+              Prefactura de ajuste creada.{" "}
               <Link href={`/prefacturas/${prefacturaSecundariaId}`} className="underline">
                 Verla
               </Link>
@@ -269,10 +269,10 @@ export function PanelEscaneo({
           ) : (resumen.CARGADA_SIN_FISICA ?? 0) > 0 && (resumen.ESCANEADA_Y_CARGADA ?? 0) > 0 ? (
             <BotonAccionConfirmada
               accion={generarPrefacturaSecundaria}
-              etiqueta="Generar prefactura secundaria"
+              etiqueta="Generar prefactura de ajuste"
               etiquetaCargando="Generando..."
-              confirmacion1={`¿Generar una prefactura secundaria con las ${resumen.ESCANEADA_Y_CARGADA ?? 0} ODT confirmadas físicamente en esta sesión?`}
-              confirmacion2="La prefactura y el PDF originales no se modifican, quedan intactos. ¿Continuar?"
+              confirmacion1={`¿Generar una prefactura de ajuste con las ${resumen.ESCANEADA_Y_CARGADA ?? 0} ODT confirmadas físicamente en esta sesión?`}
+              confirmacion2="Se crea como un documento nuevo e independiente; ninguna otra prefactura se modifica. ¿Continuar?"
               onExito={() => router.refresh()}
             />
           ) : (
