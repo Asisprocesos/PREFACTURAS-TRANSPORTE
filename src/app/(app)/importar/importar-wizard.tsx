@@ -25,6 +25,7 @@ import { crearUrlSubidaImportacion } from "@/lib/importador/storage";
 import { useExcelWorker } from "@/lib/importador/use-excel-worker";
 import { validarImportacionAction } from "@/lib/importador/validar-action";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
 import { ResultadosValidacion } from "./resultados-validacion";
 import { Stepper } from "./stepper";
@@ -39,6 +40,13 @@ interface PeriodoOpcion {
   estado: string;
 }
 
+const EXTENSIONES_ACEPTADAS = [".xlsx", ".xls", ".xlsb", ".csv"];
+
+function extensionAceptada(nombreArchivo: string): boolean {
+  const nombre = nombreArchivo.toLowerCase();
+  return EXTENSIONES_ACEPTADAS.some((ext) => nombre.endsWith(ext));
+}
+
 export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[]; esAdmin: boolean }) {
   const [estado, setEstado] = useState<EstadoImportador>(ESTADO_INICIAL);
   const [cargando, setCargando] = useState(false);
@@ -49,6 +57,7 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
   const [deteccionPeriodo, setDeteccionPeriodo] = useState<ResultadoDeteccionPeriodo | null>(null);
   const [detectandoPeriodo, setDetectandoPeriodo] = useState(false);
   const [periodoManual, setPeriodoManual] = useState(false);
+  const [arrastrando, setArrastrando] = useState(false);
   const { analizar, previsualizar } = useExcelWorker();
 
   function actualizar(cambios: Partial<EstadoImportador>) {
@@ -82,6 +91,19 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
   }, [estado.paso, columnaFecha, estado.importacionId, estado.hojaElegida, periodoManual]);
 
   // ---- Paso 1: Cargar ----
+  function onSoltarArchivo(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setArrastrando(false);
+    const archivo = e.dataTransfer.files?.[0];
+    if (!archivo) return;
+    if (!extensionAceptada(archivo.name)) {
+      setError(`Formato no soportado. Usa: ${EXTENSIONES_ACEPTADAS.join(", ")}.`);
+      return;
+    }
+    setError(null);
+    actualizar({ archivo });
+  }
+
   async function subirArchivo() {
     if (!estado.archivo) return;
     setCargando(true);
@@ -207,11 +229,27 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
 
         {estado.paso === 1 ? (
           <div className="space-y-3">
-            <Input
-              type="file"
-              accept=".xlsx,.xls,.xlsb,.csv"
-              onChange={(e) => actualizar({ archivo: e.target.files?.[0] ?? null })}
-            />
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setArrastrando(true);
+              }}
+              onDragLeave={() => setArrastrando(false)}
+              onDrop={onSoltarArchivo}
+              className={cn(
+                "flex flex-col items-center gap-3 rounded-lg border-2 border-dashed p-8 text-center transition-colors",
+                arrastrando ? "border-primary-ink bg-primary/5" : "border-input",
+              )}
+            >
+              <p className="text-sm text-muted-foreground">Arrastra y suelta el archivo aquí, o elige uno:</p>
+              <Input
+                type="file"
+                accept=".xlsx,.xls,.xlsb,.csv"
+                onChange={(e) => actualizar({ archivo: e.target.files?.[0] ?? null })}
+                className="max-w-sm"
+              />
+              {estado.archivo ? <p className="text-sm font-medium">{estado.archivo.name}</p> : null}
+            </div>
             <Button onClick={subirArchivo} disabled={!estado.archivo || cargando}>
               {cargando ? "Subiendo..." : "Subir y continuar"}
             </Button>
