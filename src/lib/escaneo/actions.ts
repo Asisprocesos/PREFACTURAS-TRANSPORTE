@@ -58,6 +58,24 @@ export async function registrarEscaneoAction(sesionId: string, guiaCruda: string
   return { ok: true, guia };
 }
 
+/** Nota libre y opcional de la sesión (ver panel-escaneo.tsx) — editable en curso o ya finalizada. */
+export async function guardarComentarioSesionAction(
+  sesionId: string,
+  comentario: string,
+): Promise<ResultadoAccion> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("sesion_escaneo")
+    .update({ comentario: comentario.trim() || null })
+    .eq("id", sesionId);
+  if (error) return { ok: false, error: "No se pudo guardar el comentario." };
+
+  revalidatePath(`/validacion-odt/escaneo/${sesionId}`);
+  revalidatePath("/validacion-odt/escaneo");
+  return { ok: true };
+}
+
 export async function finalizarSesionEscaneoAction(sesionId: string): Promise<ResultadoAccion> {
   await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
   const supabase = await createClient();

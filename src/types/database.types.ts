@@ -725,6 +725,7 @@ export interface Database {
           iniciada_por: string | null;
           iniciada_en: string;
           finalizada_en: string | null;
+          comentario: string | null;
         };
         Insert: {
           id?: string;
@@ -733,6 +734,7 @@ export interface Database {
           iniciada_por?: string | null;
           iniciada_en?: string;
           finalizada_en?: string | null;
+          comentario?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["sesion_escaneo"]["Insert"]>;
         Relationships: [];

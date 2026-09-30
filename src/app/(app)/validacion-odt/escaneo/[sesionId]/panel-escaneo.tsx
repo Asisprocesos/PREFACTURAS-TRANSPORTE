@@ -4,7 +4,11 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { finalizarSesionEscaneoAction, registrarEscaneoAction } from "@/lib/escaneo/actions";
+import {
+  finalizarSesionEscaneoAction,
+  guardarComentarioSesionAction,
+  registrarEscaneoAction,
+} from "@/lib/escaneo/actions";
 import type { EscaneoOdt, FilaMatch, ResumenValorEscaneo, SesionEscaneo } from "@/lib/escaneo/queries";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +61,9 @@ export function PanelEscaneo({
   const [ultimoMensaje, setUltimoMensaje] = useState<{ texto: string; ok: boolean } | null>(null);
   const [pegado, setPegado] = useState("");
   const [procesandoLista, setProcesandoLista] = useState(false);
+  const [comentario, setComentario] = useState(sesion.comentario ?? "");
+  const [guardandoComentario, setGuardandoComentario] = useState(false);
+  const [comentarioGuardado, setComentarioGuardado] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function procesarGuia(guia: string) {
@@ -95,6 +102,14 @@ export function PanelEscaneo({
   async function finalizar() {
     await finalizarSesionEscaneoAction(sesion.id);
     router.refresh();
+  }
+
+  async function guardarComentario() {
+    setGuardandoComentario(true);
+    setComentarioGuardado(false);
+    const resultado = await guardarComentarioSesionAction(sesion.id, comentario);
+    setGuardandoComentario(false);
+    if (resultado.ok) setComentarioGuardado(true);
   }
 
   const resumen = matchInicial.reduce(
@@ -213,6 +228,26 @@ export function PanelEscaneo({
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="rounded-lg border bg-card p-4">
+        <h2 className="mb-2 text-sm font-semibold">Comentario (opcional)</h2>
+        <textarea
+          value={comentario}
+          onChange={(e) => {
+            setComentario(e.target.value);
+            setComentarioGuardado(false);
+          }}
+          rows={3}
+          placeholder="Ej. Faltan 3 guías por recibir del transportista, ODT dañada, etc."
+          className="w-full rounded-md border border-input bg-background p-2 text-sm"
+        />
+        <div className="mt-2 flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={guardarComentario} disabled={guardandoComentario}>
+            {guardandoComentario ? "Guardando..." : "Guardar comentario"}
+          </Button>
+          {comentarioGuardado ? <span className="text-sm text-primary-ink">Guardado.</span> : null}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

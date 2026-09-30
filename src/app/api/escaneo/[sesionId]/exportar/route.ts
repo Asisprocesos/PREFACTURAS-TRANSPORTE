@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 
 import { requireRole } from "@/lib/auth/roles";
-import { obtenerMatchSesion } from "@/lib/escaneo/queries";
+import { obtenerMatchSesion, obtenerSesionEscaneo } from "@/lib/escaneo/queries";
 
 export const runtime = "nodejs";
 
@@ -16,7 +16,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ses
   await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
   const { sesionId } = await params;
 
-  const { filas, resumenValor } = await obtenerMatchSesion(sesionId);
+  const [{ filas, resumenValor }, sesion] = await Promise.all([
+    obtenerMatchSesion(sesionId),
+    obtenerSesionEscaneo(sesionId),
+  ]);
 
   const hoja = XLSX.utils.json_to_sheet([
     ...filas.map((f) => ({
@@ -28,6 +31,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ses
     { Guía: "Valor esperado (ODT cargadas)", Resultado: "", Valor: resumenValor.totalEsperado },
     { Guía: "Confirmado con ODT física", Resultado: "", Valor: resumenValor.totalConfirmado },
     { Guía: "Falta por escanear", Resultado: "", Valor: resumenValor.totalFaltante },
+    ...(sesion?.comentario ? [{}, { Guía: "Comentario", Resultado: sesion.comentario, Valor: "" }] : []),
   ]);
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, hoja, "Escaneo");

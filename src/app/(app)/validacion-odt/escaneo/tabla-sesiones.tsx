@@ -87,13 +87,14 @@ export function TablaSesionesEscaneo({
               <th className="px-4 py-3 font-medium">Iniciada</th>
               <th className="px-4 py-3 font-medium">Estado</th>
               <th className="px-4 py-3 font-medium">Lecturas</th>
+              <th className="px-4 py-3 font-medium">Comentario</th>
               <th className="px-4 py-3 font-medium">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {filas.length === 0 ? (
               <tr>
-                <td colSpan={puedeEliminar ? 7 : 6} className="px-4 py-6 text-center text-muted-foreground">
+                <td colSpan={puedeEliminar ? 8 : 7} className="px-4 py-6 text-center text-muted-foreground">
                   No hay sesiones de escaneo con estos filtros.
                 </td>
               </tr>
@@ -126,6 +127,12 @@ export function TablaSesionesEscaneo({
                       </span>
                     </td>
                     <td className="px-4 py-3">{s.cantidadEscaneos}</td>
+                    <td
+                      className="max-w-xs truncate px-4 py-3 text-muted-foreground"
+                      title={s.comentario ?? ""}
+                    >
+                      {s.comentario ?? "—"}
+                    </td>
                     <td className="px-4 py-3">
                       <Button asChild variant="ghost" size="sm">
                         <Link href={`/validacion-odt/escaneo/${s.id}`}>Ver detalle</Link>
