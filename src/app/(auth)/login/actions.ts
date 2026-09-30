@@ -3,16 +3,14 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { defaultAppConfig } from "@/config/app.config";
+import { correoPermitido, mensajeCorreoNoPermitido } from "@/lib/auth/correo-permitido";
 import { createClient } from "@/lib/supabase/server";
 
 const credencialesSchema = z.object({
   email: z
     .string()
     .email("Ingresa un correo válido.")
-    .refine((email) => email.toLowerCase().endsWith(`@${defaultAppConfig.dominioCorreoPermitido}`), {
-      message: `El acceso está restringido a correos @${defaultAppConfig.dominioCorreoPermitido}.`,
-    }),
+    .refine(correoPermitido, { message: mensajeCorreoNoPermitido }),
   password: z.string().min(1, "Ingresa tu contraseña."),
 });
 

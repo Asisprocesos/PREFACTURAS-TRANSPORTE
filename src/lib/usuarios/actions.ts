@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { defaultAppConfig } from "@/config/app.config";
 import { requireRole } from "@/lib/auth/roles";
+import { correoPermitido, mensajeCorreoNoPermitido } from "@/lib/auth/correo-permitido";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -66,9 +66,7 @@ const invitacionSchema = z.object({
   email: z
     .string()
     .email("Ingresa un correo válido.")
-    .refine((email) => email.toLowerCase().endsWith(`@${defaultAppConfig.dominioCorreoPermitido}`), {
-      message: `El correo debe ser @${defaultAppConfig.dominioCorreoPermitido}.`,
-    }),
+    .refine(correoPermitido, { message: mensajeCorreoNoPermitido }),
   nombre: z.string().min(1, "Ingresa un nombre."),
 });
 
