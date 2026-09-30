@@ -51,6 +51,50 @@ export async function marcarRequiereRegenerar(odtId: string): Promise<string[]> 
   return (detalle ?? []).map((d) => d.prefactura_id);
 }
 
+/**
+ * Recalcula total_odt/total_descuentos/total de cada prefactura (principal o
+ * secundaria de ajuste) que incluye esta ODT, sumando sobre TODAS las ODT
+ * congeladas en su propio prefactura_detalle. Necesario porque
+ * generar_prefacturas_periodo solo mantiene al día la prefactura PRINCIPAL
+ * de cada vehículo/período — una secundaria que comparte esta misma ODT (ver
+ * generarPrefacturaSecundariaAction) no se toca ahí, así que sin este
+ * recálculo explícito su total quedaría congelado con el valor viejo tras
+ * corregir la ODT o aplicarle/quitarle un descuento.
+ */
+export async function recalcularTotalesPrefacturasDeOdt(odtId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data: detalle } = await supabase
+    .from("prefactura_detalle")
+    .select("prefactura_id")
+    .eq("odt_id", odtId);
+  const prefacturaIds = [...new Set((detalle ?? []).map((d) => d.prefactura_id))];
+
+  for (const prefacturaId of prefacturaIds) {
+    const { data: todoElDetalle } = await supabase
+      .from("prefactura_detalle")
+      .select("odt_id")
+      .eq("prefactura_id", prefacturaId);
+    const odtIds = (todoElDetalle ?? []).map((d) => d.odt_id);
+
+    const { data: odts } = await supabase.from("odt").select("valor, valor_final").in("id", odtIds);
+    const totalOdt = (odts ?? []).reduce((acc, o) => acc + (o.valor_final ?? o.valor), 0);
+
+    const { data: descuentos } = await supabase
+      .from("descuento")
+      .select("valor")
+      .in("odt_id", odtIds)
+      .is("deleted_at", null);
+    const totalDescuentos = (descuentos ?? []).reduce((acc, d) => acc + d.valor, 0);
+
+    await supabase
+      .from("prefactura")
+      .update({ total_odt: totalOdt, total_descuentos: totalDescuentos, total: totalOdt - totalDescuentos })
+      .eq("id", prefacturaId);
+  }
+
+  return prefacturaIds;
+}
+
 export async function corregirOdtAction(
   odtId: string,
   campo: string,
@@ -96,6 +140,9 @@ export async function corregirOdtAction(
 
   if ((campo === "valor_final" || campo === "placa_normalizada") && odt.periodo_id) {
     await supabase.rpc("generar_prefacturas_periodo", { p_periodo_id: odt.periodo_id });
+  }
+  if (campo === "valor_final") {
+    await recalcularTotalesPrefacturasDeOdt(odtId);
   }
 
   revalidatePath("/control-placa");
@@ -150,7 +197,14 @@ export async function corregirOdtMasivoAction(datos: {
 
   await supabase.rpc("generar_prefacturas_periodo", { p_periodo_id: datos.periodoId });
 
+  const prefacturaIdsAfectadas = new Set<string>();
+  for (const odtId of ids) {
+    const marcadas = await marcarRequiereRegenerar(odtId);
+    for (const id of marcadas) prefacturaIdsAfectadas.add(id);
+  }
+
   revalidatePath("/control-placa");
   revalidatePath("/prefacturas");
+  for (const id of prefacturaIdsAfectadas) revalidatePath(`/prefacturas/${id}`);
   return { ok: true, afectadas: ids.length };
 }

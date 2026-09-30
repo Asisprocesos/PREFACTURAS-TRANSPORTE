@@ -3,57 +3,13 @@
 import { revalidatePath } from "next/cache";
 
 import { requireRole } from "@/lib/auth/roles";
-import { marcarRequiereRegenerar } from "@/lib/odt/actions";
+import { marcarRequiereRegenerar, recalcularTotalesPrefacturasDeOdt } from "@/lib/odt/actions";
 import { createClient } from "@/lib/supabase/server";
 import type { ResultadoAccion } from "@/lib/types/acciones";
 
-/**
- * Recalcula total_descuentos y total de cada prefactura (principal o
- * secundaria) que incluye esta ODT, a partir de los descuentos activos de
- * TODAS las ODT congeladas en su prefactura_detalle. total_odt no cambia acá
- * (eso lo maneja "Generar prefacturas del período"), solo el neto.
- */
-async function recalcularPrefacturasDeOdt(odtId: string): Promise<string[]> {
-  const supabase = await createClient();
-  const { data: detalle } = await supabase
-    .from("prefactura_detalle")
-    .select("prefactura_id")
-    .eq("odt_id", odtId);
-  const prefacturaIds = [...new Set((detalle ?? []).map((d) => d.prefactura_id))];
-
-  for (const prefacturaId of prefacturaIds) {
-    const { data: todoElDetalle } = await supabase
-      .from("prefactura_detalle")
-      .select("odt_id")
-      .eq("prefactura_id", prefacturaId);
-    const odtIds = (todoElDetalle ?? []).map((d) => d.odt_id);
-
-    const { data: descuentos } = await supabase
-      .from("descuento")
-      .select("valor")
-      .in("odt_id", odtIds)
-      .is("deleted_at", null);
-    const totalDescuentos = (descuentos ?? []).reduce((acc, d) => acc + d.valor, 0);
-
-    const { data: prefactura } = await supabase
-      .from("prefactura")
-      .select("total_odt")
-      .eq("id", prefacturaId)
-      .single();
-    if (!prefactura) continue;
-
-    await supabase
-      .from("prefactura")
-      .update({ total_descuentos: totalDescuentos, total: prefactura.total_odt - totalDescuentos })
-      .eq("id", prefacturaId);
-  }
-
-  return prefacturaIds;
-}
-
 async function revalidarPrefacturas(odtId: string) {
   const marcadas = await marcarRequiereRegenerar(odtId);
-  const afectadas = await recalcularPrefacturasDeOdt(odtId);
+  const afectadas = await recalcularTotalesPrefacturasDeOdt(odtId);
   const ids = new Set([...marcadas, ...afectadas]);
   revalidatePath("/control-placa");
   revalidatePath("/prefacturas");
