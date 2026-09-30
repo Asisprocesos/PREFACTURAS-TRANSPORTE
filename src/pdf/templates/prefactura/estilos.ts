@@ -52,6 +52,24 @@ export const estilos = StyleSheet.create({
     textAlign: "right",
     color: COLOR.grisTexto,
   },
+  avisoAjuste: {
+    borderWidth: 1.5,
+    borderColor: "#B91C1C",
+    backgroundColor: "#FEF2F2",
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    marginBottom: 12,
+  },
+  avisoAjusteTitulo: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10,
+    color: "#B91C1C",
+  },
+  avisoAjusteTexto: {
+    fontSize: 8,
+    color: "#B91C1C",
+    marginTop: 2,
+  },
   seccion: {
     marginBottom: 14,
   },

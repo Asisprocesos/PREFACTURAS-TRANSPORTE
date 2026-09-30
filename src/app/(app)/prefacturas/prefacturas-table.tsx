@@ -57,9 +57,14 @@ function crearColumnas(puedeEnviar: boolean): ColumnDef<PrefacturaConRelaciones>
       cell: ({ row }) => (
         <Link
           href={`/prefacturas/${row.original.id}`}
-          className="font-medium text-primary-ink hover:underline"
+          className="inline-flex items-center gap-2 font-medium text-primary-ink hover:underline"
         >
           {row.original.numero ?? "(sin número)"}
+          {!row.original.es_principal ? (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+              AJUSTE
+            </span>
+          ) : null}
         </Link>
       ),
     },

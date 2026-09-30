@@ -19,6 +19,7 @@ export type FilaExcel = Record<string, string | number>;
 export function filasPrefacturas(prefacturas: PrefacturaReporte[]): FilaExcel[] {
   return prefacturas.map((p) => ({
     Número: p.numero ?? "(sin número)",
+    Tipo: p.es_principal ? "Principal" : "Secundaria (Ajuste)",
     Período: p.periodo?.nombre ?? "",
     Placa: p.vehiculo?.placa ?? "",
     Transportista: nombreTransportista(p.transportista) ?? "",

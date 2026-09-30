@@ -27,6 +27,10 @@ function prefactura(overrides: Partial<PrefacturaReporte>): PrefacturaReporte {
     cantidad_odt: 5,
     estado: "LISTA",
     version_actual: 0,
+    es_principal: true,
+    prefactura_original_id: null,
+    sesion_escaneo_id: null,
+    motivo: null,
     created_at: "2026-09-01T00:00:00Z",
     updated_at: "2026-09-01T00:00:00Z",
     created_by: null,
@@ -43,6 +47,7 @@ describe("filasPrefacturas", () => {
     expect(filas).toEqual([
       {
         Número: "PF-2026-0001",
+        Tipo: "Principal",
         Período: "Período 13/08 - 12/09",
         Placa: "ABC1234",
         Transportista: "Transportes Demo",
@@ -54,6 +59,11 @@ describe("filasPrefacturas", () => {
         Estado: "Lista",
       },
     ]);
+  });
+
+  it("marca 'Secundaria (Ajuste)' cuando es_principal es false", () => {
+    const filas = filasPrefacturas([prefactura({ es_principal: false })]);
+    expect(filas[0]?.["Tipo"]).toBe("Secundaria (Ajuste)");
   });
 
   it("usa '(sin número)' cuando la prefactura no tiene correlativo asignado", () => {

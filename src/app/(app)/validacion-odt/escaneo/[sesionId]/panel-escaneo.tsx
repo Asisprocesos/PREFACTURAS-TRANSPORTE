@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { BotonAccionConfirmada } from "@/components/ui/boton-accion-confirmada";
 import { Button } from "@/components/ui/button";
 import {
   finalizarSesionEscaneoAction,
@@ -10,6 +12,7 @@ import {
   registrarEscaneoAction,
 } from "@/lib/escaneo/actions";
 import type { EscaneoOdt, FilaMatch, ResumenValorEscaneo, SesionEscaneo } from "@/lib/escaneo/queries";
+import { generarPrefacturaSecundariaAction } from "@/lib/escaneo/prefactura-secundaria-actions";
 import { cn } from "@/lib/utils";
 
 const formatoMoneda = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD" });
@@ -65,6 +68,7 @@ export function PanelEscaneo({
   const [comentario, setComentario] = useState(sesion.comentario ?? "");
   const [guardandoComentario, setGuardandoComentario] = useState(false);
   const [comentarioGuardado, setComentarioGuardado] = useState(false);
+  const [prefacturaSecundariaId, setPrefacturaSecundariaId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // El lector escanea mucho más rápido de lo que tarda el viaje al servidor:
@@ -150,6 +154,12 @@ export function PanelEscaneo({
     const resultado = await guardarComentarioSesionAction(sesion.id, comentario);
     setGuardandoComentario(false);
     if (resultado.ok) setComentarioGuardado(true);
+  }
+
+  async function generarPrefacturaSecundaria() {
+    const resultado = await generarPrefacturaSecundariaAction(sesion.id);
+    if (resultado.ok && resultado.id) setPrefacturaSecundariaId(resultado.id);
+    return resultado;
   }
 
   const resumen = matchInicial.reduce(
@@ -239,6 +249,41 @@ export function PanelEscaneo({
           </span>
         ))}
       </div>
+
+      {sesion.placa ? (
+        <div className="rounded-lg border bg-card p-4">
+          <h2 className="mb-1 text-sm font-semibold">Prefactura secundaria (ajuste)</h2>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Para cuando lo cargado en el sistema no coincide con lo físico (ej. 10 ODT cargadas, 9 en papel):
+            genera una prefactura aparte con solo las ODT confirmadas por este escaneo, numerada distinto y
+            sin tocar la prefactura ni el PDF originales.
+          </p>
+          {prefacturaSecundariaId ? (
+            <p className="text-sm text-primary-ink">
+              Prefactura secundaria creada.{" "}
+              <Link href={`/prefacturas/${prefacturaSecundariaId}`} className="underline">
+                Verla
+              </Link>
+              .
+            </p>
+          ) : (resumen.CARGADA_SIN_FISICA ?? 0) > 0 && (resumen.ESCANEADA_Y_CARGADA ?? 0) > 0 ? (
+            <BotonAccionConfirmada
+              accion={generarPrefacturaSecundaria}
+              etiqueta="Generar prefactura secundaria"
+              etiquetaCargando="Generando..."
+              confirmacion1={`¿Generar una prefactura secundaria con las ${resumen.ESCANEADA_Y_CARGADA ?? 0} ODT confirmadas físicamente en esta sesión?`}
+              confirmacion2="La prefactura y el PDF originales no se modifican, quedan intactos. ¿Continuar?"
+              onExito={() => router.refresh()}
+            />
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {(resumen.CARGADA_SIN_FISICA ?? 0) === 0
+                ? "No hay diferencia entre lo cargado y lo escaneado: no hace falta un ajuste."
+                : "Escanea al menos una ODT que coincida con lo cargado para poder generar el ajuste."}
+            </p>
+          )}
+        </div>
+      ) : null}
 
       <div className="overflow-x-auto rounded-lg border bg-card">
         <table className="w-full text-sm">

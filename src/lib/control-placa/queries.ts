@@ -48,7 +48,11 @@ export async function obtenerControlPlaca(
     supabase
       .from("prefactura")
       .select("id, numero, total, cantidad_odt, estado, vehiculo:vehiculo_id(placa)")
-      .eq("periodo_id", periodoId),
+      .eq("periodo_id", periodoId)
+      // Solo la principal: una placa puede tener además 0..N prefacturas
+      // secundarias/ajuste (ver Validación ODT / Escaneo), y este semáforo
+      // muestra la prefactura "oficial" del período, no las correcciones.
+      .eq("es_principal", true),
     supabase
       .from("novedad")
       .select("placa, severidad, mensaje")

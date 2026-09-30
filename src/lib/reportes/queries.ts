@@ -10,9 +10,11 @@ export type PrefacturaReporte = Database["public"]["Tables"]["prefactura"]["Row"
   periodo: { nombre: string } | null;
 };
 
-// Tope de seguridad: una prefactura es única por (vehículo, período), así
-// que el máximo real por período está acotado por la flota activa; 5000
-// cubre con margen cualquier volumen realista de LAARCOURIER.
+// Tope de seguridad: una prefactura PRINCIPAL es única por (vehículo,
+// período) — puede haber además 0..N secundarias/ajuste por placa (ver
+// Validación ODT / Escaneo) — así que el máximo real por período está
+// acotado con margen por la flota activa; 5000 cubre cualquier volumen
+// realista de LAARCOURIER incluso contando ajustes.
 const TOPE_FILAS_REPORTE = 5000;
 
 export async function obtenerPrefacturasReporte(

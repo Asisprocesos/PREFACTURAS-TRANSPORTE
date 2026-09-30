@@ -115,7 +115,10 @@ export async function contarPrefacturasSinCorreo(periodoId: string | null): Prom
   const { data: prefacturas, error } = await supabase
     .from("prefactura")
     .select("vehiculo_id, transportista_id")
-    .eq("periodo_id", periodoId);
+    .eq("periodo_id", periodoId)
+    // Solo principales: una secundaria comparte vehículo/transportista con
+    // su original, así que contarlas aparte solo duplicaría el aviso.
+    .eq("es_principal", true);
   if (error) throw error;
   if (!prefacturas || prefacturas.length === 0) return 0;
 

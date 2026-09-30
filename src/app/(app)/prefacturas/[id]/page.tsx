@@ -9,9 +9,11 @@ import { construirVariablesPlantilla } from "@/lib/correo/plantilla-variables";
 import { obtenerContactosPrefactura } from "@/lib/correo/queries";
 import { interpolarPlantilla } from "@/lib/email/plantilla";
 import {
+  listarPrefacturasSecundarias,
   obtenerDetalleOdt,
   obtenerNovedadesPrefactura,
   obtenerPrefactura,
+  obtenerPrefacturaVinculada,
   obtenerResumenFacturacion,
 } from "@/lib/prefacturas/queries";
 import { nombreTransportista } from "@/lib/transportistas/display";
@@ -36,11 +38,15 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
   if (!prefactura) notFound();
   const anulada = prefactura.estado === "ANULADA";
 
-  const [resumen, detalleOdt, todasLasNovedades, contactos] = await Promise.all([
+  const [resumen, detalleOdt, todasLasNovedades, contactos, original, secundarias] = await Promise.all([
     obtenerResumenFacturacion(id),
     obtenerDetalleOdt(id),
     obtenerNovedadesPrefactura(prefactura.vehiculo?.placa ?? null, prefactura.periodo_id),
     obtenerContactosPrefactura(prefactura.vehiculo?.id ?? null, prefactura.transportista?.id ?? null),
+    !prefactura.es_principal && prefactura.prefactura_original_id
+      ? obtenerPrefacturaVinculada(prefactura.prefactura_original_id)
+      : Promise.resolve(null),
+    prefactura.es_principal ? listarPrefacturasSecundarias(id) : Promise.resolve([]),
   ]);
   // Esta tarjeta es una alerta de "pendiente por resolver", no un historial:
   // una novedad ya resuelta/ignorada (ver Control por placa) no debe seguir
@@ -58,6 +64,36 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
         <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive">
           Esta prefactura está <strong>anulada</strong>. No se puede enviar por correo hasta reactivarla o
           eliminarla.
+        </div>
+      ) : null}
+      {!prefactura.es_principal ? (
+        <div className="rounded-md border border-amber-400/50 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+          Esta es una <strong>prefactura secundaria (ajuste)</strong>
+          {original ? (
+            <>
+              {" "}
+              de{" "}
+              <Link href={`/prefacturas/${original.id}`} className="underline">
+                {original.numero ?? "(sin número)"}
+              </Link>
+            </>
+          ) : null}
+          . La prefactura original no fue modificada.
+          {prefactura.motivo ? <p className="mt-1">{prefactura.motivo}</p> : null}
+        </div>
+      ) : null}
+      {prefactura.es_principal && secundarias.length > 0 ? (
+        <div className="rounded-md border border-amber-400/50 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+          Tiene {secundarias.length} prefactura(s) secundaria(s) generada(s) a partir de esta:{" "}
+          {secundarias.map((s, i) => (
+            <span key={s.id}>
+              {i > 0 ? ", " : ""}
+              <Link href={`/prefacturas/${s.id}`} className="underline">
+                {s.numero ?? "(sin número)"}
+              </Link>
+            </span>
+          ))}
+          .
         </div>
       ) : null}
       <div className="grid gap-4 lg:grid-cols-[1fr_380px]">

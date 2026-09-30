@@ -504,6 +504,10 @@ export interface Database {
           cantidad_odt: number;
           estado: EstadoPrefactura;
           version_actual: number;
+          es_principal: boolean;
+          prefactura_original_id: string | null;
+          sesion_escaneo_id: string | null;
+          motivo: string | null;
         } & Auditable &
           ConDuenio;
         Insert: {
@@ -518,6 +522,10 @@ export interface Database {
           cantidad_odt?: number;
           estado?: EstadoPrefactura;
           version_actual?: number;
+          es_principal?: boolean;
+          prefactura_original_id?: string | null;
+          sesion_escaneo_id?: string | null;
+          motivo?: string | null;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;

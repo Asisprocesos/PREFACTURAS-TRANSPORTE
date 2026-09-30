@@ -50,6 +50,11 @@ export async function buscarPrefactura(
     .select("id")
     .in("vehiculo_id", vehiculoIds)
     .eq("periodo_id", periodoId)
+    // Solo la principal: puede haber además 0..N secundarias/ajuste (ver
+    // Validación ODT / Escaneo) para la misma placa/período, y esta
+    // búsqueda lleva a la prefactura oficial — las secundarias se
+    // encuentran desde ahí (banner de vinculadas) o desde Prefacturas.
+    .eq("es_principal", true)
     .maybeSingle();
   if (prefactura) return { prefacturaId: prefactura.id };
 

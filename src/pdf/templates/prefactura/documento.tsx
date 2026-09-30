@@ -34,6 +34,17 @@ function PiePagina({ datos }: { datos: DatosPdfPrefactura }) {
   );
 }
 
+function AvisoAjuste({ ajuste }: { ajuste: NonNullable<DatosPdfPrefactura["ajuste"]> }) {
+  return (
+    <View style={estilos.avisoAjuste}>
+      <Text style={estilos.avisoAjusteTitulo}>
+        DOCUMENTO DE AJUSTE — corrige la prefactura N.º {ajuste.numeroOriginal}
+      </Text>
+      {ajuste.motivo ? <Text style={estilos.avisoAjusteTexto}>{ajuste.motivo}</Text> : null}
+    </View>
+  );
+}
+
 function NumeroPagina() {
   return (
     <Text
@@ -49,6 +60,7 @@ export function DocumentoPrefactura({ datos }: { datos: DatosPdfPrefactura }) {
     <Document title={`${datos.empresa.nombreDocumento} ${datos.numero}`}>
       <Page size="A4" style={estilos.pagina} wrap>
         <Encabezado datos={datos} />
+        {datos.ajuste ? <AvisoAjuste ajuste={datos.ajuste} /> : null}
 
         <View style={estilos.seccion}>
           <Text style={estilos.seccionTitulo}>Datos del vehículo</Text>

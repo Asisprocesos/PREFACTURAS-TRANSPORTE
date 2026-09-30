@@ -6,6 +6,7 @@ import { defaultAppConfig } from "@/config/app.config";
 import {
   obtenerDetalleOdt,
   obtenerPrefactura,
+  obtenerPrefacturaNumero,
   obtenerResumenFacturacion,
   type Odt,
   type PrefacturaConRelaciones,
@@ -68,10 +69,13 @@ export interface ResultadoBufferPdf {
  * en el tiempo total contra el límite de la función serverless.
  */
 export async function generarBufferPdf(prefactura: PrefacturaConRelaciones): Promise<ResultadoBufferPdf> {
-  const [detalleOdt, resumen, conductorRegistrado] = await Promise.all([
+  const [detalleOdt, resumen, conductorRegistrado, numeroOriginal] = await Promise.all([
     obtenerDetalleOdt(prefactura.id),
     obtenerResumenFacturacion(prefactura.id),
     prefactura.vehiculo?.id ? obtenerConductorVigente(prefactura.vehiculo.id) : Promise.resolve(null),
+    !prefactura.es_principal && prefactura.prefactura_original_id
+      ? obtenerPrefacturaNumero(prefactura.prefactura_original_id)
+      : Promise.resolve(null),
   ]);
 
   const datos: DatosPdfPrefactura = {
@@ -112,6 +116,7 @@ export async function generarBufferPdf(prefactura: PrefacturaConRelaciones): Pro
       contacto: defaultAppConfig.empresa.contacto,
     },
     leyenda: defaultAppConfig.pdf.leyenda,
+    ajuste: !prefactura.es_principal && numeroOriginal ? { numeroOriginal, motivo: prefactura.motivo } : null,
   };
 
   const buffer = await renderToBuffer(DocumentoPrefactura({ datos }));

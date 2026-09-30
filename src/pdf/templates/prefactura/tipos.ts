@@ -36,4 +36,6 @@ export interface DatosPdfPrefactura {
     };
   };
   leyenda: string;
+  /** Presente solo en prefacturas secundarias (ver es_principal en la tabla prefactura). */
+  ajuste: { numeroOriginal: string; motivo: string | null } | null;
 }
