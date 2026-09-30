@@ -43,6 +43,9 @@ export async function cambiarRolUsuario(
 
 const estadoUsuarioSchema = z.enum(["ACTIVO", "INACTIVO", "ELIMINAR"]);
 
+/** Nunca eliminar por debajo de este total de usuarios registrados, para que el sistema siempre tenga con quién entrar. */
+const MINIMO_USUARIOS = 2;
+
 /**
  * Un solo select en la tabla de Usuarios con tres opciones: Activo/Inactivo
  * (activa o desactiva el perfil, igual que antes) y Eliminar (borra la
@@ -50,7 +53,8 @@ const estadoUsuarioSchema = z.enum(["ACTIVO", "INACTIVO", "ELIMINAR"]);
  * actividad registrada todavía (correcciones, PDFs generados, ODT
  * importadas, etc. lo referencian por FK sin cascada, a propósito, para no
  * perder ese historial) — si falla por eso, el mensaje sugiere desactivar
- * en su lugar.
+ * en su lugar. Tampoco deja eliminar si el total de usuarios registrados
+ * quedaría por debajo de MINIMO_USUARIOS.
  */
 export async function cambiarEstadoUsuarioAction(
   _estado: EstadoAccionUsuario,
@@ -68,6 +72,12 @@ export async function cambiarEstadoUsuarioAction(
   }
 
   if (parsedEstado.data === "ELIMINAR") {
+    const supabaseConteo = await createClient();
+    const { count } = await supabaseConteo.from("perfil_usuario").select("*", { count: "exact", head: true });
+    if ((count ?? 0) <= MINIMO_USUARIOS) {
+      return { error: `Debe haber al menos ${MINIMO_USUARIOS} usuarios registrados en el sistema.` };
+    }
+
     const admin = createAdminClient();
     const { error } = await admin.auth.admin.deleteUser(userId);
     if (error) {
