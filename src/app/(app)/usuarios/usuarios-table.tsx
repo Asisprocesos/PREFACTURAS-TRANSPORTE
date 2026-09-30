@@ -2,8 +2,11 @@
 
 import { useActionState, useRef } from "react";
 
-import { Button } from "@/components/ui/button";
-import { cambiarActivoUsuario, cambiarRolUsuario, type EstadoAccionUsuario } from "@/lib/usuarios/actions";
+import {
+  cambiarEstadoUsuarioAction,
+  cambiarRolUsuario,
+  type EstadoAccionUsuario,
+} from "@/lib/usuarios/actions";
 import type { UsuarioConPerfil } from "@/lib/usuarios/queries";
 
 const ROLES = ["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"] as const;
@@ -38,8 +41,22 @@ export function UsuariosTable({ usuarios }: { usuarios: UsuarioConPerfil[] }) {
 
 function FilaUsuario({ usuario }: { usuario: UsuarioConPerfil }) {
   const [, formActionRol] = useActionState(cambiarRolUsuario, estadoInicial);
-  const [estadoActivo, formActionActivo] = useActionState(cambiarActivoUsuario, estadoInicial);
+  const [estadoEstado, formActionEstado] = useActionState(cambiarEstadoUsuarioAction, estadoInicial);
   const formRolRef = useRef<HTMLFormElement>(null);
+  const formEstadoRef = useRef<HTMLFormElement>(null);
+
+  function manejarCambioEstado(e: React.ChangeEvent<HTMLSelectElement>) {
+    if (e.target.value === "ELIMINAR") {
+      const confirmado = confirm(
+        `¿Eliminar a ${usuario.email}? Esta acción no se puede deshacer. Si ya tiene actividad registrada en el sistema, no se podrá eliminar — desactívalo en ese caso.`,
+      );
+      if (!confirmado) {
+        e.target.value = usuario.activo ? "ACTIVO" : "INACTIVO";
+        return;
+      }
+    }
+    formEstadoRef.current?.requestSubmit();
+  }
 
   return (
     <tr>
@@ -63,13 +80,19 @@ function FilaUsuario({ usuario }: { usuario: UsuarioConPerfil }) {
         </form>
       </td>
       <td className="px-4 py-3">
-        <form action={formActionActivo} className="flex items-center gap-2">
+        <form ref={formEstadoRef} action={formActionEstado} className="flex items-center gap-2">
           <input type="hidden" name="userId" value={usuario.userId} />
-          <input type="hidden" name="activo" value={(!usuario.activo).toString()} />
-          <Button type="submit" variant={usuario.activo ? "outline" : "destructive"} size="sm">
-            {usuario.activo ? "Activo" : "Inactivo"}
-          </Button>
-          {estadoActivo.error ? <span className="text-xs text-destructive">{estadoActivo.error}</span> : null}
+          <select
+            name="estado"
+            defaultValue={usuario.activo ? "ACTIVO" : "INACTIVO"}
+            onChange={manejarCambioEstado}
+            className="h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="ACTIVO">Activo</option>
+            <option value="INACTIVO">Inactivo</option>
+            <option value="ELIMINAR">Eliminar</option>
+          </select>
+          {estadoEstado.error ? <span className="text-xs text-destructive">{estadoEstado.error}</span> : null}
         </form>
       </td>
     </tr>

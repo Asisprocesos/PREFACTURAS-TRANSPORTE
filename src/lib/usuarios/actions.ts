@@ -41,20 +41,50 @@ export async function cambiarRolUsuario(
   return { ok: true };
 }
 
-export async function cambiarActivoUsuario(
+const estadoUsuarioSchema = z.enum(["ACTIVO", "INACTIVO", "ELIMINAR"]);
+
+/**
+ * Un solo select en la tabla de Usuarios con tres opciones: Activo/Inactivo
+ * (activa o desactiva el perfil, igual que antes) y Eliminar (borra la
+ * cuenta de Supabase Auth). Eliminar solo funciona si el usuario no tiene
+ * actividad registrada todavía (correcciones, PDFs generados, ODT
+ * importadas, etc. lo referencian por FK sin cascada, a propósito, para no
+ * perder ese historial) — si falla por eso, el mensaje sugiere desactivar
+ * en su lugar.
+ */
+export async function cambiarEstadoUsuarioAction(
   _estado: EstadoAccionUsuario,
   formData: FormData,
 ): Promise<EstadoAccionUsuario> {
-  await requireRole(["ADMIN"]);
+  const perfil = await requireRole(["ADMIN"]);
 
   const userId = String(formData.get("userId") ?? "");
-  const activo = formData.get("activo") === "true";
-  if (!userId) {
+  const parsedEstado = estadoUsuarioSchema.safeParse(formData.get("estado"));
+  if (!userId || !parsedEstado.success) {
     return { error: "Datos inválidos." };
+  }
+  if (userId === perfil.userId) {
+    return { error: "No puedes cambiar tu propio estado desde aquí." };
+  }
+
+  if (parsedEstado.data === "ELIMINAR") {
+    const admin = createAdminClient();
+    const { error } = await admin.auth.admin.deleteUser(userId);
+    if (error) {
+      return {
+        error:
+          "No se pudo eliminar: el usuario tiene actividad registrada en el sistema. Desactívalo en su lugar.",
+      };
+    }
+    revalidatePath("/usuarios");
+    return { ok: true };
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("perfil_usuario").update({ activo }).eq("user_id", userId);
+  const { error } = await supabase
+    .from("perfil_usuario")
+    .update({ activo: parsedEstado.data === "ACTIVO" })
+    .eq("user_id", userId);
   if (error) {
     return { error: "No se pudo actualizar el estado." };
   }
