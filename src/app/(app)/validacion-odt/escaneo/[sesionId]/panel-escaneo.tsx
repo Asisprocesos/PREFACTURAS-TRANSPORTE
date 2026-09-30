@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -60,11 +60,36 @@ export function PanelEscaneo({
   const [valor, setValor] = useState("");
   const [ultimoMensaje, setUltimoMensaje] = useState<{ texto: string; ok: boolean } | null>(null);
   const [pegado, setPegado] = useState("");
-  const [procesandoLista, setProcesandoLista] = useState(false);
+  const [enCola, setEnCola] = useState(0);
+  const [contadorLocal, setContadorLocal] = useState(0);
   const [comentario, setComentario] = useState(sesion.comentario ?? "");
   const [guardandoComentario, setGuardandoComentario] = useState(false);
   const [comentarioGuardado, setComentarioGuardado] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // El lector escanea mucho más rápido de lo que tarda el viaje al servidor:
+  // si se esperara esa respuesta antes de limpiar el campo (como hacía
+  // antes), una segunda lectura mientras la primera seguía en camino se
+  // mezclaba con la que aún no se había limpiado y ninguna de las dos
+  // quedaba registrada. Acá cada guía entra a una cola y se procesa una por
+  // una en segundo plano — el campo se limpia de inmediato, así que nunca
+  // se pierde una lectura por ir más rápido que la red.
+  const colaRef = useRef<string[]>([]);
+  const procesandoColaRef = useRef(false);
+  const refrescoPendienteRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setContadorLocal(0);
+  }, [escaneosIniciales]);
+
+  function programarRefresco() {
+    if (refrescoPendienteRef.current) clearTimeout(refrescoPendienteRef.current);
+    // Se espera una pausa corta en el escaneo antes de refrescar la tabla de
+    // resultados: refrescar en cada lectura reconsulta todo (sesión, match,
+    // resumen de valor) y esa espera es justo lo que se quiere evitar entre
+    // lectura y lectura.
+    refrescoPendienteRef.current = setTimeout(() => router.refresh(), 800);
+  }
 
   async function procesarGuia(guia: string) {
     const resultado = await registrarEscaneoAction(sesion.id, guia);
@@ -73,30 +98,45 @@ export function PanelEscaneo({
       texto: resultado.ok ? `Registrada: ${resultado.guia}` : (resultado.error ?? "Error"),
       ok: resultado.ok,
     });
+    if (resultado.ok) setContadorLocal((n) => n + 1);
     return resultado;
   }
 
-  async function onSubmitLectura(e: React.FormEvent) {
-    e.preventDefault();
-    if (!valor.trim()) return;
-    await procesarGuia(valor);
-    setValor("");
-    inputRef.current?.focus();
-    router.refresh();
+  async function procesarCola() {
+    if (procesandoColaRef.current) return;
+    procesandoColaRef.current = true;
+    while (colaRef.current.length > 0) {
+      const guia = colaRef.current[0]!;
+      await procesarGuia(guia);
+      colaRef.current.shift();
+      setEnCola(colaRef.current.length);
+    }
+    procesandoColaRef.current = false;
+    programarRefresco();
   }
 
-  async function procesarLista() {
-    setProcesandoLista(true);
+  function encolarGuia(guia: string) {
+    colaRef.current.push(guia);
+    setEnCola(colaRef.current.length);
+    void procesarCola();
+  }
+
+  function onSubmitLectura(e: React.FormEvent) {
+    e.preventDefault();
+    const guia = valor.trim();
+    if (!guia) return;
+    setValor("");
+    encolarGuia(guia);
+  }
+
+  function procesarLista() {
     const guias = pegado
       .split(/[\n,;]+/)
       .map((g) => g.trim())
       .filter(Boolean);
-    for (const g of guias) {
-      await procesarGuia(g);
-    }
-    setProcesandoLista(false);
+    if (guias.length === 0) return;
     setPegado("");
-    router.refresh();
+    for (const g of guias) encolarGuia(g);
   }
 
   async function finalizar() {
@@ -142,7 +182,8 @@ export function PanelEscaneo({
             </p>
           ) : null}
           <p className="mt-2 text-xs text-muted-foreground">
-            Escaneadas en esta sesión: {escaneosIniciales.length}
+            Escaneadas en esta sesión: {escaneosIniciales.length + contadorLocal}
+            {enCola > 0 ? ` · guardando ${enCola}...` : ""}
           </p>
         </div>
 
@@ -160,9 +201,9 @@ export function PanelEscaneo({
             variant="outline"
             className="mt-2"
             onClick={procesarLista}
-            disabled={procesandoLista || !pegado.trim() || !!sesion.finalizada_en}
+            disabled={!pegado.trim() || !!sesion.finalizada_en}
           >
-            {procesandoLista ? "Procesando..." : "Procesar lista"}
+            Procesar lista
           </Button>
         </div>
       </div>
