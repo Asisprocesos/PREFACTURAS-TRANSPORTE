@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +19,7 @@ import { AccionesPdf } from "./acciones-pdf";
 import { AnularPrefacturaButton } from "./anular-prefactura-button";
 import { EnviarCorreoForm } from "./enviar-correo-form";
 import { PdfPreview } from "./pdf-preview";
+import { TablaDetalleOdt } from "./tabla-detalle-odt";
 
 // Los Server Actions de esta página (generar PDF, enviar correo con SMTP)
 // heredan el límite de duración de la ruta que los invoca.
@@ -202,51 +202,7 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
           ) : null}
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-left text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Fecha</th>
-                  <th className="px-3 py-2 font-medium">Guía</th>
-                  <th className="px-3 py-2 font-medium">Ruta</th>
-                  <th className="px-3 py-2 font-medium">Centro de costo</th>
-                  <th className="px-3 py-2 font-medium">Valor</th>
-                  {puedeEditarOdt ? <th className="px-3 py-2 font-medium">Acciones</th> : null}
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {detalleOdt.map((o) => (
-                  <tr key={o.id}>
-                    <td className="px-3 py-2">{o.fecha_creacion}</td>
-                    <td className="px-3 py-2">{o.guia}</td>
-                    <td className="px-3 py-2">{o.ruta ?? o.ruta_macro ?? "—"}</td>
-                    <td className="px-3 py-2">{o.centro_costo_final ?? "—"}</td>
-                    <td className="px-3 py-2">
-                      {formatoMoneda.format(o.valor_final ?? o.valor)}
-                      {o.descuentoTotal > 0 ? (
-                        <span
-                          className="ml-2 rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-medium text-destructive"
-                          title={`Descuento: -${formatoMoneda.format(o.descuentoTotal)} (${o.descuentoMotivos.join(", ")})`}
-                        >
-                          -{formatoMoneda.format(o.descuentoTotal)}
-                        </span>
-                      ) : null}
-                    </td>
-                    {puedeEditarOdt ? (
-                      <td className="px-3 py-2">
-                        <Link
-                          href={`/odt/${encodeURIComponent(o.guia)}/corregir?volver=${encodeURIComponent(`/prefacturas/${id}`)}`}
-                          className="text-primary-ink hover:underline"
-                        >
-                          Editar ODT
-                        </Link>
-                      </td>
-                    ) : null}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <TablaDetalleOdt prefacturaId={id} detalleOdt={detalleOdt} puedeEditarOdt={puedeEditarOdt} />
         </CardContent>
       </Card>
     </div>
