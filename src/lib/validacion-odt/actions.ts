@@ -22,12 +22,14 @@ export async function buscarPrefacturaAction(
     return { error: "Elige un período e ingresa una placa." };
   }
 
-  const prefacturaId = await buscarPrefactura(placa, periodoId);
-  if (!prefacturaId) {
+  const resultado = await buscarPrefactura(placa, periodoId);
+  if (!resultado.prefacturaId) {
     return {
-      error: `No hay prefactura para la placa ${placa.toUpperCase()} en ese período. Genera las prefacturas del período primero.`,
+      error:
+        resultado.diagnostico ??
+        `No hay prefactura para la placa ${placa.toUpperCase()} en ese período. Genera las prefacturas del período primero.`,
     };
   }
 
-  redirect(`/prefacturas/${prefacturaId}`);
+  redirect(`/prefacturas/${resultado.prefacturaId}`);
 }
