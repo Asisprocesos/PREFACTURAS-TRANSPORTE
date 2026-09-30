@@ -7,6 +7,11 @@
 -- único vehiculo_id+periodo_id); las secundarias quedan vinculadas a su
 -- original vía `prefactura_original_id` y, cuando aplica, a la sesión de
 -- escaneo que las generó.
+--
+-- Nota: los alias de una sola letra (o, v, p) van seguidos de la siguiente
+-- palabra en la MISMA línea a propósito, en vez del salto de línea
+-- habitual — el editor SQL de Supabase interpretaba mal un salto de línea
+-- justo después de un alias corto y rompía el pegado del script.
 
 alter table public.prefactura
   add column es_principal boolean not null default true,
@@ -47,8 +52,7 @@ declare
   v_creadas integer := 0;
   v_actualizadas integer := 0;
 begin
-  update odt o
-  set vehiculo_id = v.id
+  update odt o set vehiculo_id = v.id
   from vehiculo v
   where o.periodo_id = p_periodo_id
     and o.vehiculo_id is null
@@ -61,8 +65,7 @@ begin
       v.transportista_id,
       count(*) as cantidad_odt,
       sum(coalesce(o.valor_final, o.valor)) as total_odt
-    from odt o
-    join vehiculo v on v.id = o.vehiculo_id
+    from odt o join vehiculo v on v.id = o.vehiculo_id
     where o.periodo_id = p_periodo_id
       and o.vehiculo_id is not null
       and v.transportista_id is not null
@@ -92,8 +95,7 @@ begin
   -- Congela el detalle de ODT de cada prefactura principal del período.
   insert into prefactura_detalle (prefactura_id, odt_id)
   select p.id, o.id
-  from odt o
-  join prefactura p on p.vehiculo_id = o.vehiculo_id and p.periodo_id = p_periodo_id and p.es_principal
+  from odt o join prefactura p on p.vehiculo_id = o.vehiculo_id and p.periodo_id = p_periodo_id and p.es_principal
   where o.periodo_id = p_periodo_id
     and o.vehiculo_id is not null
   on conflict (prefactura_id, odt_id) do nothing;
@@ -156,8 +158,7 @@ as $$
        where n.estado = 'ABIERTA' and n.severidad = 'INFO'
          and (p_periodo_id is null or n.periodo_id = p_periodo_id)) as novedades_abiertas_info
   from public.prefactura p
-  where (p_periodo_id is null or p.periodo_id = p_periodo_id)
-    and p.es_principal;
+  where (p_periodo_id is null or p.periodo_id = p_periodo_id) and p.es_principal;
 $$;
 
 comment on function public.dashboard_indicadores(uuid) is
@@ -172,8 +173,7 @@ set search_path = public
 as $$
   select p.estado, count(*) as cantidad
   from public.prefactura p
-  where (p_periodo_id is null or p.periodo_id = p_periodo_id)
-    and p.es_principal
+  where (p_periodo_id is null or p.periodo_id = p_periodo_id) and p.es_principal
   group by p.estado
   order by p.estado;
 $$;
