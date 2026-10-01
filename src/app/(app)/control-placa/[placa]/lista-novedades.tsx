@@ -30,6 +30,7 @@ function FilaNovedad({ novedad, soloLectura }: { novedad: Novedad; soloLectura: 
   const [mostrarForm, setMostrarForm] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [otrasResueltas, setOtrasResueltas] = useState(0);
 
   async function resolver(marcarComo: "RESUELTA" | "IGNORADA") {
     setCargando(true);
@@ -44,6 +45,7 @@ function FilaNovedad({ novedad, soloLectura }: { novedad: Novedad; soloLectura: 
       setError(resultado.error ?? "No se pudo actualizar la novedad.");
       return;
     }
+    setOtrasResueltas(resultado.otrasResueltas ?? 0);
     router.refresh();
   }
 
@@ -69,6 +71,15 @@ function FilaNovedad({ novedad, soloLectura }: { novedad: Novedad; soloLectura: 
           {resuelta ? (
             <p className="text-xs text-primary-ink">
               {novedad.estado === "RESUELTA" ? "Resuelta" : "Ignorada"}: {novedad.resolucion}
+            </p>
+          ) : null}
+          {otrasResueltas > 0 ? (
+            <p className="text-xs text-primary-ink">
+              También se{" "}
+              {otrasResueltas === 1
+                ? "resolvió 1 novedad idéntica"
+                : `resolvieron ${otrasResueltas} novedades idénticas`}{" "}
+              de otras ODT de esta placa: la misma causa ya no aplica.
             </p>
           ) : null}
         </div>
