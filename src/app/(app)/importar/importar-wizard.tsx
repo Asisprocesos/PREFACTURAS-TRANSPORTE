@@ -406,46 +406,35 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
             </div>
 
             {estado.filasCrudas.length > 0 ? (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Fila de encabezado</label>
-                <p className="text-xs text-muted-foreground">
-                  Se detectó automáticamente la fila {estado.filaEncabezado + 1}. Si el archivo trae un título
-                  arriba de las columnas reales (ej. &quot;Reporte Choferes&quot;) y la tabla de abajo se ve
-                  mal, elige la fila correcta aquí.
-                </p>
-                <div className="overflow-x-auto rounded-lg border">
-                  <table className="w-full text-xs">
-                    <tbody className="divide-y">
-                      {estado.filasCrudas.map((fila, idx) => (
-                        <tr key={idx}>
-                          <td className="w-10 px-2 py-1.5">
-                            <button
-                              type="button"
-                              disabled={cargando}
-                              onClick={() => cambiarFilaEncabezado(idx)}
-                              title={`Usar la fila ${idx + 1} como encabezado`}
-                              className={cn(
-                                "flex h-6 w-6 items-center justify-center rounded-full border text-[11px] font-medium",
-                                idx === estado.filaEncabezado
-                                  ? "border-primary-ink bg-primary text-primary-foreground"
-                                  : "border-input hover:bg-accent",
-                              )}
-                            >
-                              {idx + 1}
-                            </button>
-                          </td>
-                          <td className="truncate px-2 py-1.5 text-muted-foreground">
-                            {fila
-                              .slice(0, 8)
-                              .map((c) => String(c ?? "").trim())
-                              .filter(Boolean)
-                              .join(" · ") || "(fila vacía)"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <label htmlFor="filaEncabezado" className="font-medium">
+                  Fila de encabezado:
+                </label>
+                <select
+                  id="filaEncabezado"
+                  value={estado.filaEncabezado}
+                  disabled={cargando}
+                  onChange={(e) => cambiarFilaEncabezado(Number(e.target.value))}
+                  className="h-8 max-w-sm rounded-md border border-input bg-background px-2 text-xs"
+                >
+                  {estado.filasCrudas.map((fila, idx) => {
+                    const previa = fila
+                      .slice(0, 6)
+                      .map((c) => String(c ?? "").trim())
+                      .filter(Boolean)
+                      .join(" · ");
+                    return (
+                      <option key={idx} value={idx}>
+                        Fila {idx + 1}
+                        {previa ? ` — ${previa}` : " (vacía)"}
+                      </option>
+                    );
+                  })}
+                </select>
+                <span className="text-xs text-muted-foreground">
+                  Cámbiala si el archivo trae un título arriba de las columnas (ej. &quot;Reporte
+                  Choferes&quot;).
+                </span>
               </div>
             ) : null}
 
