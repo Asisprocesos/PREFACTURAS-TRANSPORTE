@@ -9,6 +9,10 @@ export interface EstadoImportador {
   importacionId: string | null;
   hojas: { nombre: string; filas: number }[];
   hojaElegida: string | null;
+  /** Fila donde empiezan los encabezados (0 = primera fila), auto-detectada o elegida a mano. */
+  filaEncabezado: number;
+  /** Primeras filas crudas del archivo, para el selector manual de fila de encabezado. */
+  filasCrudas: unknown[][];
   encabezados: string[];
   filasPreview: unknown[][];
   mapeo: Record<string, CampoOdt | null>;
@@ -22,6 +26,8 @@ export const ESTADO_INICIAL: EstadoImportador = {
   importacionId: null,
   hojas: [],
   hojaElegida: null,
+  filaEncabezado: 0,
+  filasCrudas: [],
   encabezados: [],
   filasPreview: [],
   mapeo: {},

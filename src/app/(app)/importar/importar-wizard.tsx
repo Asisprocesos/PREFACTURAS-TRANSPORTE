@@ -79,6 +79,7 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
       importacionId: estado.importacionId,
       hoja: estado.hojaElegida,
       columnaFecha,
+      filaEncabezado: estado.filaEncabezado,
     }).then((resultado) => {
       if (cancelado) return;
       setDetectandoPeriodo(false);
@@ -88,7 +89,14 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
     return () => {
       cancelado = true;
     };
-  }, [estado.paso, columnaFecha, estado.importacionId, estado.hojaElegida, periodoManual]);
+  }, [
+    estado.paso,
+    columnaFecha,
+    estado.importacionId,
+    estado.hojaElegida,
+    estado.filaEncabezado,
+    periodoManual,
+  ]);
 
   // ---- Paso 1: Cargar ----
   function onSoltarArchivo(e: React.DragEvent<HTMLDivElement>) {
@@ -167,6 +175,8 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
       const sugerencia = sugerirMapeo(previa.encabezados, alias);
       actualizar({
         hojaElegida: hoja,
+        filaEncabezado: previa.filaEncabezado,
+        filasCrudas: previa.filasCrudas,
         encabezados: previa.encabezados,
         filasPreview: previa.filas,
         mapeo: sugerencia,
@@ -174,6 +184,33 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo previsualizar la hoja.");
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  // El usuario corrige a mano cuál fila es el encabezado real (ej. cuando el
+  // archivo trae un título o banner arriba, como "REPORTE CHOFERES", que la
+  // detección automática no siempre reconoce como tal). Vuelve a pedirle al
+  // worker la previsualización desde esa fila y recalcula la sugerencia de
+  // mapeo con los encabezados correctos.
+  async function cambiarFilaEncabezado(nuevaFila: number) {
+    if (!estado.hojaElegida) return;
+    setCargando(true);
+    setError(null);
+    try {
+      const previa = await previsualizar(estado.hojaElegida, nuevaFila);
+      const alias = await obtenerAliasMapeoAction();
+      const sugerencia = sugerirMapeo(previa.encabezados, alias);
+      actualizar({
+        filaEncabezado: previa.filaEncabezado,
+        filasCrudas: previa.filasCrudas,
+        encabezados: previa.encabezados,
+        filasPreview: previa.filas,
+        mapeo: sugerencia,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo volver a leer la hoja.");
     } finally {
       setCargando(false);
     }
@@ -193,6 +230,7 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
         periodoId: estado.periodoId,
         hoja: estado.hojaElegida,
         mapeo: estado.mapeo,
+        filaEncabezado: estado.filaEncabezado,
       });
       actualizar({ resumen, paso: 4 });
     } catch (e) {
@@ -366,6 +404,50 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
                 </p>
               ) : null}
             </div>
+
+            {estado.filasCrudas.length > 0 ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Fila de encabezado</label>
+                <p className="text-xs text-muted-foreground">
+                  Se detectó automáticamente la fila {estado.filaEncabezado + 1}. Si el archivo trae un título
+                  arriba de las columnas reales (ej. &quot;Reporte Choferes&quot;) y la tabla de abajo se ve
+                  mal, elige la fila correcta aquí.
+                </p>
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full text-xs">
+                    <tbody className="divide-y">
+                      {estado.filasCrudas.map((fila, idx) => (
+                        <tr key={idx}>
+                          <td className="w-10 px-2 py-1.5">
+                            <button
+                              type="button"
+                              disabled={cargando}
+                              onClick={() => cambiarFilaEncabezado(idx)}
+                              title={`Usar la fila ${idx + 1} como encabezado`}
+                              className={cn(
+                                "flex h-6 w-6 items-center justify-center rounded-full border text-[11px] font-medium",
+                                idx === estado.filaEncabezado
+                                  ? "border-primary-ink bg-primary text-primary-foreground"
+                                  : "border-input hover:bg-accent",
+                              )}
+                            >
+                              {idx + 1}
+                            </button>
+                          </td>
+                          <td className="truncate px-2 py-1.5 text-muted-foreground">
+                            {fila
+                              .slice(0, 8)
+                              .map((c) => String(c ?? "").trim())
+                              .filter(Boolean)
+                              .join(" · ") || "(fila vacía)"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
 
             <div className="overflow-x-auto rounded-lg border">
               <table className="w-full text-sm">

@@ -34,6 +34,7 @@ export async function detectarOCrearPeriodoAction(datos: {
   importacionId: string;
   hoja: string;
   columnaFecha: string;
+  filaEncabezado?: number;
 }): Promise<ResultadoDeteccionPeriodo> {
   await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
 
@@ -47,7 +48,12 @@ export async function detectarOCrearPeriodoAction(datos: {
 
   let filasCrudas: Record<string, unknown>[];
   try {
-    filasCrudas = await leerFilasCrudasImportacion(supabase, importacion.storage_key, datos.hoja);
+    filasCrudas = await leerFilasCrudasImportacion(
+      supabase,
+      importacion.storage_key,
+      datos.hoja,
+      datos.filaEncabezado,
+    );
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "No se pudo leer el archivo." };
   }

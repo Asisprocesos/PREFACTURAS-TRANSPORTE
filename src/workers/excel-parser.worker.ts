@@ -10,7 +10,8 @@ import * as XLSX from "xlsx";
  */
 
 export type MensajeEntrada =
-  { tipo: "analizar"; archivo: File } | { tipo: "previsualizar"; hoja: string; filas?: number };
+  | { tipo: "analizar"; archivo: File }
+  | { tipo: "previsualizar"; hoja: string; filas?: number; filaEncabezado?: number };
 
 export type MensajeSalida =
   | { tipo: "hojas"; hojas: { nombre: string; filas: number }[] }
@@ -20,6 +21,8 @@ export type MensajeSalida =
       filaEncabezado: number;
       encabezados: string[];
       filas: unknown[][];
+      /** Primeras filas crudas del archivo (sin recortar), para el selector manual de fila de encabezado. */
+      filasCrudas: unknown[][];
     }
   | { tipo: "error"; mensaje: string };
 
@@ -68,7 +71,11 @@ self.onmessage = async (event: MessageEvent<MensajeEntrada>) => {
         raw: false,
         defval: "",
       });
-      const filaEncabezado = detectarFilaEncabezado(todasLasFilas);
+      // Si el usuario ya eligió a mano cuál es la fila de encabezado (ver
+      // selector en el paso "Mapear"), se respeta esa en vez de adivinar de
+      // nuevo — algunos reportes traen un título o banner arriba (ej. "REPORTE
+      // CHOFERES") que a veces confunde a la detección automática.
+      const filaEncabezado = mensaje.filaEncabezado ?? detectarFilaEncabezado(todasLasFilas);
       const encabezados = (todasLasFilas[filaEncabezado] ?? []).map((h) => String(h ?? "").trim());
       const limite = mensaje.filas ?? 50;
       const filas = todasLasFilas.slice(filaEncabezado + 1, filaEncabezado + 1 + limite);
@@ -79,6 +86,7 @@ self.onmessage = async (event: MessageEvent<MensajeEntrada>) => {
         filaEncabezado,
         encabezados,
         filas,
+        filasCrudas: todasLasFilas.slice(0, 15),
       };
       self.postMessage(respuesta);
       return;

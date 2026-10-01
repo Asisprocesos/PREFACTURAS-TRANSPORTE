@@ -74,6 +74,7 @@ export async function validarImportacionAction(datos: {
   periodoId: string;
   hoja: string;
   mapeo: Record<string, CampoOdt | null>;
+  filaEncabezado?: number;
 }): Promise<ResumenValidacion> {
   await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
 
@@ -100,7 +101,12 @@ export async function validarImportacionAction(datos: {
   if (errorImportacion || !importacion) throw new Error("Importación no encontrada.");
 
   // 1. Descargar el archivo (server-side) y parsear la hoja elegida.
-  const filasCrudas = await leerFilasCrudasImportacion(supabase, importacion.storage_key, datos.hoja);
+  const filasCrudas = await leerFilasCrudasImportacion(
+    supabase,
+    importacion.storage_key,
+    datos.hoja,
+    datos.filaEncabezado,
+  );
 
   // 2. Construir el contexto de validación (catálogos + placas conocidas).
   const guiasEnArchivo = new Set<string>();

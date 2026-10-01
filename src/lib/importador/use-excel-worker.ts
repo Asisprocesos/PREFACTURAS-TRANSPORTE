@@ -52,9 +52,9 @@ export function useExcelWorker() {
   );
 
   const previsualizar = useCallback(
-    (hoja: string) =>
+    (hoja: string, filaEncabezado?: number) =>
       enviar<Extract<MensajeSalida, { tipo: "previsualizacion" }>>(
-        { tipo: "previsualizar", hoja },
+        { tipo: "previsualizar", hoja, filaEncabezado },
         "previsualizacion",
       ),
     [enviar],

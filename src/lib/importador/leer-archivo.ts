@@ -27,6 +27,8 @@ export async function leerFilasCrudasImportacion(
   supabase: Awaited<ReturnType<typeof createClient>>,
   storageKey: string,
   hoja: string,
+  /** Fila de encabezado ya elegida en el asistente (ver selector manual en el paso "Mapear"); si no se pasa, se detecta automáticamente. */
+  filaEncabezadoManual?: number,
 ): Promise<Record<string, unknown>[]> {
   const { data: archivoBlob, error: errorDescarga } = await supabase.storage
     .from("imports")
@@ -43,7 +45,7 @@ export async function leerFilasCrudasImportacion(
     raw: false,
     defval: "",
   });
-  const filaEncabezado = detectarFilaEncabezado(todasLasFilas);
+  const filaEncabezado = filaEncabezadoManual ?? detectarFilaEncabezado(todasLasFilas);
   const encabezados = (todasLasFilas[filaEncabezado] ?? []).map((h) => String(h ?? "").trim());
   const cuerpo = todasLasFilas
     .slice(filaEncabezado + 1)
