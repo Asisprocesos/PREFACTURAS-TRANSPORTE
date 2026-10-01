@@ -38,17 +38,32 @@ export async function middleware(request: NextRequest) {
 
   const esRutaPublica = RUTAS_PUBLICAS.some((ruta) => request.nextUrl.pathname.startsWith(ruta));
 
+  // getUser() puede haber refrescado la sesión y guardado las cookies
+  // nuevas en `response` (vía setAll, arriba). Un redirect() crea una
+  // respuesta DISTINTA que no hereda esas cookies — sin copiarlas acá, la
+  // sesión refrescada se pierde en cualquier petición que además redirija,
+  // y el navegador sigue mandando el refresh token viejo. Eso produce un
+  // bucle: sesión válida un instante, inválida al siguiente, de ida y
+  // vuelta entre /login y la página protegida (ERR_TOO_MANY_REDIRECTS).
+  function redirigirConservandoCookies(url: URL) {
+    const redireccion = NextResponse.redirect(url);
+    for (const cookie of response.cookies.getAll()) {
+      redireccion.cookies.set(cookie);
+    }
+    return redireccion;
+  }
+
   if (!user && !esRutaPublica) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirectTo", request.nextUrl.pathname);
-    return NextResponse.redirect(url);
+    return redirigirConservandoCookies(url);
   }
 
   if (user && request.nextUrl.pathname === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
+    return redirigirConservandoCookies(url);
   }
 
   return response;
