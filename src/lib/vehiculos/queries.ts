@@ -130,6 +130,19 @@ export async function listarTransportistasParaSelect() {
   return data ?? [];
 }
 
+/** Placas de vehículos activos, para sugerir al corregir la placa de una ODT (evita errores de tipeo). */
+export async function listarPlacasParaSelect(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("vehiculo")
+    .select("placa")
+    .is("deleted_at", null)
+    .eq("activo", true)
+    .order("placa", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((v) => v.placa);
+}
+
 export async function listarRegionalesParaSelect() {
   const supabase = await createClient();
   const { data, error } = await supabase

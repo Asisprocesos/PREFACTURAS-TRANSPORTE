@@ -22,7 +22,23 @@ const CAMPOS: { valor: keyof Odt; etiqueta: string }[] = [
 /** Estos campos siempre se guardan en mayúsculas (ver también corregirOdtAction). */
 const CAMPOS_MAYUSCULAS = new Set<keyof Odt>(["placa_normalizada", "tipo_ruta", "centro_costo_final"]);
 
-export function FormularioCorreccion({ odt, volver }: { odt: Odt; volver?: string }) {
+/**
+ * Valores ya cargados para sugerir en el "Valor nuevo" según el campo
+ * elegido — solo para los campos que tienen un catálogo real detrás (placa,
+ * tipo de ruta, centro de costo, regional). Fecha y Valor quedan afuera: son
+ * campos libres sin catálogo, sugerir algo ahí no tendría sentido.
+ */
+export type SugerenciasCorreccion = Partial<Record<keyof Odt, string[]>>;
+
+export function FormularioCorreccion({
+  odt,
+  volver,
+  sugerencias,
+}: {
+  odt: Odt;
+  volver?: string;
+  sugerencias?: SugerenciasCorreccion;
+}) {
   const router = useRouter();
   const [campo, setCampo] = useState<string>(CAMPOS[0]!.valor);
   const [valorNuevo, setValorNuevo] = useState("");
@@ -30,6 +46,8 @@ export function FormularioCorreccion({ odt, volver }: { odt: Odt; volver?: strin
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
   const [exito, setExito] = useState(false);
+
+  const opcionesCampo = sugerencias?.[campo as keyof Odt] ?? [];
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -76,8 +94,17 @@ export function FormularioCorreccion({ odt, volver }: { odt: Odt; volver?: strin
                 CAMPOS_MAYUSCULAS.has(campo as keyof Odt) ? e.target.value.toUpperCase() : e.target.value,
               )
             }
+            list={opcionesCampo.length > 0 ? "sugerenciasValorNuevo" : undefined}
+            autoComplete="off"
             required
           />
+          {opcionesCampo.length > 0 ? (
+            <datalist id="sugerenciasValorNuevo">
+              {opcionesCampo.map((v) => (
+                <option key={v} value={v} />
+              ))}
+            </datalist>
+          ) : null}
         </div>
       </div>
       <div className="space-y-2">

@@ -3,10 +3,12 @@ import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
+import { listarTipoRutaCentroCosto } from "@/lib/catalogos/tipo-ruta-centro-costo/queries";
 import { listarDescuentosOdt } from "@/lib/descuentos/queries";
 import { listarCorreccionesOdt, obtenerOdtPorGuia } from "@/lib/odt/queries";
+import { listarPlacasParaSelect, listarRegionalesParaSelect } from "@/lib/vehiculos/queries";
 
-import { FormularioCorreccion } from "./formulario-correccion";
+import { FormularioCorreccion, type SugerenciasCorreccion } from "./formulario-correccion";
 import { FormularioDescuento } from "./formulario-descuento";
 
 export default async function CorregirOdtPage({
@@ -23,8 +25,26 @@ export default async function CorregirOdtPage({
   const odt = await obtenerOdtPorGuia(decodeURIComponent(guia));
   if (!odt) notFound();
 
-  const correcciones = await listarCorreccionesOdt(odt.id);
-  const descuentos = await listarDescuentosOdt(odt.id);
+  const [correcciones, descuentos, placas, catalogoRutas, regionales] = await Promise.all([
+    listarCorreccionesOdt(odt.id),
+    listarDescuentosOdt(odt.id),
+    listarPlacasParaSelect(),
+    listarTipoRutaCentroCosto(),
+    listarRegionalesParaSelect(),
+  ]);
+
+  // Sugerencias para el "Valor nuevo" del campo elegido: solo donde hay un
+  // catálogo real detrás (placa, tipo de ruta, centro de costo, regional),
+  // para evitar errores de tipeo que luego compliquen el cruce de datos.
+  // Fecha y Valor son campos libres, sin catálogo, así que no aplican.
+  const sugerencias: SugerenciasCorreccion = {
+    placa_normalizada: placas,
+    tipo_ruta: [...new Set(catalogoRutas.map((r) => r.tipo_ruta))].sort(),
+    centro_costo_final: [
+      ...new Set(catalogoRutas.map((r) => r.centro_costo).filter((c): c is string => !!c)),
+    ].sort(),
+    regional_origen_texto: regionales.map((r) => r.nombre),
+  };
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -42,7 +62,7 @@ export default async function CorregirOdtPage({
           <CardTitle className="text-lg">Corregir un campo</CardTitle>
         </CardHeader>
         <CardContent>
-          <FormularioCorreccion odt={odt} volver={volver} />
+          <FormularioCorreccion odt={odt} volver={volver} sugerencias={sugerencias} />
         </CardContent>
       </Card>
 
