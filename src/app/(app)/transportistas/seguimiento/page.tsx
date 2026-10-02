@@ -1,10 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
+import { listarTipoTransportista } from "@/lib/catalogos/tipo-transportista/queries";
 import { listarPeriodosParaSelect } from "@/lib/importador/queries";
 import { obtenerSeguimientoTransportistas } from "@/lib/transportistas/queries";
 
 import { FiltroPeriodo } from "./filtro-periodo";
+import { TablaSeguimiento } from "./tabla-seguimiento";
 
 const formatoMoneda = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD" });
 
@@ -13,12 +15,17 @@ export default async function SeguimientoTransportistasPage({
 }: {
   searchParams: Promise<{ periodo?: string }>;
 }) {
-  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
+  const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
   const params = await searchParams;
+  const puedeEditar = perfil.rol === "ADMIN" || perfil.rol === "OPERADOR_TRANSPORTE";
 
-  const periodos = await listarPeriodosParaSelect();
+  const [periodos, tiposTransportista] = await Promise.all([
+    listarPeriodosParaSelect(),
+    puedeEditar ? listarTipoTransportista() : Promise.resolve([]),
+  ]);
   const periodoId = params.periodo || periodos.find((p) => p.estado === "ABIERTO")?.id;
   const seguimiento = periodoId ? await obtenerSeguimientoTransportistas(periodoId) : null;
+  const tiposActivos = tiposTransportista.filter((t) => t.activo);
 
   return (
     <div className="space-y-6">
@@ -60,36 +67,11 @@ export default async function SeguimientoTransportistasPage({
             ))}
           </div>
 
-          <div className="overflow-x-auto rounded-lg border bg-card">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-left text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Transportista</th>
-                  <th className="px-4 py-3 font-medium">Tipo</th>
-                  <th className="px-4 py-3 font-medium">Prefacturas</th>
-                  <th className="px-4 py-3 font-medium">Total facturado</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {seguimiento.porTransportista.map((f) => (
-                  <tr key={f.transportistaId}>
-                    <td className="px-4 py-3 font-medium">{f.nombre}</td>
-                    <td className="px-4 py-3">
-                      {f.tipoTransportista ? (
-                        f.tipoTransportista
-                      ) : (
-                        <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
-                          Sin tipo asignado
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">{f.cantidadPrefacturas}</td>
-                    <td className="px-4 py-3">{formatoMoneda.format(f.totalFacturado)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <TablaSeguimiento
+            filas={seguimiento.porTransportista}
+            tiposTransportista={tiposActivos}
+            puedeEditar={puedeEditar}
+          />
         </>
       )}
     </div>

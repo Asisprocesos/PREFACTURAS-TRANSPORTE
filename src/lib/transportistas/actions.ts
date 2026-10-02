@@ -117,6 +117,25 @@ export async function cambiarActivoTransportista(id: string, activo: boolean): P
   return { ok: true, id };
 }
 
+/** Edición rápida del tipo desde /transportistas/seguimiento, sin pasar por el resto del formulario. */
+export async function cambiarTipoTransportistaAction(
+  id: string,
+  tipoTransportista: string,
+): Promise<ResultadoAccion> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("transportista")
+    .update({ tipo_transportista: tipoTransportista || null })
+    .eq("id", id);
+  if (error) return { ok: false, error: "No se pudo actualizar el tipo de transportista." };
+
+  revalidarVistasDependientes(id);
+  revalidatePath("/transportistas/seguimiento");
+  return { ok: true, id };
+}
+
 export async function agregarCorreoTransportista(
   transportistaId: string,
   valores: { email: string; tipo: "PRINCIPAL" | "ADICIONAL" },
