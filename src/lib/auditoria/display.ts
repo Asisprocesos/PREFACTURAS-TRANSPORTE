@@ -26,6 +26,39 @@ export const TABLAS_AUDITADAS: { valor: string; etiqueta: string }[] = [
   { valor: "descuento", etiqueta: "Descuento" },
 ];
 
+/**
+ * Buscador dinámico: qué campo(s) de `antes`/`despues` buscar según el
+ * módulo elegido (ej. "numero" para prefactura, "guia" para odt), para que
+ * el filtro de texto busque directo por el dato que el usuario reconoce en
+ * vez de por el uuid interno del registro. Las tablas sin un campo de texto
+ * útil (perfil_usuario ya tiene su propio filtro de Usuario;
+ * vehiculo_conductor solo tiene ids de otras tablas) quedan fuera.
+ */
+export const BUSQUEDA_POR_TABLA: Record<string, { campos: string[]; etiqueta: string }> = {
+  odt: { campos: ["guia"], etiqueta: "Buscar por guía..." },
+  prefactura: { campos: ["numero"], etiqueta: "Buscar por número de prefactura..." },
+  documento_pdf: { campos: ["nombre_archivo"], etiqueta: "Buscar por nombre de archivo..." },
+  envio_correo: { campos: ["asunto"], etiqueta: "Buscar por asunto del correo..." },
+  vehiculo: { campos: ["placa"], etiqueta: "Buscar por placa..." },
+  transportista: {
+    campos: ["razon_social", "nombre", "ruc"],
+    etiqueta: "Buscar por razón social, nombre o RUC...",
+  },
+  configuracion: { campos: ["clave"], etiqueta: "Buscar por clave..." },
+  conductor: {
+    campos: ["nombres", "apellidos", "identificacion"],
+    etiqueta: "Buscar por nombre o identificación...",
+  },
+  contacto_correo: { campos: ["email"], etiqueta: "Buscar por correo..." },
+  periodo: { campos: ["nombre"], etiqueta: "Buscar por nombre de período..." },
+  regional: { campos: ["nombre"], etiqueta: "Buscar por nombre de regional..." },
+  tipo_ruta_centro_costo: {
+    campos: ["tipo_ruta", "centro_costo"],
+    etiqueta: "Buscar por tipo de ruta o centro de costo...",
+  },
+  descuento: { campos: ["concepto", "item"], etiqueta: "Buscar por concepto..." },
+};
+
 const ETIQUETAS_ACCION: Record<string, string> = {
   INSERT: "Creación",
   UPDATE: "Modificación",

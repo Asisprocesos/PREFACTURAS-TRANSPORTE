@@ -17,6 +17,7 @@ export default async function AuditoriaPage({
     usuario?: string;
     tabla?: string;
     accion?: string;
+    q?: string;
   }>;
 }) {
   // Historial de cambios: solo ADMIN. No es un simple ocultamiento del menú
@@ -35,6 +36,7 @@ export default async function AuditoriaPage({
       usuarioId: params.usuario,
       tabla: params.tabla,
       accion: params.accion,
+      busqueda: params.q,
     }),
   ]);
 

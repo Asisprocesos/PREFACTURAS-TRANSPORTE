@@ -1,5 +1,6 @@
 import "server-only";
 
+import { BUSQUEDA_POR_TABLA } from "@/lib/auditoria/display";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
@@ -17,6 +18,8 @@ export interface FiltrosAuditoria {
   usuarioId?: string;
   tabla?: string;
   accion?: string;
+  /** Buscador dinámico: solo se aplica si `tabla` está definida y tiene un campo configurado en BUSQUEDA_POR_TABLA. */
+  busqueda?: string;
 }
 
 export interface ListarAuditoriaParams extends FiltrosAuditoria {
@@ -44,6 +47,7 @@ export async function listarAuditoria({
   usuarioId,
   tabla,
   accion,
+  busqueda,
 }: ListarAuditoriaParams): Promise<ListarAuditoriaResultado> {
   const supabase = await createClient();
   const desdeIdx = (pagina - 1) * tamanoPagina;
@@ -60,6 +64,21 @@ export async function listarAuditoria({
   if (usuarioId) query = query.eq("usuario", usuarioId);
   if (tabla) query = query.eq("tabla", tabla);
   if (accion) query = query.eq("accion", accion);
+
+  // Buscador dinámico: el campo relevante cambia según el módulo (guía para
+  // ODT, número para prefactura, placa para vehículo, etc. — ver
+  // BUSQUEDA_POR_TABLA), así que solo aplica con un módulo ya elegido. Busca
+  // en `antes` y `despues` a la vez porque una fila DELETE solo tiene
+  // `antes`, y una INSERT solo `despues`.
+  const terminoBusqueda = busqueda?.trim();
+  const configBusqueda = tabla ? BUSQUEDA_POR_TABLA[tabla] : undefined;
+  if (terminoBusqueda && configBusqueda) {
+    const condiciones = configBusqueda.campos.flatMap((campo) => [
+      `antes->>${campo}.ilike.%${terminoBusqueda}%`,
+      `despues->>${campo}.ilike.%${terminoBusqueda}%`,
+    ]);
+    query = query.or(condiciones.join(","));
+  }
 
   const { data, error, count } = await query;
   if (error) throw error;
