@@ -13,6 +13,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Receipt,
+  ScrollText,
   Search,
   Settings,
   Truck,
@@ -77,6 +78,7 @@ const MENU: {
   { href: "/historial", label: "Historial / Log", icon: History, roles: TODOS_LOS_ROLES },
   { href: "/reportes", label: "Reportes", icon: BarChart3, roles: TODOS_LOS_ROLES },
   { href: "/usuarios", label: "Usuarios", icon: UserCog, roles: SOLO_ADMIN },
+  { href: "/auditoria", label: "Historial de cambios", icon: ScrollText, roles: SOLO_ADMIN },
   { href: "/configuracion", label: "Configuración", icon: Settings, roles: SOLO_ADMIN },
 ];
 
