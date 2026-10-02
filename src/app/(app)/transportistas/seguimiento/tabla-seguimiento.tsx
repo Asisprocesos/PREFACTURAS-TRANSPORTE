@@ -10,6 +10,9 @@ import type { FilaSeguimientoTransportista } from "@/lib/transportistas/queries"
 
 const formatoMoneda = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD" });
 
+/** Valor del <select> de filtro para agrupar los transportistas sin tipo asignado (no puede ser "" porque esa opción significa "todos"). */
+const SIN_TIPO = "__SIN_TIPO__";
+
 export function TablaSeguimiento({
   filas,
   tiposTransportista,
@@ -21,13 +24,29 @@ export function TablaSeguimiento({
 }) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState("");
   const [filaEnEdicion, setFilaEnEdicion] = useState<string | null>(null);
   const [valorEdicion, setValorEdicion] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Las opciones del filtro salen de los datos (no solo del catálogo activo)
+  // para no esconder un tipo legado o desactivado que igual tiene
+  // transportistas facturando en este período.
+  const tiposPresentes = [
+    ...new Set(filas.map((f) => f.tipoTransportista).filter((t): t is string => !!t)),
+  ].sort((a, b) => a.localeCompare(b));
+  const hayTransportistasSinTipo = filas.some((f) => !f.tipoTransportista);
+
   const termino = busqueda.trim().toLowerCase();
-  const filasFiltradas = termino ? filas.filter((f) => f.nombre.toLowerCase().includes(termino)) : filas;
+  const filasFiltradas = filas.filter((f) => {
+    if (termino && !f.nombre.toLowerCase().includes(termino)) return false;
+    if (filtroTipo === SIN_TIPO && f.tipoTransportista) return false;
+    if (filtroTipo && filtroTipo !== SIN_TIPO && f.tipoTransportista?.toUpperCase() !== filtroTipo) {
+      return false;
+    }
+    return true;
+  });
 
   function iniciarEdicion(fila: FilaSeguimientoTransportista) {
     setFilaEnEdicion(fila.transportistaId);
@@ -61,12 +80,27 @@ export function TablaSeguimiento({
 
   return (
     <div className="space-y-3">
-      <Input
-        value={busqueda}
-        onChange={(e) => setBusqueda(e.target.value)}
-        placeholder="Buscar transportista..."
-        className="max-w-sm"
-      />
+      <div className="flex flex-wrap gap-3">
+        <Input
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar transportista..."
+          className="max-w-sm"
+        />
+        <select
+          value={filtroTipo}
+          onChange={(e) => setFiltroTipo(e.target.value)}
+          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value="">Todos los tipos</option>
+          {tiposPresentes.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+          {hayTransportistasSinTipo ? <option value={SIN_TIPO}>Sin tipo asignado</option> : null}
+        </select>
+      </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
       <div className="overflow-x-auto rounded-lg border bg-card">
