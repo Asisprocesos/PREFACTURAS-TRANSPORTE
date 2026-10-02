@@ -53,6 +53,11 @@ export default async function TransportistasPage({
           </p>
         </div>
         <div className="flex gap-2">
+          {!papelera ? (
+            <Button asChild variant="outline">
+              <Link href="/transportistas/seguimiento">Seguimiento por tipo</Link>
+            </Button>
+          ) : null}
           {puedeGestionar ? (
             <Button asChild variant="outline">
               <Link href={papelera ? "/transportistas" : "/transportistas?papelera=1"}>

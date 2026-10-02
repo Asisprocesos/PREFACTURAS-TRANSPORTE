@@ -153,6 +153,26 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["tipo_ruta_centro_costo"]["Insert"]>;
         Relationships: [];
       };
+      tipo_transportista: {
+        Row: {
+          id: string;
+          nombre: string;
+          activo: boolean;
+          deleted_at: string | null;
+        } & Auditable &
+          ConDuenio;
+        Insert: {
+          id?: string;
+          nombre: string;
+          activo?: boolean;
+          deleted_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["tipo_transportista"]["Insert"]>;
+        Relationships: [];
+      };
       calendario: {
         Row: { fecha: string; dia_texto: string; laborable: boolean };
         Insert: { fecha: string; dia_texto: string; laborable: boolean };

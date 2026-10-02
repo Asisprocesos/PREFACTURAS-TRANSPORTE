@@ -1,6 +1,7 @@
 import { defaultAppConfig } from "@/config/app.config";
 import { VolverAImportacion } from "@/components/ui/volver-a-importacion";
 import { listarTipoRutaCentroCosto } from "@/lib/catalogos/tipo-ruta-centro-costo/queries";
+import { listarTipoTransportista } from "@/lib/catalogos/tipo-transportista/queries";
 import { requireRole } from "@/lib/auth/roles";
 import { calcularSiguienteRango } from "@/lib/periodos/nombre";
 import { listarPeriodosAdmin } from "@/lib/periodos/queries";
@@ -9,6 +10,7 @@ import { ArchivarAntiguosButton } from "./archivar-antiguos-button";
 import { CrearPeriodoForm } from "./crear-periodo-form";
 import { PeriodosTabla } from "./periodos-tabla";
 import { TipoRutaCentroCostoTabla } from "./tipo-ruta-centro-costo-tabla";
+import { TipoTransportistaTabla } from "./tipo-transportista-tabla";
 
 export default async function ConfiguracionPage({
   searchParams,
@@ -17,9 +19,10 @@ export default async function ConfiguracionPage({
 }) {
   await requireRole(["ADMIN"]);
   const { tipoRuta, volver } = await searchParams;
-  const [periodos, catalogoTipoRuta] = await Promise.all([
+  const [periodos, catalogoTipoRuta, catalogoTipoTransportista] = await Promise.all([
     listarPeriodosAdmin(),
     listarTipoRutaCentroCosto(),
+    listarTipoTransportista(),
   ]);
 
   const ultimoPeriodo = periodos[0] ?? null;
@@ -62,6 +65,16 @@ export default async function ConfiguracionPage({
         </p>
         <VolverAImportacion volver={volver} />
         <TipoRutaCentroCostoTabla filas={catalogoTipoRuta} tipoRutaInicial={tipoRuta} />
+      </section>
+
+      <section id="tipo-transportista" className="space-y-3">
+        <h2 className="text-lg font-semibold">Tipo de Transportista</h2>
+        <p className="text-sm text-muted-foreground">
+          Catálogo que usa el formulario de Transportista para clasificarlos como FIJO o BACK (u otro tipo que
+          agregues aquí). Solo ADMIN puede crear o editar tipos; desde Transportista solo se elige uno ya
+          existente.
+        </p>
+        <TipoTransportistaTabla filas={catalogoTipoTransportista} />
       </section>
     </div>
   );

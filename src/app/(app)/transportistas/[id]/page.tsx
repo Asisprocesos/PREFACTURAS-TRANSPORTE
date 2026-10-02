@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BotonEliminarORestaurar } from "@/components/ui/boton-eliminar-restaurar";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
+import { listarTipoTransportista } from "@/lib/catalogos/tipo-transportista/queries";
 import {
   agregarCorreoTransportista,
   eliminarCorreoTransportista,
@@ -22,8 +23,12 @@ export default async function DetalleTransportistaPage({ params }: { params: Pro
   const transportista = await obtenerTransportista(id);
   if (!transportista) notFound();
 
-  const correos = await listarCorreosTransportista(id);
   const soloLectura = perfil.rol === "CONSULTA";
+  const [correos, tiposTransportista] = await Promise.all([
+    listarCorreosTransportista(id),
+    soloLectura ? Promise.resolve([]) : listarTipoTransportista(),
+  ]);
+  const tiposActivos = tiposTransportista.filter((t) => t.activo);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -65,7 +70,7 @@ export default async function DetalleTransportistaPage({ params }: { params: Pro
               <dd>{transportista.activo ? "Activo" : "Inactivo"}</dd>
             </dl>
           ) : (
-            <TransportistaForm transportista={transportista} />
+            <TransportistaForm transportista={transportista} tiposTransportista={tiposActivos} />
           )}
         </CardContent>
       </Card>

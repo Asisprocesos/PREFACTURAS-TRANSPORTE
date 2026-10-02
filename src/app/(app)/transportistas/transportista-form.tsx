@@ -12,7 +12,14 @@ import { actualizarTransportista, crearTransportistaYRedirigir } from "@/lib/tra
 import { transportistaFormSchema, type TransportistaFormValues } from "@/lib/transportistas/schema";
 import type { Transportista } from "@/lib/transportistas/queries";
 
-export function TransportistaForm({ transportista }: { transportista?: Transportista }) {
+export function TransportistaForm({
+  transportista,
+  tiposTransportista = [],
+}: {
+  transportista?: Transportista;
+  /** Catálogo activo (ver /configuracion#tipo-transportista); solo ADMIN puede agregar tipos nuevos ahí. */
+  tiposTransportista?: { id: string; nombre: string }[];
+}) {
   const router = useRouter();
   const [errorServidor, setErrorServidor] = useState<string | null>(null);
   const {
@@ -29,6 +36,15 @@ export function TransportistaForm({ transportista }: { transportista?: Transport
       activo: transportista?.activo ?? true,
     },
   });
+
+  // El valor guardado puede ser legado (texto libre de antes de este
+  // catálogo) y no calzar con ninguna fila activa — se agrega igual como
+  // opción para no perderlo/cambiarlo en silencio al guardar otro campo.
+  const valorLegado = transportista?.tipo_transportista;
+  const opcionesTipo =
+    valorLegado && !tiposTransportista.some((t) => t.nombre.toUpperCase() === valorLegado.toUpperCase())
+      ? [...tiposTransportista, { id: valorLegado, nombre: valorLegado }]
+      : tiposTransportista;
 
   const onSubmit = handleSubmit(async (valores) => {
     setErrorServidor(null);
@@ -71,7 +87,21 @@ export function TransportistaForm({ transportista }: { transportista?: Transport
         </div>
         <div className="space-y-2">
           <Label htmlFor="tipoTransportista">Tipo de transportista</Label>
-          <Input id="tipoTransportista" {...register("tipoTransportista")} placeholder="Opcional" />
+          <select
+            id="tipoTransportista"
+            {...register("tipoTransportista")}
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="">Sin tipo asignado</option>
+            {opcionesTipo.map((t) => (
+              <option key={t.id} value={t.nombre}>
+                {t.nombre}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            ¿Falta un tipo? Solo ADMIN puede agregarlo desde Configuración.
+          </p>
         </div>
         <div className="flex items-end gap-2 pb-2">
           <input id="activo" type="checkbox" className="h-4 w-4" {...register("activo")} />

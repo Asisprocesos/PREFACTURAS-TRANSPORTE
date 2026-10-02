@@ -23,6 +23,7 @@ export const TABLAS_AUDITADAS: { valor: string; etiqueta: string }[] = [
   { valor: "periodo", etiqueta: "Período" },
   { valor: "regional", etiqueta: "Regional" },
   { valor: "tipo_ruta_centro_costo", etiqueta: "Tipo de ruta → Centro de costo" },
+  { valor: "tipo_transportista", etiqueta: "Tipo de transportista" },
   { valor: "descuento", etiqueta: "Descuento" },
 ];
 
@@ -56,6 +57,7 @@ export const BUSQUEDA_POR_TABLA: Record<string, { campos: string[]; etiqueta: st
     campos: ["tipo_ruta", "centro_costo"],
     etiqueta: "Buscar por tipo de ruta o centro de costo...",
   },
+  tipo_transportista: { campos: ["nombre"], etiqueta: "Buscar por nombre del tipo..." },
   descuento: { campos: ["concepto", "item"], etiqueta: "Buscar por concepto..." },
 };
 
@@ -146,6 +148,11 @@ export function descripcionRegistro(
       return { titulo: (fila?.nombre as string | undefined) ?? id ?? "—" };
     case "tipo_ruta_centro_costo":
       return { titulo: (fila?.tipo_ruta as string | undefined) ?? id ?? "—", href: "/configuracion" };
+    case "tipo_transportista":
+      return {
+        titulo: (fila?.nombre as string | undefined) ?? id ?? "—",
+        href: "/configuracion#tipo-transportista",
+      };
     case "descuento": {
       const prefacturaId = fila?.prefactura_id as string | undefined;
       return {
