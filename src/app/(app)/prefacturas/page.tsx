@@ -49,7 +49,10 @@ export default async function PrefacturasPage({
         {puedeGenerar ? (
           <div className="flex flex-wrap items-start justify-end gap-2">
             <GenerarPrefacturasButton periodoId={periodoSeleccionado} />
-            <GenerarTodosPdfButton periodoId={periodoSeleccionado} />
+            <GenerarTodosPdfButton
+              periodoId={periodoSeleccionado}
+              periodoNombre={nombrePeriodoSeleccionado}
+            />
             {perfil.rol === "ADMIN" ? (
               <EliminarPrefacturasPeriodoButton
                 periodoId={periodoSeleccionado}

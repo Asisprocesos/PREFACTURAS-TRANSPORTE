@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { obtenerEstadoLoteAction, reintentarFallidosLoteAction } from "@/lib/correo/actions";
 import type { EnvioCorreo, LoteProceso } from "@/lib/correo/queries";
+import { cancelarLoteAction } from "@/lib/ejecuciones/actions";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,7 @@ const ETIQUETA_ESTADO: Record<string, string> = {
   ENVIADO: "Enviado",
   ERROR: "Error",
   REINTENTAR: "Reintentando",
+  CANCELADO: "Cancelado",
 };
 
 const ESTADOS_TERMINALES = new Set(["COMPLETADO", "COMPLETADO_CON_ERRORES"]);
@@ -33,7 +35,9 @@ export function ProgresoLote({
   const [envios, setEnvios] = useState(enviosIniciales);
   const [reintentando, setReintentando] = useState(false);
   const [mensajeReintento, setMensajeReintento] = useState<string | null>(null);
-  const terminado = ESTADOS_TERMINALES.has(lote.estado);
+  const [cancelando, setCancelando] = useState(false);
+  const [mensajeCancelar, setMensajeCancelar] = useState<string | null>(null);
+  const terminado = ESTADOS_TERMINALES.has(lote.estado) || lote.estado === "CANCELADO";
   const loteIdRef = useRef(lote.id);
 
   // Realtime es la vía rápida (actualiza apenas cambia una fila), pero no es
@@ -93,6 +97,29 @@ export function ProgresoLote({
     );
   }
 
+  async function cancelar() {
+    if (
+      !confirm(
+        "¿Cancelar este envío? Los correos ya enviados quedan como están; los pendientes no se enviarán.",
+      )
+    ) {
+      return;
+    }
+    setCancelando(true);
+    setMensajeCancelar(null);
+    const resultado = await cancelarLoteAction(lote.id);
+    setCancelando(false);
+    if (!resultado.ok) {
+      setMensajeCancelar(resultado.error ?? "No se pudo cancelar.");
+      return;
+    }
+    const estado = await obtenerEstadoLoteAction(lote.id).catch(() => null);
+    if (estado) {
+      setLote(estado.lote);
+      setEnvios(estado.envios);
+    }
+  }
+
   const procesados = lote.exitosos + lote.fallidos;
   const porcentaje = lote.total > 0 ? Math.round((procesados / lote.total) * 100) : 0;
 
@@ -117,9 +144,25 @@ export function ProgresoLote({
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
           {terminado
-            ? "Envío terminado. Recargar esta página es seguro: solo consulta lo ya guardado, no vuelve a enviar nada."
+            ? lote.estado === "CANCELADO"
+              ? "Envío cancelado. Los correos ya enviados antes de cancelar quedan registrados tal cual."
+              : "Envío terminado. Recargar esta página es seguro: solo consulta lo ya guardado, no vuelve a enviar nada."
             : `Se actualiza sola cada ${INTERVALO_SONDEO_MS / 1000}s. Recargar la página también es seguro: no reenvía nada, esta pantalla solo consulta el estado guardado en la cola.`}
         </p>
+        {!terminado && puedeReintentar ? (
+          <div className="mt-3 space-y-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-destructive hover:text-destructive"
+              onClick={cancelar}
+              disabled={cancelando}
+            >
+              {cancelando ? "Cancelando..." : "Cancelar envío"}
+            </Button>
+            {mensajeCancelar ? <p className="text-sm text-destructive">{mensajeCancelar}</p> : null}
+          </div>
+        ) : null}
       </div>
 
       {lote.fallidos > 0 ? (

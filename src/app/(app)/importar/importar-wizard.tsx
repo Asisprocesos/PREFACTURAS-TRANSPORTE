@@ -1,44 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  CAMPOS_ODT,
-  camposObligatoriosFaltantes,
-  ETIQUETA_CAMPO,
-  type CampoOdt,
-} from "@/lib/importador/campos";
 import { confirmarLoteImportacionAction } from "@/lib/importador/confirmar-action";
-import {
-  detectarOCrearPeriodoAction,
-  type ResultadoDeteccionPeriodo,
-} from "@/lib/importador/detectar-periodo-action";
 import { calcularHashArchivo } from "@/lib/importador/hash";
-import { guardarAliasMapeoAction, obtenerAliasMapeoAction } from "@/lib/importador/lectura-actions";
-import { sugerirMapeo } from "@/lib/importador/mapeo";
 import { registrarImportacion } from "@/lib/importador/registro";
 import { crearUrlSubidaImportacion } from "@/lib/importador/storage";
-import { useExcelWorker } from "@/lib/importador/use-excel-worker";
-import { validarImportacionAction } from "@/lib/importador/validar-action";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
+import { PasoMapeo } from "./paso-mapeo";
 import { ResultadosValidacion } from "./resultados-validacion";
 import { Stepper } from "./stepper";
-import { ESTADO_INICIAL, type EstadoImportador } from "./tipos";
-
-interface PeriodoOpcion {
-  id: string;
-  numero: number;
-  nombre: string;
-  fecha_inicio: string;
-  fecha_fin: string;
-  estado: string;
-}
+import { ESTADO_INICIAL, type EstadoImportador, type PeriodoOpcion } from "./tipos";
 
 const EXTENSIONES_ACEPTADAS = [".xlsx", ".xls", ".xlsb", ".csv"];
 
@@ -52,51 +30,11 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [avisoDuplicado, setAvisoDuplicado] = useState<string | null>(null);
-  const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
-  const [plantillaGuardada, setPlantillaGuardada] = useState(false);
-  const [deteccionPeriodo, setDeteccionPeriodo] = useState<ResultadoDeteccionPeriodo | null>(null);
-  const [detectandoPeriodo, setDetectandoPeriodo] = useState(false);
-  const [periodoManual, setPeriodoManual] = useState(false);
   const [arrastrando, setArrastrando] = useState(false);
-  const { analizar, previsualizar } = useExcelWorker();
 
   function actualizar(cambios: Partial<EstadoImportador>) {
     setEstado((prev) => ({ ...prev, ...cambios }));
   }
-
-  const columnaFecha =
-    Object.entries(estado.mapeo).find(([, campo]) => campo === "fecha_creacion")?.[0] ?? null;
-
-  // Apenas se mapea la columna de Fecha Creación, se detecta/crea el período
-  // solo — el dropdown manual (más abajo) queda solo para corregirlo.
-  useEffect(() => {
-    if (estado.paso !== 3 || !columnaFecha || !estado.importacionId || !estado.hojaElegida) return;
-    if (periodoManual) return;
-    let cancelado = false;
-    setDetectandoPeriodo(true);
-    setDeteccionPeriodo(null);
-    detectarOCrearPeriodoAction({
-      importacionId: estado.importacionId,
-      hoja: estado.hojaElegida,
-      columnaFecha,
-      filaEncabezado: estado.filaEncabezado,
-    }).then((resultado) => {
-      if (cancelado) return;
-      setDetectandoPeriodo(false);
-      setDeteccionPeriodo(resultado);
-      if (resultado.ok && resultado.periodoId) actualizar({ periodoId: resultado.periodoId });
-    });
-    return () => {
-      cancelado = true;
-    };
-  }, [
-    estado.paso,
-    columnaFecha,
-    estado.importacionId,
-    estado.hojaElegida,
-    estado.filaEncabezado,
-    periodoManual,
-  ]);
 
   // ---- Paso 1: Cargar ----
   function onSoltarArchivo(e: React.DragEvent<HTMLDivElement>) {
@@ -151,111 +89,6 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
     }
   }
 
-  // ---- Paso 2: Leer ----
-  async function leerHojas() {
-    if (!estado.archivo) return;
-    setCargando(true);
-    setError(null);
-    try {
-      const { hojas } = await analizar(estado.archivo);
-      actualizar({ hojas, hojaElegida: hojas[0]?.nombre ?? null });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo leer el archivo.");
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  async function elegirHoja(hoja: string) {
-    setCargando(true);
-    setError(null);
-    try {
-      const previa = await previsualizar(hoja);
-      const alias = await obtenerAliasMapeoAction();
-      const sugerencia = sugerirMapeo(previa.encabezados, alias);
-      actualizar({
-        hojaElegida: hoja,
-        filaEncabezado: previa.filaEncabezado,
-        filasCrudas: previa.filasCrudas,
-        encabezados: previa.encabezados,
-        filasPreview: previa.filas,
-        mapeo: sugerencia,
-        paso: 3,
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo previsualizar la hoja.");
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  // El usuario corrige a mano cuál fila es el encabezado real (ej. cuando el
-  // archivo trae un título o banner arriba, como "REPORTE CHOFERES", que la
-  // detección automática no siempre reconoce como tal). Vuelve a pedirle al
-  // worker la previsualización desde esa fila y recalcula la sugerencia de
-  // mapeo con los encabezados correctos.
-  async function cambiarFilaEncabezado(nuevaFila: number) {
-    if (!estado.hojaElegida) return;
-    setCargando(true);
-    setError(null);
-    try {
-      const previa = await previsualizar(estado.hojaElegida, nuevaFila);
-      const alias = await obtenerAliasMapeoAction();
-      const sugerencia = sugerirMapeo(previa.encabezados, alias);
-      actualizar({
-        filaEncabezado: previa.filaEncabezado,
-        filasCrudas: previa.filasCrudas,
-        encabezados: previa.encabezados,
-        filasPreview: previa.filas,
-        mapeo: sugerencia,
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo volver a leer la hoja.");
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  // ---- Paso 3: Mapear -> Validar ----
-  async function validar() {
-    if (!estado.importacionId || !estado.hojaElegida || !estado.periodoId) {
-      setError("Elige un período antes de validar.");
-      return;
-    }
-    setCargando(true);
-    setError(null);
-    try {
-      const resumen = await validarImportacionAction({
-        importacionId: estado.importacionId,
-        periodoId: estado.periodoId,
-        hoja: estado.hojaElegida,
-        mapeo: estado.mapeo,
-        filaEncabezado: estado.filaEncabezado,
-      });
-      actualizar({ resumen, paso: 4 });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo validar la importación.");
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  async function guardarPlantilla() {
-    setGuardandoPlantilla(true);
-    setPlantillaGuardada(false);
-    try {
-      const alias = Object.entries(estado.mapeo)
-        .filter((entrada): entrada is [string, CampoOdt] => entrada[1] !== null)
-        .map(([alias_origen, campo]) => ({ alias_origen, campo_interno: `odt.${campo}` }));
-      await guardarAliasMapeoAction(alias);
-      setPlantillaGuardada(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar la plantilla de mapeo.");
-    } finally {
-      setGuardandoPlantilla(false);
-    }
-  }
-
   return (
     <Card>
       <CardHeader>
@@ -294,213 +127,14 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
           </div>
         ) : null}
 
-        {estado.paso === 2 ? (
-          <div className="space-y-3">
-            {estado.hojas.length === 0 ? (
-              <Button onClick={leerHojas} disabled={cargando}>
-                {cargando ? "Leyendo..." : "Leer hojas del archivo"}
-              </Button>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Elige la hoja con los datos del corte:</p>
-                <ul className="space-y-1">
-                  {estado.hojas.map((h) => (
-                    <li key={h.nombre}>
-                      <button
-                        type="button"
-                        onClick={() => elegirHoja(h.nombre)}
-                        disabled={cargando}
-                        className="w-full rounded-md border px-3 py-2 text-left text-sm hover:bg-accent"
-                      >
-                        <span className="font-medium">{h.nombre}</span>{" "}
-                        <span className="text-muted-foreground">({h.filas} filas)</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        ) : null}
-
-        {estado.paso === 3 ? (
-          <div className="space-y-4">
-            {(() => {
-              const faltantes = camposObligatoriosFaltantes(estado.mapeo);
-              return faltantes.length > 0 ? (
-                <p className="text-sm text-destructive">
-                  Falta mapear columnas obligatorias: {faltantes.map((c) => ETIQUETA_CAMPO[c]).join(", ")}.
-                  &quot;Estado&quot; es la que decide qué filas se importan (solo &quot;Entregado&quot;); sin
-                  mapearla, todas quedarían excluidas.
-                </p>
-              ) : null;
-            })()}
-            <div className="max-w-sm space-y-2">
-              <label className="text-sm font-medium">Período del corte</label>
-              {!columnaFecha ? (
-                <p className="text-xs text-muted-foreground">
-                  Mapea la columna &quot;Fecha Creación&quot; para que el sistema detecte el período solo.
-                </p>
-              ) : periodoManual ? (
-                <div className="space-y-1">
-                  <select
-                    value={estado.periodoId}
-                    onChange={(e) => actualizar({ periodoId: e.target.value })}
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    <option value="">Selecciona un período</option>
-                    {periodos.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nombre} ({p.estado})
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    className="text-xs text-primary-ink hover:underline"
-                    onClick={() => setPeriodoManual(false)}
-                  >
-                    Volver a detección automática
-                  </button>
-                </div>
-              ) : detectandoPeriodo ? (
-                <p className="text-sm text-muted-foreground">Detectando período a partir del archivo...</p>
-              ) : deteccionPeriodo?.ok ? (
-                <div className="space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm">
-                  <p>
-                    <span className="font-medium">{deteccionPeriodo.periodoNombre}</span>{" "}
-                    {deteccionPeriodo.creado ? "(creado automáticamente)" : "(ya existía)"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {deteccionPeriodo.filasEnVentana} fila(s) en este período
-                    {deteccionPeriodo.filasFueraDeVentana
-                      ? `, ${deteccionPeriodo.filasFueraDeVentana} fuera de rango (quedarán marcadas como advertencia)`
-                      : ""}
-                    .
-                  </p>
-                  <button
-                    type="button"
-                    className="text-xs text-primary-ink hover:underline"
-                    onClick={() => setPeriodoManual(true)}
-                  >
-                    Cambiar manualmente
-                  </button>
-                </div>
-              ) : deteccionPeriodo && !deteccionPeriodo.ok ? (
-                <div className="space-y-1">
-                  <p className="text-xs text-destructive">{deteccionPeriodo.error}</p>
-                  <button
-                    type="button"
-                    className="text-xs text-primary-ink hover:underline"
-                    onClick={() => setPeriodoManual(true)}
-                  >
-                    Elegir período manualmente
-                  </button>
-                </div>
-              ) : null}
-              {periodos.length === 0 && periodoManual ? (
-                <p className="text-xs text-destructive">
-                  No hay períodos creados. Créalos en Configuración antes de continuar.
-                </p>
-              ) : null}
-            </div>
-
-            {estado.filasCrudas.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <label htmlFor="filaEncabezado" className="font-medium">
-                  Fila de encabezado:
-                </label>
-                <select
-                  id="filaEncabezado"
-                  value={estado.filaEncabezado}
-                  disabled={cargando}
-                  onChange={(e) => cambiarFilaEncabezado(Number(e.target.value))}
-                  className="h-8 max-w-sm rounded-md border border-input bg-background px-2 text-xs"
-                >
-                  {estado.filasCrudas.map((fila, idx) => {
-                    const previa = fila
-                      .slice(0, 6)
-                      .map((c) => String(c ?? "").trim())
-                      .filter(Boolean)
-                      .join(" · ");
-                    return (
-                      <option key={idx} value={idx}>
-                        Fila {idx + 1}
-                        {previa ? ` — ${previa}` : " (vacía)"}
-                      </option>
-                    );
-                  })}
-                </select>
-                <span className="text-xs text-muted-foreground">
-                  Cámbiala si el archivo trae un título arriba de las columnas (ej. &quot;Reporte
-                  Choferes&quot;).
-                </span>
-              </div>
-            ) : null}
-
-            <div className="overflow-x-auto rounded-lg border">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-left text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Columna del archivo</th>
-                    <th className="px-3 py-2 font-medium">Campo interno</th>
-                    <th className="px-3 py-2 font-medium">Ejemplo</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {estado.encabezados.map((encabezado, idx) => (
-                    <tr key={encabezado + idx}>
-                      <td className="px-3 py-2 font-medium">{encabezado || "(sin nombre)"}</td>
-                      <td className="px-3 py-2">
-                        <select
-                          value={estado.mapeo[encabezado] ?? ""}
-                          onChange={(e) =>
-                            actualizar({
-                              mapeo: {
-                                ...estado.mapeo,
-                                [encabezado]: (e.target.value || null) as CampoOdt | null,
-                              },
-                            })
-                          }
-                          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                        >
-                          <option value="">Ignorar</option>
-                          {CAMPOS_ODT.map((campo) => (
-                            <option key={campo} value={campo}>
-                              {ETIQUETA_CAMPO[campo]}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">
-                        {String(estado.filasPreview[0]?.[idx] ?? "—")}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                onClick={validar}
-                disabled={
-                  cargando ||
-                  detectandoPeriodo ||
-                  !estado.periodoId ||
-                  camposObligatoriosFaltantes(estado.mapeo).length > 0
-                }
-              >
-                {cargando ? "Validando..." : "Validar"}
-              </Button>
-              <Button variant="outline" onClick={guardarPlantilla} disabled={guardandoPlantilla}>
-                {guardandoPlantilla ? "Guardando..." : "Guardar mapeo como plantilla"}
-              </Button>
-              {plantillaGuardada ? (
-                <span className="text-sm text-primary-ink">Plantilla guardada.</span>
-              ) : null}
-            </div>
-          </div>
+        {(estado.paso === 2 || estado.paso === 3) && estado.archivo && estado.importacionId ? (
+          <PasoMapeo
+            importacionId={estado.importacionId}
+            archivo={estado.archivo}
+            periodos={periodos}
+            onPaso={(paso) => actualizar({ paso })}
+            onValidado={(resumen) => actualizar({ resumen, paso: 4 })}
+          />
         ) : null}
 
         {estado.paso === 4 && estado.resumen && estado.importacionId ? (

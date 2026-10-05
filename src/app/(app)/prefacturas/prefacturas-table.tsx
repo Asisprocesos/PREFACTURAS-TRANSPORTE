@@ -9,15 +9,18 @@ import {
 } from "@tanstack/react-table";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Paginacion } from "@/components/ui/paginacion";
 import { encolarEnviosAction } from "@/lib/correo/actions";
+import { cancelarLoteAction, crearLoteAction } from "@/lib/ejecuciones/actions";
 import { anularPrefacturasAction } from "@/lib/prefacturas/actions";
 import type { PrefacturaConRelaciones } from "@/lib/prefacturas/queries";
 import { nombreTransportista } from "@/lib/transportistas/display";
 import { cn } from "@/lib/utils";
+
+import { ejecutarLotePdf, type ProgresoPdf } from "./pdf-lote";
 
 const ETIQUETA_ESTADO: Record<string, string> = {
   BORRADOR: "Borrador",
@@ -114,12 +117,9 @@ export function PrefacturasTable({
   const [anulando, setAnulando] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [generandoPdf, setGenerandoPdf] = useState(false);
-  const [progresoPdf, setProgresoPdf] = useState<{
-    total: number;
-    hechos: number;
-    exitosos: number;
-    errores: { numero: string; error: string }[];
-  } | null>(null);
+  const [progresoPdf, setProgresoPdf] = useState<ProgresoPdf | null>(null);
+  const [loteIdPdf, setLoteIdPdf] = useState<string | null>(null);
+  const canceladoPdfRef = useRef(false);
 
   const columnas = crearColumnas(puedeEnviar);
   const table = useReactTable({
@@ -187,34 +187,35 @@ export function PrefacturasTable({
     if (seleccionadas.length === 0) return;
     setGenerandoPdf(true);
     setMensaje(null);
-    const errores: { numero: string; error: string }[] = [];
-    let exitosos = 0;
+    canceladoPdfRef.current = false;
 
-    for (let i = 0; i < seleccionadas.length; i++) {
-      const prefactura = seleccionadas[i]!;
-      setProgresoPdf({ total: seleccionadas.length, hechos: i, exitosos, errores });
-      try {
-        const respuesta = await fetch(`/api/prefacturas/${prefactura.id}/pdf`, { method: "POST" });
-        const cuerpo = await respuesta.json().catch(() => null);
-        if (!respuesta.ok) {
-          errores.push({
-            numero: prefactura.numero ?? prefactura.id,
-            error: cuerpo?.error ?? `HTTP ${respuesta.status}`,
-          });
-        } else {
-          exitosos++;
-        }
-      } catch {
-        errores.push({
-          numero: prefactura.numero ?? prefactura.id,
-          error: "Se perdió la conexión con el servidor.",
-        });
-      }
+    const resultado = await crearLoteAction({
+      tipo: "PDF",
+      total: seleccionadas.length,
+      detalle: "PDF masivo (seleccionados)",
+    });
+    if (!resultado.ok || !resultado.loteId) {
+      setMensaje(resultado.error ?? "No se pudo iniciar la ejecución.");
+      setGenerandoPdf(false);
+      return;
     }
+    setLoteIdPdf(resultado.loteId);
 
-    setProgresoPdf({ total: seleccionadas.length, hechos: seleccionadas.length, exitosos, errores });
+    await ejecutarLotePdf({
+      loteId: resultado.loteId,
+      pendientes: seleccionadas.map((p) => ({ id: p.id, numero: p.numero })),
+      canceladoRef: canceladoPdfRef,
+      onProgreso: setProgresoPdf,
+    });
+
     setGenerandoPdf(false);
+    setLoteIdPdf(null);
     router.refresh();
+  }
+
+  async function cancelarPdfSeleccionados() {
+    canceladoPdfRef.current = true;
+    if (loteIdPdf) await cancelarLoteAction(loteIdPdf);
   }
 
   const totalPaginas = Math.max(1, Math.ceil(total / tamanoPagina));
@@ -229,6 +230,16 @@ export function PrefacturasTable({
             <Button size="sm" variant="outline" onClick={generarPdfSeleccionados} disabled={generandoPdf}>
               {generandoPdf ? "Generando PDFs..." : "Generar PDFs seleccionados"}
             </Button>
+            {generandoPdf ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-destructive hover:text-destructive"
+                onClick={cancelarPdfSeleccionados}
+              >
+                Cancelar
+              </Button>
+            ) : null}
             <Button size="sm" onClick={enviarSeleccionados} disabled={enviando}>
               {enviando ? "Encolando..." : "Enviar seleccionados"}
             </Button>

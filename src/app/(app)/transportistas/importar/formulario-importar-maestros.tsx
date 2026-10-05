@@ -1,8 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  cancelarLoteAction,
+  crearLoteAction,
+  incrementarProgresoLoteAction,
+  obtenerLoteEnCursoAction,
+} from "@/lib/ejecuciones/actions";
+import type { LoteProceso } from "@/lib/ejecuciones/queries";
 import {
   analizarArchivoVehiculosAction,
   importarLoteVehiculosAction,
@@ -19,6 +26,25 @@ export function FormularioImportarMaestros() {
   const [progreso, setProgreso] = useState<{ procesadas: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resultados, setResultados] = useState<ResultadoFilaMaestro[] | null>(null);
+  const [loteEnCurso, setLoteEnCurso] = useState<LoteProceso | null>(null);
+  const [verificando, setVerificando] = useState(true);
+  const loteIdRef = useRef<string | null>(null);
+  const canceladoRef = useRef(false);
+
+  useEffect(() => {
+    obtenerLoteEnCursoAction("MAESTROS").then((lote) => {
+      setLoteEnCurso(lote);
+      setVerificando(false);
+    });
+  }, []);
+
+  async function cancelar() {
+    canceladoRef.current = true;
+    const id = loteIdRef.current ?? loteEnCurso?.id;
+    if (id) await cancelarLoteAction(id);
+    setLoteEnCurso(null);
+    setCargando(false);
+  }
 
   async function subir() {
     if (!archivo) return;
@@ -26,6 +52,8 @@ export function FormularioImportarMaestros() {
     setError(null);
     setResultados(null);
     setProgreso(null);
+    setLoteEnCurso(null);
+    canceladoRef.current = false;
 
     try {
       const formData = new FormData();
@@ -47,12 +75,24 @@ export function FormularioImportarMaestros() {
       const lotes: FilaVehiculoAImportar[][] = [];
       for (let i = 0; i < filas.length; i += TAMANO_LOTE) lotes.push(filas.slice(i, i + TAMANO_LOTE));
 
+      const creacion = await crearLoteAction({
+        tipo: "MAESTROS",
+        total: filas.length,
+        detalle: `Carga de maestros · ${archivo.name}`,
+      });
+      if (!creacion.ok || !creacion.loteId) {
+        setError(creacion.error ?? "No se pudo iniciar la ejecución.");
+        return;
+      }
+      loteIdRef.current = creacion.loteId;
+
       const acumulados: ResultadoFilaMaestro[] = [];
       const lotesFallidos: string[] = [];
       let procesadas = 0;
       setProgreso({ procesadas, total: filas.length });
 
       for (const lote of lotes) {
+        if (canceladoRef.current) break;
         let resultado = await importarLoteVehiculosAction(lote).catch(() => null);
         if (!resultado || !resultado.ok) {
           // Un solo reintento antes de darnos por vencidos con este lote — así
@@ -62,14 +102,23 @@ export function FormularioImportarMaestros() {
 
         if (resultado && resultado.ok) {
           acumulados.push(...resultado.resultados);
+          for (const fila of resultado.resultados) {
+            await incrementarProgresoLoteAction(creacion.loteId, fila.accion !== "ERROR");
+          }
         } else {
           const filasTexto = lote.map((f) => f.numeroFila).join(", ");
           lotesFallidos.push(filasTexto);
+          for (let i = 0; i < lote.length; i++) await incrementarProgresoLoteAction(creacion.loteId, false);
         }
 
         procesadas += lote.length;
         setProgreso({ procesadas, total: filas.length });
         setResultados([...acumulados]);
+      }
+
+      loteIdRef.current = null;
+      if (canceladoRef.current) {
+        return;
       }
 
       if (lotesFallidos.length > 0) {
@@ -101,6 +150,24 @@ export function FormularioImportarMaestros() {
         </Button>
       </div>
 
+      {!verificando && loteEnCurso && !cargando ? (
+        <div className="space-y-2 rounded-md border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+          <p className="text-foreground">
+            Quedó una carga de maestros a medias ({loteEnCurso.exitosos + loteEnCurso.fallidos}/
+            {loteEnCurso.total} filas) — probablemente porque se cambió de pantalla antes de terminar. Vuelve
+            a subir el mismo archivo para completarla: es seguro repetirlo, no duplica lo que ya se guardó.
+          </p>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            onClick={cancelar}
+          >
+            Cancelar esa ejecución
+          </Button>
+        </div>
+      ) : null}
+
       <div className="space-y-3 rounded-lg border bg-card p-4">
         <input
           ref={inputRef}
@@ -108,7 +175,7 @@ export function FormularioImportarMaestros() {
           accept=".xlsx,.xls"
           onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
         />
-        <div>
+        <div className="flex items-center gap-2">
           <Button onClick={subir} disabled={!archivo || cargando}>
             {cargando
               ? progreso
@@ -116,11 +183,22 @@ export function FormularioImportarMaestros() {
                 : "Leyendo archivo..."
               : "Subir y cargar"}
           </Button>
+          {cargando ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-destructive hover:text-destructive"
+              onClick={cancelar}
+            >
+              Cancelar
+            </Button>
+          ) : null}
         </div>
         {cargando ? (
           <p className="text-xs text-muted-foreground">
             Se procesa en lotes pequeños, así que puedes seguir el avance aquí mismo. Con archivos grandes
-            puede tardar uno o dos minutos — no cierres ni recargues esta página mientras avanza.
+            puede tardar uno o dos minutos — si cambias de pantalla a medias, no se pierde: puedes volver a
+            subir el mismo archivo más tarde para completarla, o cancelarla desde /ejecuciones.
           </p>
         ) : null}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}

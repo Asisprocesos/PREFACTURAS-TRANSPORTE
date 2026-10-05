@@ -2,12 +2,13 @@ import { notFound } from "next/navigation";
 
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
-import { obtenerImportacion } from "@/lib/importador/queries";
+import { listarPeriodosParaSelect, obtenerImportacion } from "@/lib/importador/queries";
 
 import { DetalleImportacion } from "./detalle-importacion";
 
-// confirmarLoteImportacionAction y la revalidación de filas se invocan
-// desde esta página; heredan este límite (ver el mismo comentario en /importar).
+// confirmarLoteImportacionAction, validarImportacionAction (al reanudar un
+// BORRADOR) y la revalidación de filas se invocan desde esta página; heredan
+// este límite (ver el mismo comentario en /importar).
 export const maxDuration = 60;
 
 export default async function DetalleImportacionPage({ params }: { params: Promise<{ id: string }> }) {
@@ -16,6 +17,8 @@ export default async function DetalleImportacionPage({ params }: { params: Promi
 
   const importacion = await obtenerImportacion(id);
   if (!importacion) notFound();
+
+  const periodos = importacion.estado === "BORRADOR" ? await listarPeriodosParaSelect() : [];
 
   return (
     <div className="space-y-6">
@@ -26,6 +29,7 @@ export default async function DetalleImportacionPage({ params }: { params: Promi
       </div>
       <DetalleImportacion
         importacion={importacion}
+        periodos={periodos}
         esAdmin={perfil.rol === "ADMIN"}
         puedeGestionar={perfil.rol === "ADMIN" || perfil.rol === "OPERADOR_TRANSPORTE"}
       />

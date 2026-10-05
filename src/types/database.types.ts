@@ -24,9 +24,10 @@ export type EstadoPrefactura =
   | "REQUIERE_REGENERAR"
   | "ANULADA";
 export type EstadoDocumentoPdf = "VIGENTE" | "REEMPLAZADO";
-export type EstadoEnvio = "PENDIENTE" | "ENVIANDO" | "ENVIADO" | "ERROR" | "REINTENTAR";
-export type TipoLoteProceso = "PDF" | "CORREO" | "VALIDACION";
-export type EstadoLoteProceso = "PENDIENTE" | "PROCESANDO" | "COMPLETADO" | "COMPLETADO_CON_ERRORES";
+export type EstadoEnvio = "PENDIENTE" | "ENVIANDO" | "ENVIADO" | "ERROR" | "REINTENTAR" | "CANCELADO";
+export type TipoLoteProceso = "PDF" | "CORREO" | "VALIDACION" | "MAESTROS";
+export type EstadoLoteProceso =
+  "PENDIENTE" | "PROCESANDO" | "COMPLETADO" | "COMPLETADO_CON_ERRORES" | "CANCELADO";
 export type SeveridadNovedad = "ERROR" | "ADVERTENCIA" | "INFO";
 export type EstadoNovedad = "ABIERTA" | "RESUELTA" | "IGNORADA";
 export type EtapaLogEjecucion = "IMPORTACION" | "VALIDACION" | "PDF" | "CORREO";
@@ -359,6 +360,7 @@ export interface Database {
           filas_advertencias: number;
           estado: EstadoImportacion;
           usuario: string | null;
+          borrador: Json | null;
         } & Auditable;
         Insert: {
           id?: string;
@@ -373,6 +375,7 @@ export interface Database {
           filas_advertencias?: number;
           estado?: EstadoImportacion;
           usuario?: string | null;
+          borrador?: Json | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -654,6 +657,8 @@ export interface Database {
           fallidos: number;
           estado: EstadoLoteProceso;
           iniciado_por: string | null;
+          periodo_id: string | null;
+          detalle: string | null;
         } & Auditable;
         Insert: {
           id?: string;
@@ -663,6 +668,8 @@ export interface Database {
           fallidos?: number;
           estado?: EstadoLoteProceso;
           iniciado_por?: string | null;
+          periodo_id?: string | null;
+          detalle?: string | null;
           created_at?: string;
           updated_at?: string;
         };

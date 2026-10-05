@@ -6,17 +6,24 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { confirmarLoteImportacionAction, revertirImportacionAction } from "@/lib/importador/confirmar-action";
 import { corregirFilaImportacionAction } from "@/lib/importador/correccion-action";
+import type { BorradorMapeo } from "@/lib/importador/lectura-actions";
 import type { Importacion } from "@/lib/importador/queries";
+import { crearUrlDescargaImportacionAction } from "@/lib/importador/storage";
 import type { ResumenValidacion } from "@/lib/importador/validar-action";
 
+import { PasoMapeo } from "../paso-mapeo";
 import { ResultadosValidacion } from "../resultados-validacion";
+import { Stepper } from "../stepper";
+import type { PeriodoOpcion } from "../tipos";
 
 export function DetalleImportacion({
   importacion,
+  periodos,
   esAdmin,
   puedeGestionar,
 }: {
   importacion: Importacion;
+  periodos: PeriodoOpcion[];
   esAdmin: boolean;
   puedeGestionar: boolean;
 }) {
@@ -115,6 +122,15 @@ export function DetalleImportacion({
           puedeAdministrarCatalogo={esAdmin}
           dispararRecarga={dispararRecarga}
         />
+      ) : importacion.estado === "BORRADOR" ? (
+        puedeGestionar ? (
+          <ContinuarMapeo importacion={importacion} periodos={periodos} />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Esta importación quedó sin terminar el mapeo. Pídele a un operador o administrador que la
+            continúe.
+          </p>
+        )
       ) : (
         <p className="text-sm text-muted-foreground">
           Esta importación todavía no tiene resultados de validación.
@@ -137,6 +153,66 @@ export function DetalleImportacion({
           ) : null}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Reanuda los pasos 2-3 del asistente de importación (elegir hoja, mapear
+ * columnas, elegir período) cuando se abandonaron a medias: recupera el
+ * archivo original desde Storage (nunca se perdió, solo el estado del
+ * asistente que vivía en memoria del navegador) y retoma desde el borrador
+ * guardado, si lo hay.
+ */
+function ContinuarMapeo({ importacion, periodos }: { importacion: Importacion; periodos: PeriodoOpcion[] }) {
+  const router = useRouter();
+  const [archivo, setArchivo] = useState<File | null>(null);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [paso, setPaso] = useState<2 | 3>(2);
+
+  async function continuar() {
+    setCargando(true);
+    setError(null);
+    try {
+      const { url, nombreArchivo } = await crearUrlDescargaImportacionAction(importacion.id);
+      const respuesta = await fetch(url);
+      if (!respuesta.ok) throw new Error("No se pudo descargar el archivo original.");
+      const blob = await respuesta.blob();
+      setArchivo(new File([blob], nombreArchivo));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo continuar la importación.");
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  if (!archivo) {
+    return (
+      <div className="space-y-3 rounded-lg border bg-card p-4">
+        <p className="text-sm text-muted-foreground">
+          Esta importación quedó sin terminar el mapeo (se perdió al cambiar de pantalla a medias). El archivo
+          original ya está guardado — puedes continuar desde donde quedó, sin volver a subirlo.
+        </p>
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        <Button onClick={continuar} disabled={cargando}>
+          {cargando ? "Recuperando archivo..." : "Continuar mapeo"}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Stepper pasoActual={paso} />
+      <PasoMapeo
+        importacionId={importacion.id}
+        archivo={archivo}
+        periodos={periodos}
+        borradorInicial={(importacion.borrador as unknown as BorradorMapeo | null) ?? undefined}
+        onPaso={setPaso}
+        onValidado={() => router.refresh()}
+      />
     </div>
   );
 }

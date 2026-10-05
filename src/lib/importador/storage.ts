@@ -42,3 +42,30 @@ export async function crearUrlSubidaImportacion(
 
   return { storageKey, urlFirmada: data.signedUrl, token: data.token };
 }
+
+/**
+ * URL firmada de descarga para recuperar el archivo original de una
+ * importación ya subida (ver guardarBorradorImportacionAction): permite
+ * reanudar el mapeo desde /importar/{id} sin pedirle al usuario que vuelva a
+ * elegir el archivo de su computador.
+ */
+export async function crearUrlDescargaImportacionAction(
+  importacionId: string,
+): Promise<{ url: string; nombreArchivo: string }> {
+  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+  const supabase = await createClient();
+
+  const { data: importacion, error: errorImportacion } = await supabase
+    .from("importacion")
+    .select("storage_key, archivo")
+    .eq("id", importacionId)
+    .single();
+  if (errorImportacion || !importacion) throw new Error("Importación no encontrada.");
+
+  const { data, error } = await supabase.storage
+    .from("imports")
+    .createSignedUrl(importacion.storage_key, 300);
+  if (error || !data) throw new Error("No se pudo generar el enlace de descarga del archivo original.");
+
+  return { url: data.signedUrl, nombreArchivo: importacion.archivo };
+}
