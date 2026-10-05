@@ -408,8 +408,10 @@ no responde; documentar aquí cuál funcionó.
 `EMAIL_TEST_MODE` (por defecto `true`, ver `src/lib/email/provider.ts` y
 `.env.example`) redirige TODOS los correos a `EMAIL_TEST_RECIPIENT` y
 antepone el destinatario real al asunto (`[PRUEBA → correo@real] ...`), sin
-tocar el proveedor real. Debe estar activo hasta validar el flujo completo
-antes del primer envío en producción.
+tocar el proveedor real. `EMAIL_TEST_RECIPIENT` admite varios correos
+separados por coma (ej. `persona1@dominio.com,persona2@dominio.com`) para
+que más de una persona reciba las pruebas. Debe estar activo hasta validar
+el flujo completo antes del primer envío en producción.
 
 ## pg_cron
 

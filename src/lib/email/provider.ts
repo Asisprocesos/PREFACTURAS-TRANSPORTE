@@ -28,15 +28,20 @@ function crearProveedor(): EmailProvider {
  * Envuelve el proveedor real con el modo prueba: si EMAIL_TEST_MODE=true,
  * redirige TODOS los correos a EMAIL_TEST_RECIPIENT y antepone el
  * destinatario real al asunto, para poder validar el flujo completo sin
- * arriesgar un envío real a un transportista.
+ * arriesgar un envío real a un transportista. EMAIL_TEST_RECIPIENT admite
+ * varios correos separados por coma (ej. "persona1@dominio.com,
+ * persona2@dominio.com") para que más de una persona reciba las pruebas.
  */
 export function obtenerEmailProvider(): EmailProvider {
   const real = crearProveedor();
   const modoPrueba = process.env.EMAIL_TEST_MODE !== "false"; // por defecto true, ver config/app.config.ts
   if (!modoPrueba) return real;
 
-  const destinatarioPrueba = process.env.EMAIL_TEST_RECIPIENT;
-  if (!destinatarioPrueba) {
+  const destinatariosPrueba = (process.env.EMAIL_TEST_RECIPIENT ?? "")
+    .split(",")
+    .map((correo) => correo.trim())
+    .filter(Boolean);
+  if (destinatariosPrueba.length === 0) {
     throw new Error("EMAIL_TEST_MODE está activo pero falta EMAIL_TEST_RECIPIENT.");
   }
 
@@ -45,7 +50,7 @@ export function obtenerEmailProvider(): EmailProvider {
       const destinatariosOriginales = [...mensaje.to, ...(mensaje.cc ?? [])].join(", ");
       return real.enviar({
         ...mensaje,
-        to: [destinatarioPrueba],
+        to: destinatariosPrueba,
         cc: undefined,
         asunto: `[PRUEBA → ${destinatariosOriginales}] ${mensaje.asunto}`,
       });
