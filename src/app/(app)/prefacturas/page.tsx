@@ -3,6 +3,7 @@ import { listarPeriodosParaSelect } from "@/lib/importador/queries";
 import { listarPrefacturas } from "@/lib/prefacturas/queries";
 import type { EstadoPrefactura } from "@/types/database.types";
 
+import { EliminarPrefacturasPeriodoButton } from "./eliminar-prefacturas-periodo-button";
 import { FiltrosPrefacturas } from "./filtros";
 import { GenerarPrefacturasButton } from "./generar-prefacturas-button";
 import { GenerarTodosPdfButton } from "./generar-todos-pdf-button";
@@ -36,6 +37,7 @@ export default async function PrefacturasPage({
   });
 
   const puedeGenerar = perfil.rol === "ADMIN" || perfil.rol === "OPERADOR_TRANSPORTE";
+  const nombrePeriodoSeleccionado = periodos.find((p) => p.id === periodoSeleccionado)?.nombre;
 
   return (
     <div className="space-y-6">
@@ -45,9 +47,15 @@ export default async function PrefacturasPage({
           <p className="mt-2 text-sm text-muted-foreground">1 prefactura por placa por período.</p>
         </div>
         {puedeGenerar ? (
-          <div className="flex flex-wrap items-start gap-2">
+          <div className="flex flex-wrap items-start justify-end gap-2">
             <GenerarPrefacturasButton periodoId={periodoSeleccionado} />
             <GenerarTodosPdfButton periodoId={periodoSeleccionado} />
+            {perfil.rol === "ADMIN" ? (
+              <EliminarPrefacturasPeriodoButton
+                periodoId={periodoSeleccionado}
+                periodoNombre={nombrePeriodoSeleccionado}
+              />
+            ) : null}
           </div>
         ) : null}
       </div>
