@@ -1,12 +1,14 @@
 import { defaultAppConfig } from "@/config/app.config";
 import { VolverAImportacion } from "@/components/ui/volver-a-importacion";
+import { requireRole } from "@/lib/auth/roles";
 import { listarTipoRutaCentroCosto } from "@/lib/catalogos/tipo-ruta-centro-costo/queries";
 import { listarTipoTransportista } from "@/lib/catalogos/tipo-transportista/queries";
-import { requireRole } from "@/lib/auth/roles";
+import { obtenerAjustesCorreoPrueba } from "@/lib/config/correo-prueba";
 import { calcularSiguienteRango } from "@/lib/periodos/nombre";
 import { listarPeriodosAdmin } from "@/lib/periodos/queries";
 
 import { ArchivarAntiguosButton } from "./archivar-antiguos-button";
+import { CorreoPruebaForm } from "./correo-prueba-form";
 import { CrearPeriodoForm } from "./crear-periodo-form";
 import { PeriodosTabla } from "./periodos-tabla";
 import { TipoRutaCentroCostoTabla } from "./tipo-ruta-centro-costo-tabla";
@@ -19,10 +21,11 @@ export default async function ConfiguracionPage({
 }) {
   await requireRole(["ADMIN"]);
   const { tipoRuta, volver } = await searchParams;
-  const [periodos, catalogoTipoRuta, catalogoTipoTransportista] = await Promise.all([
+  const [periodos, catalogoTipoRuta, catalogoTipoTransportista, ajustesCorreoPrueba] = await Promise.all([
     listarPeriodosAdmin(),
     listarTipoRutaCentroCosto(),
     listarTipoTransportista(),
+    obtenerAjustesCorreoPrueba(),
   ]);
 
   const ultimoPeriodo = periodos[0] ?? null;
@@ -75,6 +78,17 @@ export default async function ConfiguracionPage({
           existente.
         </p>
         <TipoTransportistaTabla filas={catalogoTipoTransportista} />
+      </section>
+
+      <section id="correo-prueba" className="space-y-3">
+        <h2 className="text-lg font-semibold">Modo prueba de correo</h2>
+        <p className="text-sm text-muted-foreground">
+          A dónde llegan los correos mientras se está probando el sistema, sin depender de las variables de
+          Vercel (<code>EMAIL_TEST_MODE</code>, <code>EMAIL_TEST_RECIPIENT</code>,{" "}
+          <code>EMAIL_FALLBACK_RECIPIENT</code>) ni de un redespliegue — los cambios de acá tienen prioridad y
+          se aplican de inmediato.
+        </p>
+        <CorreoPruebaForm ajustes={ajustesCorreoPrueba} />
       </section>
     </div>
   );

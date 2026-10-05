@@ -1,5 +1,7 @@
 import "server-only";
 
+import { obtenerAjustesCorreoPrueba, separarCorreos } from "@/lib/config/correo-prueba";
+
 import { crearProveedorResend } from "./providers/resend";
 import { crearProveedorSmtp } from "./providers/smtp";
 import type { EmailMensaje, EmailProvider, EmailResultado } from "./tipos";
@@ -25,24 +27,27 @@ function crearProveedor(): EmailProvider {
 }
 
 /**
- * Envuelve el proveedor real con el modo prueba: si EMAIL_TEST_MODE=true,
- * redirige TODOS los correos a EMAIL_TEST_RECIPIENT y antepone el
+ * Envuelve el proveedor real con el modo prueba: si está activo, redirige
+ * TODOS los correos al/los destinatario(s) de prueba y antepone el
  * destinatario real al asunto, para poder validar el flujo completo sin
- * arriesgar un envío real a un transportista. EMAIL_TEST_RECIPIENT admite
- * varios correos separados por coma (ej. "persona1@dominio.com,
- * persona2@dominio.com") para que más de una persona reciba las pruebas.
+ * arriesgar un envío real a un transportista. Admite varios correos
+ * separados por coma (ej. "persona1@dominio.com, persona2@dominio.com")
+ * para que más de una persona reciba las pruebas.
+ *
+ * Los ajustes salen de obtenerAjustesCorreoPrueba(): editables desde
+ * Configuración (solo ADMIN) sin redesplegar, o de las variables de
+ * entorno EMAIL_TEST_MODE/EMAIL_TEST_RECIPIENT si nunca se guardaron ahí.
  */
-export function obtenerEmailProvider(): EmailProvider {
+export async function obtenerEmailProvider(): Promise<EmailProvider> {
   const real = crearProveedor();
-  const modoPrueba = process.env.EMAIL_TEST_MODE !== "false"; // por defecto true, ver config/app.config.ts
-  if (!modoPrueba) return real;
+  const ajustes = await obtenerAjustesCorreoPrueba();
+  if (!ajustes.modoPrueba) return real;
 
-  const destinatariosPrueba = (process.env.EMAIL_TEST_RECIPIENT ?? "")
-    .split(",")
-    .map((correo) => correo.trim())
-    .filter(Boolean);
+  const destinatariosPrueba = separarCorreos(ajustes.destinatarioPrueba);
   if (destinatariosPrueba.length === 0) {
-    throw new Error("EMAIL_TEST_MODE está activo pero falta EMAIL_TEST_RECIPIENT.");
+    throw new Error(
+      "El modo prueba de correo está activo pero no hay destinatario de prueba configurado (Configuración o EMAIL_TEST_RECIPIENT).",
+    );
   }
 
   return {

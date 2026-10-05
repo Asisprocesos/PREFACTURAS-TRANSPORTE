@@ -66,7 +66,7 @@ export async function POST(request: Request) {
   // siempre, porque tomar_lote_envio_correo solo reclama PENDIENTE/REINTENTAR.
   let proveedor;
   try {
-    proveedor = obtenerEmailProvider();
+    proveedor = await obtenerEmailProvider();
   } catch (error) {
     await supabase
       .from("envio_correo")

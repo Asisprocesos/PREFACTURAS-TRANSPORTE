@@ -413,6 +413,15 @@ separados por coma (ej. `persona1@dominio.com,persona2@dominio.com`) para
 que más de una persona reciba las pruebas. Debe estar activo hasta validar
 el flujo completo antes del primer envío en producción.
 
+Estos tres ajustes (`EMAIL_TEST_MODE`, `EMAIL_TEST_RECIPIENT` y
+`EMAIL_FALLBACK_RECIPIENT`) también se pueden editar desde **Configuración
+→ Modo prueba de correo** en la app (solo ADMIN), guardados en la tabla
+`configuracion` (clave `correo_prueba`, ver `src/lib/config/correo-prueba.ts`)
+en vez de en Vercel — se aplican de inmediato, sin redesplegar, y tienen
+prioridad sobre la variable de entorno. Mientras nadie los guarde desde ahí,
+se sigue usando la variable de entorno correspondiente (comportamiento
+histórico).
+
 ## pg_cron
 
 Migración `20260918090020_pg_cron_envio_correo.sql`: programa el job

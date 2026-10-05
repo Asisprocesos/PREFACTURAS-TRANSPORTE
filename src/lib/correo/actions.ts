@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 
 import { defaultAppConfig } from "@/config/app.config";
-import { interpolarPlantilla } from "@/lib/email/plantilla";
 import { requireRole } from "@/lib/auth/roles";
+import { obtenerAjustesCorreoPrueba, separarCorreos } from "@/lib/config/correo-prueba";
+import { interpolarPlantilla } from "@/lib/email/plantilla";
 import { obtenerGuiasPrefactura, registrarLogEjecucion } from "@/lib/log-ejecucion/registrar";
 import { createClient } from "@/lib/supabase/server";
 import type { ResultadoAccion } from "@/lib/types/acciones";
@@ -64,12 +65,13 @@ export async function enviarCorreoIndividualAction(
     const pdf = await obtenerPdfVigenteOGenerar(prefacturaId, perfil.userId);
     if (!pdf.ok) return { ok: false, error: pdf.error };
 
-    // obtenerEmailProvider() lanza si faltan las variables SMTP_* o
-    // EMAIL_TEST_RECIPIENT — sin este try/catch esa excepción se propagaba
-    // sin capturar hasta el cliente, y el botón "Enviar" se quedaba en
-    // "Enviando..." para siempre porque nunca llegaba a limpiar su estado.
+    // obtenerEmailProvider() lanza si faltan las variables SMTP_* o el
+    // destinatario de prueba — sin este try/catch esa excepción se
+    // propagaba sin capturar hasta el cliente, y el botón "Enviar" se
+    // quedaba en "Enviando..." para siempre porque nunca llegaba a limpiar
+    // su estado.
     const { obtenerEmailProvider } = await import("@/lib/email/provider");
-    const proveedor = obtenerEmailProvider();
+    const proveedor = await obtenerEmailProvider();
     const resultado = await proveedor.enviar({
       to: datos.to,
       cc: datos.cc,
@@ -129,7 +131,7 @@ export interface ResultadoEncolar extends ResultadoAccion {
   loteId?: string;
   encoladas?: number;
   omitidas?: number;
-  /** Cuántas de las omitidas se consolidaron en el ZIP de respaldo (ver EMAIL_FALLBACK_RECIPIENT). */
+  /** Cuántas de las omitidas se consolidaron en el ZIP de respaldo (ver obtenerAjustesCorreoPrueba). */
   consolidadasSinCorreo?: number;
 }
 
@@ -144,9 +146,10 @@ interface PrefacturaSinCorreo {
  * "Enviar seleccionados": crea un lote_proceso y encola 1 envio_correo por
  * prefactura con PDF vigente y correo registrado. Las que tienen PDF pero
  * NINGÚN correo registrado (ni en el vehículo ni en el transportista) no se
- * omiten: se agrupan y se encolan como UN solo envío consolidado (ZIP) a
- * EMAIL_FALLBACK_RECIPIENT — evita tanto perder esas prefacturas en silencio
- * como bombardear esa cuenta de respaldo con un correo por cada una.
+ * omiten: se agrupan y se encolan como UN solo envío consolidado (ZIP) al
+ * destinatario de respaldo (ver obtenerAjustesCorreoPrueba) — evita tanto
+ * perder esas prefacturas en silencio como bombardear esa cuenta con un
+ * correo por cada una.
  */
 export async function encolarEnviosAction(prefacturaIds: string[]): Promise<ResultadoEncolar> {
   const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
@@ -226,11 +229,12 @@ export async function encolarEnviosAction(prefacturaIds: string[]): Promise<Resu
 
 /**
  * Descarga los PDF de `sinCorreo`, los empaqueta en un ZIP y encola un único
- * envio_correo consolidado a EMAIL_FALLBACK_RECIPIENT. Devuelve cuántas
- * prefacturas quedaron efectivamente cubiertas (0 si la variable no está
- * configurada, no hay nada que enviar, o falla la subida del ZIP — en esos
- * casos el llamador las cuenta como omitidas, igual que antes de este
- * mecanismo).
+ * envio_correo consolidado al destinatario de respaldo (configuración
+ * "correo_prueba" o EMAIL_FALLBACK_RECIPIENT, ver obtenerAjustesCorreoPrueba).
+ * Devuelve cuántas prefacturas quedaron efectivamente cubiertas (0 si no hay
+ * destinatario configurado, no hay nada que enviar, o falla la subida del
+ * ZIP — en esos casos el llamador las cuenta como omitidas, igual que antes
+ * de este mecanismo).
  */
 async function encolarConsolidadoSinCorreo(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -239,8 +243,9 @@ async function encolarConsolidadoSinCorreo(
 ): Promise<number> {
   if (sinCorreo.length === 0) return 0;
 
-  const destinatarioRespaldo = process.env.EMAIL_FALLBACK_RECIPIENT?.trim();
-  if (!destinatarioRespaldo) return 0;
+  const { destinatarioFallback } = await obtenerAjustesCorreoPrueba();
+  const destinatariosRespaldo = separarCorreos(destinatarioFallback);
+  if (destinatariosRespaldo.length === 0) return 0;
 
   // Solo cuentan (y se listan) las que realmente se pudieron descargar y
   // meter al ZIP — si alguna falla, queda como omitida en vez de aparentar
@@ -266,7 +271,7 @@ async function encolarConsolidadoSinCorreo(
   const listado = cubiertas.map((s) => `- ${s.etiqueta}`).join("\n");
   const { error: errorEnvio } = await supabase.from("envio_correo").insert({
     lote_id: loteId,
-    destinatarios_to: [destinatarioRespaldo],
+    destinatarios_to: destinatariosRespaldo,
     destinatarios_cc: [],
     asunto: `Prefacturas sin correo registrado (${cubiertas.length})`,
     cuerpo:
