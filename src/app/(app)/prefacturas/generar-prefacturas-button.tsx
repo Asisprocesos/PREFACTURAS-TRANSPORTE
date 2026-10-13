@@ -21,7 +21,13 @@ export function GenerarPrefacturasButton({ periodoId }: { periodoId: string | un
       setMensaje(resultado.error ?? "No se pudo generar las prefacturas.");
       return;
     }
-    setMensaje(`${resultado.creadas} prefacturas nuevas, ${resultado.actualizadas} actualizadas.`);
+    const partes = [`${resultado.creadas} prefacturas nuevas`, `${resultado.actualizadas} actualizadas`];
+    if (resultado.requierenRegenerar) {
+      partes.push(
+        `${resultado.requierenRegenerar} cambiaron de transportista y quedaron marcadas "Requiere regenerar"`,
+      );
+    }
+    setMensaje(`${partes.join(", ")}.`);
     router.refresh();
   }
 

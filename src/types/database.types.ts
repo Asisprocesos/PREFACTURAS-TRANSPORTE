@@ -945,7 +945,11 @@ export interface Database {
       revertir_importacion: { Args: { p_importacion_id: string }; Returns: undefined };
       generar_prefacturas_periodo: {
         Args: { p_periodo_id: string };
-        Returns: { prefacturas_creadas: number; prefacturas_actualizadas: number }[];
+        Returns: {
+          prefacturas_creadas: number;
+          prefacturas_actualizadas: number;
+          prefacturas_requieren_regenerar: number;
+        }[];
       };
       tomar_lote_envio_correo: {
         Args: { p_limite: number };

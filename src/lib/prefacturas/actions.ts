@@ -11,6 +11,7 @@ import { listarPrefacturasParaGenerarPdf } from "./queries";
 export interface ResultadoGeneracion extends ResultadoAccion {
   creadas?: number;
   actualizadas?: number;
+  requierenRegenerar?: number;
 }
 
 /** Para el botón "Generar todos los PDF del período" (ver generar-todos-pdf-button.tsx). */
@@ -33,7 +34,12 @@ export async function generarPrefacturasPeriodoAction(periodoId: string): Promis
   revalidatePath("/prefacturas");
   revalidatePath("/control-placa");
   const resumen = data?.[0];
-  return { ok: true, creadas: resumen?.prefacturas_creadas, actualizadas: resumen?.prefacturas_actualizadas };
+  return {
+    ok: true,
+    creadas: resumen?.prefacturas_creadas,
+    actualizadas: resumen?.prefacturas_actualizadas,
+    requierenRegenerar: resumen?.prefacturas_requieren_regenerar,
+  };
 }
 
 /**
