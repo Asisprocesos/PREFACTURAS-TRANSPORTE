@@ -69,6 +69,26 @@ export async function construirContextoBase(
   };
 }
 
+/**
+ * Busca cuáles de estas guías ya existen en `odt`, en lotes — un archivo
+ * grande (10 000+ filas) metido entero en un solo `.in("guia", [...])`
+ * genera una URL enorme (PostgREST codifica el filtro en la query string):
+ * en el mejor caso es lentísimo, en el peor el gateway la rechaza o se
+ * queda colgada sin devolver nunca una respuesta clara al navegador — que
+ * es justo lo que se ve como "Validando..." sin avanzar. `odt.guia` ya
+ * tiene índice único, así que cada lote individual es rápido.
+ */
+async function buscarGuiasExistentes(supabase: SupabaseServerClient, guias: string[]): Promise<Set<string>> {
+  const encontradas = new Set<string>();
+  for (let i = 0; i < guias.length; i += TAMANO_LOTE_INSERT) {
+    const lote = guias.slice(i, i + TAMANO_LOTE_INSERT);
+    const { data, error } = await supabase.from("odt").select("guia").in("guia", lote);
+    if (error) throw new Error(`Error consultando guías existentes (lote ${i}): ${error.message}`);
+    for (const fila of data ?? []) encontradas.add(fila.guia.toUpperCase());
+  }
+  return encontradas;
+}
+
 export async function validarImportacionAction(datos: {
   importacionId: string;
   periodoId: string;
@@ -115,17 +135,10 @@ export async function validarImportacionAction(datos: {
     if (mapeada.guia) guiasEnArchivo.add(mapeada.guia.trim().toUpperCase());
   }
 
-  const [contextoBase, { data: guiasExistentes }] = await Promise.all([
+  const [contextoBase, guiasExistentesBD] = await Promise.all([
     construirContextoBase(supabase, datos.periodoId),
-    guiasEnArchivo.size > 0
-      ? supabase
-          .from("odt")
-          .select("guia")
-          .in("guia", [...guiasEnArchivo])
-      : Promise.resolve({ data: [] as { guia: string }[] }),
+    buscarGuiasExistentes(supabase, [...guiasEnArchivo]),
   ]);
-
-  const guiasExistentesBD = new Set((guiasExistentes ?? []).map((g) => g.guia.toUpperCase()));
 
   const contexto: ContextoValidacion = { ...contextoBase, guiasExistentesBD };
 
