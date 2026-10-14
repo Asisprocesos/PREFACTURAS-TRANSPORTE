@@ -246,18 +246,14 @@ async function procesarFilaVehiculo(
   const regionalId = regionalTexto ? (regionalPorNombre.get(regionalTexto.toUpperCase()) ?? null) : null;
   if (regionalTexto && !regionalId) advertencias.push(`no se encontró la regional "${regionalTexto}".`);
 
-  const datos = {
-    transportista_id: transportistaId,
-    regional_id: regionalId,
-    tipo_vehiculo: String(fila["Tipo de Vehículo"] ?? "").trim() || null,
-    marca: String(fila["Marca"] ?? "").trim() || null,
-    modelo: String(fila["Modelo"] ?? "").trim() || null,
-    anio: leerNumero(fila["Año"]),
-    tonelaje: leerNumero(fila["Tonelaje"]),
-    propietario: String(fila["Propietario"] ?? "").trim() || null,
-    ruc_propietario: String(fila["RUC del Propietario"] ?? "").trim() || null,
-    activo: leerBooleano(fila["Activo Vehículo"]),
-  };
+  const tipoVehiculo = String(fila["Tipo de Vehículo"] ?? "").trim() || null;
+  const marca = String(fila["Marca"] ?? "").trim() || null;
+  const modelo = String(fila["Modelo"] ?? "").trim() || null;
+  const anio = leerNumero(fila["Año"]);
+  const tonelaje = leerNumero(fila["Tonelaje"]);
+  const propietario = String(fila["Propietario"] ?? "").trim() || null;
+  const rucPropietario = String(fila["RUC del Propietario"] ?? "").trim() || null;
+  const activo = leerBooleano(fila["Activo Vehículo"]);
 
   const { data: existente } = await supabase
     .from("vehiculo")
@@ -269,7 +265,24 @@ async function procesarFilaVehiculo(
   let vehiculoId: string;
   let accion: "CREADO" | "ACTUALIZADO";
   if (existente) {
-    const { error } = await supabase.from("vehiculo").update(datos).eq("id", existente.id);
+    // Igual que resolverTransportistaDeFila: al actualizar un vehículo
+    // existente solo se pisan los campos que vengan llenos en la fila — una
+    // celda vacía no borra el dato ya guardado (antes, una plantilla
+    // parcial, ej. solo con Placa y Transportista, dejaba en blanco todo lo
+    // demás al volver a subirla). "Activo" es la excepción: igual que en
+    // transportista, siempre se actualiza.
+    const cambios: Database["public"]["Tables"]["vehiculo"]["Update"] = { activo };
+    if (transportistaId) cambios.transportista_id = transportistaId;
+    if (regionalId) cambios.regional_id = regionalId;
+    if (tipoVehiculo) cambios.tipo_vehiculo = tipoVehiculo;
+    if (marca) cambios.marca = marca;
+    if (modelo) cambios.modelo = modelo;
+    if (anio !== null) cambios.anio = anio;
+    if (tonelaje !== null) cambios.tonelaje = tonelaje;
+    if (propietario) cambios.propietario = propietario;
+    if (rucPropietario) cambios.ruc_propietario = rucPropietario;
+
+    const { error } = await supabase.from("vehiculo").update(cambios).eq("id", existente.id);
     if (error) {
       return {
         fila: numeroFila,
@@ -283,7 +296,19 @@ async function procesarFilaVehiculo(
   } else {
     const { data: creado, error } = await supabase
       .from("vehiculo")
-      .insert({ placa, ...datos })
+      .insert({
+        placa,
+        transportista_id: transportistaId,
+        regional_id: regionalId,
+        tipo_vehiculo: tipoVehiculo,
+        marca,
+        modelo,
+        anio,
+        tonelaje,
+        propietario,
+        ruc_propietario: rucPropietario,
+        activo,
+      })
       .select("id")
       .single();
     if (error || !creado) {
