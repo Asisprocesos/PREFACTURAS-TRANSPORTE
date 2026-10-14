@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { defaultAppConfig } from "@/config/app.config";
+import { obtenerAjustesCuentaCorreo } from "@/lib/config/cuenta-correo";
 import { obtenerEmailProvider } from "@/lib/email/provider";
 import { obtenerGuiasPrefactura, registrarLogEjecucion } from "@/lib/log-ejecucion/registrar";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -14,6 +15,13 @@ export const maxDuration = 60;
 // quedaría en ENVIANDO sin que nadie la retome (ver limpieza de huérfanos
 // más abajo) — mejor cortar el lote antes de llegar a ese límite.
 const PRESUPUESTO_MS = 45_000;
+
+// Cuánto esperar antes de reintentar un correo que falló por cupo diario
+// agotado (ver PATRON_CUPO_AGOTADO en smtp.ts). No tiene sentido reintentar
+// cada minuto (el cupo de Gmail no vuelve hasta el día siguiente), pero
+// tampoco conviene un enfriamiento tan largo que, si el ADMIN cambia a la
+// cuenta de respaldo en Configuración, el resto del lote tarde en notarlo.
+const ENFRIAMIENTO_CUPO_MS = 20 * 60_000;
 
 /**
  * Worker de la cola de correo. Lo dispara pg_cron cada minuto (ver
@@ -64,6 +72,7 @@ export async function POST(request: Request) {
   // inicializar (ej. faltan las variables SMTP_*), hay que devolverlas a
   // PENDIENTE explícitamente — si no, quedan huérfanas en ENVIANDO para
   // siempre, porque tomar_lote_envio_correo solo reclama PENDIENTE/REINTENTAR.
+  const { cuentaActiva } = await obtenerAjustesCuentaCorreo();
   let proveedor;
   try {
     proveedor = await obtenerEmailProvider();
@@ -164,11 +173,43 @@ export async function POST(request: Request) {
             message_id: resultado.messageId,
             enviado_en: new Date().toISOString(),
             error: null,
+            proveedor_cuenta: cuentaActiva,
           })
           .eq("id", envio.id);
         if (prefacturaIds.length > 0) {
           await supabase.from("prefactura").update({ estado: "ENVIADA" }).in("id", prefacturaIds);
         }
+      } else if (resultado.cupoAgotado) {
+        // No es culpa de este correo ni de los que siguen en el lote: la
+        // cuenta llegó a su límite diario. Ni se consume un reintento ni se
+        // marca la prefactura en error (seguiría EN_COLA_ENVIO) — y, a
+        // diferencia de un error normal, se corta el resto del lote de una
+        // vez en vez de intentarlos uno por uno sabiendo que van a fallar
+        // igual (ver el corte por PRESUPUESTO_MS más arriba, mismo patrón).
+        const proximoIntento = new Date(Date.now() + ENFRIAMIENTO_CUPO_MS).toISOString();
+        await supabase
+          .from("envio_correo")
+          .update({
+            estado: "REINTENTAR",
+            error: resultado.error,
+            proximo_intento: proximoIntento,
+            proveedor_cuenta: cuentaActiva,
+          })
+          .in(
+            "id",
+            lote.slice(i).map((e) => e.id),
+          )
+          .eq("estado", "ENVIANDO");
+        // A propósito, no se llama incrementar_progreso_lote acá (igual que
+        // en el corte por PRESUPUESTO_MS de arriba): estos correos quedan
+        // pendientes, no procesados, así que no deben contar para el
+        // exitosos+fallidos que decide si el lote ya terminó.
+        return NextResponse.json({
+          procesados: i,
+          exitosos,
+          fallidos,
+          cortadoPorCupoAgotado: true,
+        });
       } else {
         const intentos = envio.intentos + 1;
         const agotado = resultado.permanente || intentos >= maxReintentos;
@@ -180,6 +221,7 @@ export async function POST(request: Request) {
             intentos,
             error: resultado.error,
             proximo_intento: agotado ? null : new Date(Date.now() + 2 ** intentos * 60_000).toISOString(),
+            proveedor_cuenta: cuentaActiva,
           })
           .eq("id", envio.id);
         if (agotado && prefacturaIds.length > 0) {

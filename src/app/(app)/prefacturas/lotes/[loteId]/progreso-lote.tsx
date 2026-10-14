@@ -3,11 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { obtenerEstadoEnvioDiarioAction } from "@/lib/config/cuenta-correo-actions";
+import type { EstadoEnvioDiario } from "@/lib/config/cuenta-correo";
 import { obtenerEstadoLoteAction, reintentarFallidosLoteAction } from "@/lib/correo/actions";
 import type { EnvioCorreo, LoteProceso } from "@/lib/correo/queries";
 import { cancelarLoteAction } from "@/lib/ejecuciones/actions";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+
+const ETIQUETA_CUENTA = { PRINCIPAL: "Principal", RESPALDO: "Respaldo" } as const;
 
 const ETIQUETA_ESTADO: Record<string, string> = {
   PENDIENTE: "Pendiente",
@@ -26,13 +30,16 @@ export function ProgresoLote({
   lote: loteInicial,
   enviosIniciales,
   puedeReintentar,
+  estadoEnvioDiarioInicial,
 }: {
   lote: LoteProceso;
   enviosIniciales: EnvioCorreo[];
   puedeReintentar: boolean;
+  estadoEnvioDiarioInicial: EstadoEnvioDiario;
 }) {
   const [lote, setLote] = useState(loteInicial);
   const [envios, setEnvios] = useState(enviosIniciales);
+  const [estadoEnvioDiario, setEstadoEnvioDiario] = useState(estadoEnvioDiarioInicial);
   const [reintentando, setReintentando] = useState(false);
   const [mensajeReintento, setMensajeReintento] = useState<string | null>(null);
   const [cancelando, setCancelando] = useState(false);
@@ -78,6 +85,8 @@ export function ProgresoLote({
         setLote(estado.lote);
         setEnvios(estado.envios);
       }
+      const diario = await obtenerEstadoEnvioDiarioAction().catch(() => null);
+      if (diario) setEstadoEnvioDiario(diario);
     }, INTERVALO_SONDEO_MS);
     return () => clearInterval(intervalo);
   }, [terminado]);
@@ -123,8 +132,42 @@ export function ProgresoLote({
   const procesados = lote.exitosos + lote.fallidos;
   const porcentaje = lote.total > 0 ? Math.round((procesados / lote.total) * 100) : 0;
 
+  const porcentajeDiario = Math.min(
+    100,
+    Math.round((estadoEnvioDiario.enviadosHoy / estadoEnvioDiario.limiteDiario) * 100),
+  );
+  const colorBarraDiario =
+    porcentajeDiario >= 100 ? "bg-destructive" : porcentajeDiario >= 80 ? "bg-amber-500" : "bg-primary";
+
   return (
     <div className="space-y-4">
+      <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
+        <div className="flex items-center justify-between text-sm">
+          <span>
+            Enviados hoy con la cuenta <strong>{ETIQUETA_CUENTA[estadoEnvioDiario.cuentaActiva]}</strong>
+          </span>
+          <span className="font-medium">
+            {estadoEnvioDiario.enviadosHoy} / {estadoEnvioDiario.limiteDiario}
+          </span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className={cn("h-full transition-all", colorBarraDiario)}
+            style={{ width: `${porcentajeDiario}%` }}
+          />
+        </div>
+        {porcentajeDiario >= 100 ? (
+          <p className="text-xs text-destructive">
+            Se alcanzó el límite diario de la cuenta {ETIQUETA_CUENTA[estadoEnvioDiario.cuentaActiva]}. Los
+            correos pendientes de este envío se reintentan solos — o cambia a la cuenta de Respaldo en{" "}
+            <a href="/configuracion#cuenta-correo" className="underline">
+              Configuración
+            </a>{" "}
+            para seguir enviando hoy mismo.
+          </p>
+        ) : null}
+      </div>
+
       <div className="rounded-lg border bg-card p-4">
         <div className="mb-2 flex items-center justify-between text-sm">
           <span>

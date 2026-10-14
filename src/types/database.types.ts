@@ -696,6 +696,7 @@ export interface Database {
           zip_storage_key: string | null;
           zip_nombre_archivo: string | null;
           prefactura_ids: string[] | null;
+          proveedor_cuenta: string | null;
         } & Auditable;
         Insert: {
           id?: string;
@@ -716,6 +717,7 @@ export interface Database {
           zip_storage_key?: string | null;
           zip_nombre_archivo?: string | null;
           prefactura_ids?: string[] | null;
+          proveedor_cuenta?: string | null;
           created_at?: string;
           updated_at?: string;
         };

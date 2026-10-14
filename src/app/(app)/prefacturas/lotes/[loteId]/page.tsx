@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { requireRole } from "@/lib/auth/roles";
 import { listarEnviosLote, obtenerLoteProceso } from "@/lib/correo/queries";
+import { obtenerEstadoEnvioDiario } from "@/lib/config/cuenta-correo";
 
 import { ProgresoLote } from "./progreso-lote";
 
@@ -13,7 +14,10 @@ export default async function LoteEnvioPage({ params }: { params: Promise<{ lote
   const lote = await obtenerLoteProceso(loteId);
   if (!lote) notFound();
 
-  const envios = await listarEnviosLote(loteId);
+  const [envios, estadoEnvioDiario] = await Promise.all([
+    listarEnviosLote(loteId),
+    obtenerEstadoEnvioDiario(),
+  ]);
   const puedeReintentar = perfil.rol === "ADMIN" || perfil.rol === "OPERADOR_TRANSPORTE";
 
   return (
@@ -27,7 +31,12 @@ export default async function LoteEnvioPage({ params }: { params: Promise<{ lote
           volver, o recargar, sin que eso reenvíe nada: solo consulta el estado guardado en la cola.
         </p>
       </div>
-      <ProgresoLote lote={lote} enviosIniciales={envios} puedeReintentar={puedeReintentar} />
+      <ProgresoLote
+        lote={lote}
+        enviosIniciales={envios}
+        puedeReintentar={puedeReintentar}
+        estadoEnvioDiarioInicial={estadoEnvioDiario}
+      />
     </div>
   );
 }

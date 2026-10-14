@@ -1,0 +1,3 @@
+-- Permite configurar una cuenta de correo de respaldo (otro Gmail) y registrar con cuál de las dos se envió cada correo, para poder avisar en pantalla cuándo se acerca al límite diario de envíos de Gmail (500/día en cuentas personales, 2000/día en Workspace) y cambiar de cuenta desde Configuración sin redesplegar.
+alter table public.envio_correo add column if not exists proveedor_cuenta text;
+comment on column public.envio_correo.proveedor_cuenta is 'PRINCIPAL o RESPALDO: con cuál de las dos cuentas SMTP configuradas se envió (o se intentó) este correo — ver configuracion.clave=''cuenta_correo'' y las variables SMTP_*_RESPALDO en Vercel. Null en envíos de antes de esta función.';

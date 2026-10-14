@@ -1,22 +1,24 @@
 import "server-only";
 
 import { obtenerAjustesCorreoPrueba, separarCorreos } from "@/lib/config/correo-prueba";
+import { obtenerAjustesCuentaCorreo, type CuentaCorreo } from "@/lib/config/cuenta-correo";
 
 import { crearProveedorResend } from "./providers/resend";
 import { crearProveedorSmtp } from "./providers/smtp";
 import type { EmailMensaje, EmailProvider, EmailResultado } from "./tipos";
 
 /**
- * Fábrica de EmailProvider según EMAIL_PROVIDER. `smtp` (Zimbra) y `resend`
- * están implementados; brevo/ses quedan como adaptadores futuros
+ * Fábrica de EmailProvider según EMAIL_PROVIDER. `smtp` (Zimbra o Gmail) y
+ * `resend` están implementados; brevo/ses quedan como adaptadores futuros
  * intercambiables — fallan con un mensaje claro en vez de simular un envío
- * que no ocurre.
+ * que no ocurre. `cuenta` solo aplica a smtp (ver cuenta-correo.ts): resend
+ * no tiene el concepto de cuenta principal/respaldo.
  */
-function crearProveedor(): EmailProvider {
+function crearProveedor(cuenta: CuentaCorreo): EmailProvider {
   const proveedor = process.env.EMAIL_PROVIDER ?? "smtp";
   switch (proveedor) {
     case "smtp":
-      return crearProveedorSmtp();
+      return crearProveedorSmtp(cuenta);
     case "resend":
       return crearProveedorResend();
     default:
@@ -39,7 +41,8 @@ function crearProveedor(): EmailProvider {
  * entorno EMAIL_TEST_MODE/EMAIL_TEST_RECIPIENT si nunca se guardaron ahí.
  */
 export async function obtenerEmailProvider(): Promise<EmailProvider> {
-  const real = crearProveedor();
+  const { cuentaActiva } = await obtenerAjustesCuentaCorreo();
+  const real = crearProveedor(cuentaActiva);
   const ajustes = await obtenerAjustesCorreoPrueba();
   if (!ajustes.modoPrueba) return real;
 

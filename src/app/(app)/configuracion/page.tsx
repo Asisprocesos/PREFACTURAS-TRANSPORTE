@@ -4,12 +4,14 @@ import { requireRole } from "@/lib/auth/roles";
 import { listarTipoRutaCentroCosto } from "@/lib/catalogos/tipo-ruta-centro-costo/queries";
 import { listarTipoTransportista } from "@/lib/catalogos/tipo-transportista/queries";
 import { obtenerAjustesCorreoPrueba } from "@/lib/config/correo-prueba";
+import { obtenerEstadoEnvioDiario } from "@/lib/config/cuenta-correo";
 import { calcularSiguienteRango } from "@/lib/periodos/nombre";
 import { listarPeriodosAdmin } from "@/lib/periodos/queries";
 
 import { ArchivarAntiguosButton } from "./archivar-antiguos-button";
 import { CorreoPruebaForm } from "./correo-prueba-form";
 import { CrearPeriodoForm } from "./crear-periodo-form";
+import { CuentaCorreoForm } from "./cuenta-correo-form";
 import { PeriodosTabla } from "./periodos-tabla";
 import { TipoRutaCentroCostoTabla } from "./tipo-ruta-centro-costo-tabla";
 import { TipoTransportistaTabla } from "./tipo-transportista-tabla";
@@ -21,12 +23,14 @@ export default async function ConfiguracionPage({
 }) {
   await requireRole(["ADMIN"]);
   const { tipoRuta, volver } = await searchParams;
-  const [periodos, catalogoTipoRuta, catalogoTipoTransportista, ajustesCorreoPrueba] = await Promise.all([
-    listarPeriodosAdmin(),
-    listarTipoRutaCentroCosto(),
-    listarTipoTransportista(),
-    obtenerAjustesCorreoPrueba(),
-  ]);
+  const [periodos, catalogoTipoRuta, catalogoTipoTransportista, ajustesCorreoPrueba, estadoEnvioDiario] =
+    await Promise.all([
+      listarPeriodosAdmin(),
+      listarTipoRutaCentroCosto(),
+      listarTipoTransportista(),
+      obtenerAjustesCorreoPrueba(),
+      obtenerEstadoEnvioDiario(),
+    ]);
 
   const ultimoPeriodo = periodos[0] ?? null;
   const siguienteNumero = Math.max(0, ...periodos.map((p) => p.numero)) + 1;
@@ -89,6 +93,17 @@ export default async function ConfiguracionPage({
           se aplican de inmediato.
         </p>
         <CorreoPruebaForm ajustes={ajustesCorreoPrueba} />
+      </section>
+
+      <section id="cuenta-correo" className="space-y-3">
+        <h2 className="text-lg font-semibold">Cuenta de envío de correo</h2>
+        <p className="text-sm text-muted-foreground">
+          Gmail limita cuántos correos puede enviar una cuenta por día (500 en una cuenta personal, 2000 en
+          Google Workspace). Acá se ve cuánto se lleva enviado hoy y, si hace falta, se cambia a una cuenta de
+          respaldo sin redesplegar — los correos que queden pendientes por el límite se reintentan solos
+          apenas la cuenta activa vuelva a poder enviar.
+        </p>
+        <CuentaCorreoForm estado={estadoEnvioDiario} />
       </section>
     </div>
   );
