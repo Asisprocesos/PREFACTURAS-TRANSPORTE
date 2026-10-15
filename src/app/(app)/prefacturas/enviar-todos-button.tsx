@@ -51,7 +51,7 @@ export function EnviarTodosButton({
   return (
     <div className="flex flex-col items-end gap-1">
       <Button onClick={enviarTodos} disabled={!periodoId || cargando}>
-        {cargando ? "Encolando..." : "Enviar todos los del período"}
+        {cargando ? "Encolando..." : "Envíos de correos de todo el período"}
       </Button>
       {mensaje ? <p className="text-xs text-muted-foreground">{mensaje}</p> : null}
     </div>
