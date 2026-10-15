@@ -40,6 +40,13 @@ export default async function PrefacturasPage({
 
   const puedeGenerar = perfil.rol === "ADMIN" || perfil.rol === "OPERADOR_TRANSPORTE";
   const nombrePeriodoSeleccionado = periodos.find((p) => p.id === periodoSeleccionado)?.nombre;
+  // A diferencia de los otros botones (que caen al período ABIERTO por
+  // defecto si no hay filtro), el envío masivo de correos solo debe aparecer
+  // cuando el filtro de período tiene una elección explícita — con "Todos
+  // los períodos" seleccionado, la tabla muestra prefacturas de varios
+  // períodos a la vez y no debe haber ningún botón de envío masivo activo
+  // que dé la impresión de actuar sobre lo que se ve en pantalla.
+  const periodoFiltroExplicito = params.periodo || undefined;
 
   return (
     <div className="space-y-6">
@@ -55,7 +62,12 @@ export default async function PrefacturasPage({
               periodoId={periodoSeleccionado}
               periodoNombre={nombrePeriodoSeleccionado}
             />
-            <EnviarTodosButton periodoId={periodoSeleccionado} periodoNombre={nombrePeriodoSeleccionado} />
+            {periodoFiltroExplicito ? (
+              <EnviarTodosButton
+                periodoId={periodoFiltroExplicito}
+                periodoNombre={nombrePeriodoSeleccionado}
+              />
+            ) : null}
             {perfil.rol === "ADMIN" ? (
               <EliminarPrefacturasPeriodoButton
                 periodoId={periodoSeleccionado}
