@@ -23,11 +23,19 @@ const TIPOS_VALIDOS = [
   "prefacturas",
   "enviadas",
   "pendientes",
+  "generadas-sin-enviar",
   "errores-envio",
   "centro-costo",
   "rezagos",
   "placas-sin-vehiculo",
 ] as const;
+
+// Estados con un documento_pdf VIGENTE pero sin llegar todavía a ENVIADA —
+// a diferencia de "pendientes" (que incluye BORRADOR/CON_NOVEDADES/LISTA,
+// que ni siquiera tienen PDF generado), esta lista es justo la que sirve
+// para descargar y reenviar manualmente: alternativa al ZIP de respaldo
+// cuando no se quiere depender de ese envío automático (ver encolarConsolidadoSinCorreo).
+const ESTADOS_GENERADOS_SIN_ENVIAR = ["PDF_GENERADO", "EN_COLA_ENVIO", "ERROR_ENVIO", "REQUIERE_REGENERAR"];
 type TipoReporte = (typeof TIPOS_VALIDOS)[number];
 
 function construirLibro(hojas: { nombre: string; filas: FilaExcel[] }[]): Buffer {
@@ -77,6 +85,9 @@ export async function GET(request: Request) {
         ["BORRADOR", "CON_NOVEDADES", "LISTA", "PDF_GENERADO", "EN_COLA_ENVIO"].includes(p.estado),
       );
       buffer = construirLibro([{ nombre: "Pendientes de envío", filas: filasPrefacturas(pendientes) }]);
+    } else if (tipo === "generadas-sin-enviar") {
+      const generadas = prefacturas.filter((p) => ESTADOS_GENERADOS_SIN_ENVIAR.includes(p.estado));
+      buffer = construirLibro([{ nombre: "Generadas sin enviar", filas: filasPrefacturas(generadas) }]);
     } else {
       const errores = await obtenerUltimosErroresEnvio(prefacturas.map((p) => p.id));
       buffer = construirLibro([

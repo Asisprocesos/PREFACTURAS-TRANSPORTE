@@ -13,6 +13,22 @@ import { eliminarDocumentosPdfAction, obtenerUrlDocumentoAction } from "@/lib/re
 import type { DocumentoConRelaciones } from "@/lib/repositorio/queries";
 import { nombreTransportista } from "@/lib/transportistas/display";
 
+// Estado de ENVÍO del correo (prefactura.estado) — distinto de la columna
+// "Estado" de la tabla (documento_pdf.estado: VIGENTE/REEMPLAZADO). Mismas
+// etiquetas que ETIQUETA_ESTADO en reportes/generar.ts, duplicadas acá para
+// no acoplar este módulo al de Reportes por un mapa de 9 líneas.
+const ETIQUETA_ENVIO: Record<string, string> = {
+  BORRADOR: "Sin generar",
+  CON_NOVEDADES: "Sin generar",
+  LISTA: "Sin generar",
+  PDF_GENERADO: "No enviado",
+  EN_COLA_ENVIO: "En cola",
+  ENVIADA: "Enviado",
+  ERROR_ENVIO: "Error de envío",
+  REQUIERE_REGENERAR: "Requiere regenerar",
+  ANULADA: "Anulada",
+};
+
 export function TablaDocumentos({
   filas,
   total,
@@ -107,13 +123,14 @@ export function TablaDocumentos({
               <th className="px-4 py-3 font-medium">Versión</th>
               <th className="px-4 py-3 font-medium">Generado</th>
               <th className="px-4 py-3 font-medium">Estado</th>
+              <th className="px-4 py-3 font-medium">Envío</th>
               <th className="px-4 py-3 font-medium">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {filas.length === 0 ? (
               <tr>
-                <td colSpan={puedeEliminar ? 9 : 8} className="px-4 py-6 text-center text-muted-foreground">
+                <td colSpan={puedeEliminar ? 10 : 9} className="px-4 py-6 text-center text-muted-foreground">
                   No hay documentos con estos filtros.
                 </td>
               </tr>
@@ -147,6 +164,23 @@ export function TablaDocumentos({
                       >
                         {d.estado}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {d.prefactura ? (
+                        <span
+                          className={
+                            d.prefactura.estado === "ENVIADA"
+                              ? "rounded-full bg-primary/20 px-2 py-0.5 text-xs font-medium"
+                              : d.prefactura.estado === "ERROR_ENVIO"
+                                ? "rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive"
+                                : "rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                          }
+                        >
+                          {ETIQUETA_ENVIO[d.prefactura.estado] ?? d.prefactura.estado}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
