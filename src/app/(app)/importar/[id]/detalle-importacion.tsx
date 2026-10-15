@@ -73,6 +73,7 @@ export function DetalleImportacion({
     setCargando(true);
     setMensaje(null);
     let totalOdt = 0;
+    let totalActualizadas = 0;
     try {
       for (;;) {
         let r = await confirmarLoteImportacionAction(importacion.id).catch(() => null);
@@ -91,10 +92,15 @@ export function DetalleImportacion({
           return;
         }
         totalOdt += r.odtInsertadas ?? 0;
-        setMensaje(`Confirmando... ${totalOdt} ODT insertadas hasta ahora.`);
+        totalActualizadas += r.odtActualizadas ?? 0;
+        setMensaje(
+          `Confirmando... ${totalOdt} ODT insertadas${totalActualizadas > 0 ? `, ${totalActualizadas} actualizadas` : ""} hasta ahora.`,
+        );
         if (!r.filasRestantes) break;
       }
-      setMensaje(`Confirmada: ${totalOdt} ODT insertadas.`);
+      setMensaje(
+        `Confirmada: ${totalOdt} ODT insertadas${totalActualizadas > 0 ? `, ${totalActualizadas} actualizadas` : ""}.`,
+      );
     } finally {
       setCargando(false);
       router.refresh();
@@ -124,7 +130,7 @@ export function DetalleImportacion({
         />
       ) : importacion.estado === "BORRADOR" ? (
         puedeGestionar ? (
-          <ContinuarMapeo importacion={importacion} periodos={periodos} />
+          <ContinuarMapeo importacion={importacion} periodos={periodos} esAdmin={esAdmin} />
         ) : (
           <p className="text-sm text-muted-foreground">
             Esta importación quedó sin terminar el mapeo. Pídele a un operador o administrador que la
@@ -164,7 +170,15 @@ export function DetalleImportacion({
  * asistente que vivía en memoria del navegador) y retoma desde el borrador
  * guardado, si lo hay.
  */
-function ContinuarMapeo({ importacion, periodos }: { importacion: Importacion; periodos: PeriodoOpcion[] }) {
+function ContinuarMapeo({
+  importacion,
+  periodos,
+  esAdmin,
+}: {
+  importacion: Importacion;
+  periodos: PeriodoOpcion[];
+  esAdmin: boolean;
+}) {
   const router = useRouter();
   const [archivo, setArchivo] = useState<File | null>(null);
   const [cargando, setCargando] = useState(false);
@@ -210,6 +224,7 @@ function ContinuarMapeo({ importacion, periodos }: { importacion: Importacion; p
         archivo={archivo}
         periodos={periodos}
         borradorInicial={(importacion.borrador as unknown as BorradorMapeo | null) ?? undefined}
+        esAdmin={esAdmin}
         onPaso={setPaso}
         onValidado={() => router.refresh()}
       />

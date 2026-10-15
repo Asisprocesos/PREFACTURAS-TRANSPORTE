@@ -42,6 +42,7 @@ export function PasoMapeo({
   archivo,
   periodos,
   borradorInicial,
+  esAdmin = false,
   onPaso,
   onValidado,
 }: {
@@ -49,6 +50,8 @@ export function PasoMapeo({
   archivo: File;
   periodos: PeriodoOpcion[];
   borradorInicial?: BorradorMapeo;
+  /** Habilita la casilla "Actualizar existentes" — sobrescribe datos que ya pueden alimentar una prefactura enviada, así que solo ADMIN la ve. */
+  esAdmin?: boolean;
   onPaso?: (paso: 2 | 3) => void;
   onValidado: (resumen: ResumenValidacion) => void;
 }) {
@@ -68,6 +71,7 @@ export function PasoMapeo({
   const [detectandoPeriodo, setDetectandoPeriodo] = useState(false);
   const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
   const [plantillaGuardada, setPlantillaGuardada] = useState(false);
+  const [actualizarExistentes, setActualizarExistentes] = useState(false);
   const inicializado = useRef(false);
 
   const columnaFecha = Object.entries(mapeo).find(([, campo]) => campo === "fecha_creacion")?.[0] ?? null;
@@ -195,6 +199,7 @@ export function PasoMapeo({
         hoja: hojaElegida,
         mapeo,
         filaEncabezado,
+        actualizarExistentes: esAdmin && actualizarExistentes,
       });
       onValidado(resumen);
     } catch (e) {
@@ -404,6 +409,23 @@ export function PasoMapeo({
           </tbody>
         </table>
       </div>
+
+      {esAdmin ? (
+        <label className="flex max-w-xl items-start gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+          <input
+            type="checkbox"
+            checked={actualizarExistentes}
+            onChange={(e) => setActualizarExistentes(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            <span className="font-medium">Actualizar existentes.</span> Si una guía de este archivo ya está
+            cargada (de otra importación), en vez de omitirla por duplicada se actualiza con los datos de este
+            archivo. Si esa ODT ya tenía un PDF enviado, la prefactura queda marcada &quot;Requiere
+            regenerar&quot; en vez de cambiar en silencio.
+          </span>
+        </label>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
         <Button

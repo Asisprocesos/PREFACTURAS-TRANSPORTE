@@ -63,7 +63,7 @@ export async function corregirFilaImportacionAction(
 
   const { data: importacion, error: errorImportacion } = await supabase
     .from("importacion")
-    .select("id, periodo_id")
+    .select("id, periodo_id, actualizar_existentes")
     .eq("id", fila.importacion_id)
     .maybeSingle();
   if (errorImportacion || !importacion?.periodo_id) {
@@ -120,11 +120,18 @@ export async function corregirFilaImportacionAction(
     filaSintetica,
     { ...contextoBase, guiasExistentesBD },
     guiasVistasEnArchivo,
+    importacion.actualizar_existentes,
   );
 
   // Mismo criterio que la validación inicial: una fila con error (o
-  // excluida por Estado) arranca en OMITIR en vez de sin decidir.
-  const decision: DecisionFila = resultado.excluida || resultado.errores.length > 0 ? "OMITIR" : "INSERTAR";
+  // excluida por Estado) arranca en OMITIR en vez de sin decidir; una guía
+  // ya existente con "Actualizar existentes" activado pasa a ACTUALIZAR.
+  const decision: DecisionFila =
+    resultado.excluida || resultado.errores.length > 0
+      ? "OMITIR"
+      : resultado.yaExisteEnBD
+        ? "ACTUALIZAR"
+        : "INSERTAR";
 
   const { error: errorUpdate } = await supabase
     .from("importacion_fila")

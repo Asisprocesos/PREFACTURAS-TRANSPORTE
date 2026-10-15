@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireRole } from "@/lib/auth/roles";
+import { marcarRequiereRegenerar, recalcularTotalesPrefacturasDeOdt } from "@/lib/odt/actions";
 import { createClient } from "@/lib/supabase/server";
 import type { ResultadoAccion } from "@/lib/types/acciones";
 
@@ -11,18 +12,39 @@ import type { ResumenValidacion } from "./validar-action";
 
 export interface ResultadoConfirmacionLote extends ResultadoAccion {
   odtInsertadas?: number;
+  odtActualizadas?: number;
   novedadesGeneradas?: number;
-  /** Filas con decision=INSERTAR que todavía no se han convertido en ODT: si es > 0, hay que volver a llamar. */
+  /** Filas con decision IN (INSERTAR, ACTUALIZAR) que todavía no se han procesado: si es > 0, hay que volver a llamar. */
   filasRestantes?: number;
+}
+
+/**
+ * Tras actualizar una ODT (decision=ACTUALIZAR, "Actualizar existentes" del
+ * importador), se repite el mismo efecto que una corrección manual desde
+ * /odt/{guia}/corregir: si la prefactura que la incluye ya tenía PDF
+ * vigente, se marca REQUIERE_REGENERAR, y se recalculan sus totales — si no
+ * se tocara, un envío posterior saldría con el PDF viejo o con el total
+ * desactualizado.
+ */
+async function marcarRegenerarPorGuias(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  guias: string[],
+): Promise<void> {
+  if (guias.length === 0) return;
+  const { data: odts } = await supabase.from("odt").select("id").in("guia", guias);
+  for (const odt of odts ?? []) {
+    await marcarRequiereRegenerar(odt.id);
+    await recalcularTotalesPrefacturasDeOdt(odt.id);
+  }
 }
 
 /**
  * Confirma un lote chico (por defecto 300 filas) en vez de todo el archivo
  * de una sola vez — el cliente la llama en un ciclo hasta que
  * `filasRestantes` llega a 0 (ver `confirmar()` en detalle-importacion.tsx
- * e importar-wizard.tsx). Es idempotente: cada lote solo toma filas cuya
- * guía todavía no existe en `odt` para esta importación, así que
- * reintentar un lote fallido nunca duplica nada.
+ * e importar-wizard.tsx). Es idempotente: cada lote solo toma filas sin
+ * procesar (`importacion_fila.procesada = false`), así que reintentar un
+ * lote fallido nunca duplica ni reprocesa nada.
  */
 export async function confirmarLoteImportacionAction(
   importacionId: string,
@@ -40,13 +62,17 @@ export async function confirmarLoteImportacionAction(
   }
 
   const resumen = data?.[0];
+  await marcarRegenerarPorGuias(supabase, resumen?.guias_actualizadas ?? []);
+
   if (!resumen || resumen.filas_restantes === 0) {
     revalidatePath(`/importar/${importacionId}`);
     revalidatePath("/importar");
+    revalidatePath("/prefacturas");
   }
   return {
     ok: true,
     odtInsertadas: resumen?.odt_insertadas,
+    odtActualizadas: resumen?.odt_actualizadas,
     novedadesGeneradas: resumen?.novedades_generadas,
     filasRestantes: resumen?.filas_restantes,
   };

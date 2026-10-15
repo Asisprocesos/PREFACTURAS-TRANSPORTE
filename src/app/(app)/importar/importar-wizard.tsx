@@ -132,6 +132,7 @@ export function ImportarWizard({ periodos, esAdmin }: { periodos: PeriodoOpcion[
             importacionId={estado.importacionId}
             archivo={estado.archivo}
             periodos={periodos}
+            esAdmin={esAdmin}
             onPaso={(paso) => actualizar({ paso })}
             onValidado={(resumen) => actualizar({ resumen, paso: 4 })}
           />
@@ -185,15 +186,18 @@ function PasoConfirmar({
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progreso, setProgreso] = useState(0);
-  const [resultado, setResultado] = useState<{ odtInsertadas?: number; novedadesGeneradas?: number } | null>(
-    null,
-  );
+  const [resultado, setResultado] = useState<{
+    odtInsertadas?: number;
+    odtActualizadas?: number;
+    novedadesGeneradas?: number;
+  } | null>(null);
 
   async function confirmar() {
     setCargando(true);
     setError(null);
     setProgreso(0);
     let totalOdt = 0;
+    let totalActualizadas = 0;
     let totalNovedades = 0;
     try {
       for (;;) {
@@ -213,11 +217,16 @@ function PasoConfirmar({
           return;
         }
         totalOdt += r.odtInsertadas ?? 0;
+        totalActualizadas += r.odtActualizadas ?? 0;
         totalNovedades += r.novedadesGeneradas ?? 0;
-        setProgreso(totalOdt);
+        setProgreso(totalOdt + totalActualizadas);
         if (!r.filasRestantes) break;
       }
-      setResultado({ odtInsertadas: totalOdt, novedadesGeneradas: totalNovedades });
+      setResultado({
+        odtInsertadas: totalOdt,
+        odtActualizadas: totalActualizadas,
+        novedadesGeneradas: totalNovedades,
+      });
     } finally {
       setCargando(false);
     }
@@ -227,8 +236,9 @@ function PasoConfirmar({
     return (
       <div className="space-y-3">
         <p className="text-sm text-primary-ink">
-          Importación confirmada: {resultado.odtInsertadas} ODT insertadas, {resultado.novedadesGeneradas}{" "}
-          novedades generadas.
+          Importación confirmada: {resultado.odtInsertadas} ODT insertadas
+          {(resultado.odtActualizadas ?? 0) > 0 ? `, ${resultado.odtActualizadas} actualizadas` : ""},{" "}
+          {resultado.novedadesGeneradas} novedades generadas.
         </p>
         <div className="flex gap-2">
           <Button asChild variant="outline">

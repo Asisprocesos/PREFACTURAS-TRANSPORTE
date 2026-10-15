@@ -26,6 +26,7 @@ const ETIQUETA_DECISION: Record<string, string> = {
   INSERTAR: "Se insertará",
   OMITIR: "Omitida",
   CORREGIR: "Por corregir",
+  ACTUALIZAR: "Se actualizará",
 };
 
 interface AccionExterna {

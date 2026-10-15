@@ -12,7 +12,7 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type RolUsuario = "ADMIN" | "OPERADOR_TRANSPORTE" | "CONSULTA";
 export type EstadoPeriodo = "ABIERTO" | "CERRADO" | "ARCHIVADO";
 export type EstadoImportacion = "BORRADOR" | "VALIDADA" | "CONFIRMADA" | "REVERTIDA";
-export type DecisionFila = "INSERTAR" | "OMITIR" | "CORREGIR";
+export type DecisionFila = "INSERTAR" | "OMITIR" | "CORREGIR" | "ACTUALIZAR";
 export type EstadoPrefactura =
   | "BORRADOR"
   | "CON_NOVEDADES"
@@ -361,6 +361,7 @@ export interface Database {
           estado: EstadoImportacion;
           usuario: string | null;
           borrador: Json | null;
+          actualizar_existentes: boolean;
         } & Auditable;
         Insert: {
           id?: string;
@@ -376,6 +377,7 @@ export interface Database {
           estado?: EstadoImportacion;
           usuario?: string | null;
           borrador?: Json | null;
+          actualizar_existentes?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -392,6 +394,7 @@ export interface Database {
           errores: Json;
           advertencias: Json;
           decision: DecisionFila | null;
+          procesada: boolean;
           created_at: string;
         };
         Insert: {
@@ -403,6 +406,7 @@ export interface Database {
           errores?: Json;
           advertencias?: Json;
           decision?: DecisionFila | null;
+          procesada?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["importacion_fila"]["Insert"]>;
@@ -942,7 +946,13 @@ export interface Database {
       };
       confirmar_importacion_lote: {
         Args: { p_importacion_id: string; p_tamano_lote?: number };
-        Returns: { odt_insertadas: number; novedades_generadas: number; filas_restantes: number }[];
+        Returns: {
+          odt_insertadas: number;
+          odt_actualizadas: number;
+          novedades_generadas: number;
+          filas_restantes: number;
+          guias_actualizadas: string[] | null;
+        }[];
       };
       revertir_importacion: { Args: { p_importacion_id: string }; Returns: undefined };
       generar_prefacturas_periodo: {

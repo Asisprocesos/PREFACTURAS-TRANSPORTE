@@ -95,8 +95,14 @@ export async function validarImportacionAction(datos: {
   hoja: string;
   mapeo: Record<string, CampoOdt | null>;
   filaEncabezado?: number;
+  /** Solo ADMIN: una guía ya existente se actualiza (ACTUALIZAR) en vez de omitirse por duplicada. */
+  actualizarExistentes?: boolean;
 }): Promise<ResumenValidacion> {
-  await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+  const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+  if (datos.actualizarExistentes && perfil.rol !== "ADMIN") {
+    throw new Error('Solo un ADMIN puede activar "Actualizar existentes".');
+  }
+  const actualizarExistentes = !!datos.actualizarExistentes;
 
   // "estado" es obligatorio porque es la columna que decide qué se importa:
   // sin mapearla, ninguna fila tendría "Entregado" y quedarían todas
@@ -155,7 +161,7 @@ export async function validarImportacionAction(datos: {
 
   const filasParaInsertarEnBD = filasCrudas.map((filaCruda, i) => {
     const mapeada = aplicarMapeo(filaCruda, datos.mapeo);
-    const resultado = validarFila(i + 1, mapeada, contexto, guiasVistasEnArchivo);
+    const resultado = validarFila(i + 1, mapeada, contexto, guiasVistasEnArchivo, actualizarExistentes);
 
     if (resultado.excluida) resumen.filasExcluidas++;
     else if (resultado.errores.length > 0) resumen.filasConError++;
@@ -165,9 +171,16 @@ export async function validarImportacionAction(datos: {
     // Las filas con error arrancan en OMITIR (en vez de sin decidir) para
     // que se vean de una vez como "Omitida" y no haya que marcarlas una por
     // una solo para que quede claro que no se van a insertar — el operador
-    // solo tiene que actuar sobre las que sí quiere corregir e incluir.
-    const decision: DecisionFila = resultado.excluida || resultado.errores.length > 0 ? "OMITIR" : "INSERTAR";
-    if (decision === "INSERTAR") resumen.filasParaInsertar++;
+    // solo tiene que actuar sobre las que sí quiere corregir e incluir. Una
+    // guía ya existente con actualizarExistentes activado no tiene error
+    // (ver validarFila): se confirma como ACTUALIZAR en vez de INSERTAR.
+    const decision: DecisionFila =
+      resultado.excluida || resultado.errores.length > 0
+        ? "OMITIR"
+        : resultado.yaExisteEnBD
+          ? "ACTUALIZAR"
+          : "INSERTAR";
+    if (decision === "INSERTAR" || decision === "ACTUALIZAR") resumen.filasParaInsertar++;
 
     return {
       importacion_id: datos.importacionId,
@@ -198,6 +211,7 @@ export async function validarImportacionAction(datos: {
       filas_con_error: resumen.filasConError,
       filas_advertencias: resumen.filasAdvertencias,
       estado: "VALIDADA",
+      actualizar_existentes: actualizarExistentes,
     })
     .eq("id", datos.importacionId);
 

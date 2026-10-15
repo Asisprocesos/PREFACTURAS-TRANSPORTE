@@ -45,6 +45,8 @@ export interface FilaValidada {
   advertencias: string[];
   /** Estado != Entregado: no se inserta y no cuenta como error. */
   excluida: boolean;
+  /** La guía ya existe en `odt` (de otra importación). Con actualizarExistentes=true esto no es un error: decide ACTUALIZAR en vez de INSERTAR. */
+  yaExisteEnBD: boolean;
 }
 
 function normalizarTexto(v: string | undefined): string | null {
@@ -62,12 +64,19 @@ function normalizarClave(v: string): string {
  * no hace I/O. `guiasVistasEnArchivo` es el único parámetro con estado
  * mutable — el caller debe reusar el mismo Set para todas las filas del
  * mismo archivo, en orden, para detectar duplicados dentro del archivo.
+ *
+ * `actualizarExistentes` (solo ADMIN, ver validarImportacionAction): si una
+ * guía ya existe en la base (de otra importación), por defecto es un error
+ * y la fila se omite. Con esto en true, en vez de error queda como
+ * advertencia — la fila se confirmará como ACTUALIZAR (sobrescribe la ODT
+ * existente) en vez de INSERTAR.
  */
 export function validarFila(
   numeroFila: number,
   fila: Partial<Record<CampoOdt, string>>,
   contexto: ContextoValidacion,
   guiasVistasEnArchivo: Set<string>,
+  actualizarExistentes = false,
 ): FilaValidada {
   const errores: string[] = [];
   const advertencias: string[] = [];
@@ -85,6 +94,7 @@ export function validarFila(
     advertencias.push(`Estado "${estado ?? "(vacío)"}" distinto de Entregado: no se importa.`);
   }
 
+  let yaExisteEnBD = false;
   if (guia) {
     const claveGuia = normalizarClave(guia);
     if (guiasVistasEnArchivo.has(claveGuia)) {
@@ -93,7 +103,12 @@ export function validarFila(
       guiasVistasEnArchivo.add(claveGuia);
     }
     if (contexto.guiasExistentesBD.has(claveGuia)) {
-      errores.push("La guía ya existe en la base de datos (otra importación).");
+      yaExisteEnBD = true;
+      if (actualizarExistentes) {
+        advertencias.push("La guía ya existe en la base de datos: se actualizará con estos datos.");
+      } else {
+        errores.push("La guía ya existe en la base de datos (otra importación).");
+      }
     }
   }
 
@@ -190,5 +205,6 @@ export function validarFila(
     errores,
     advertencias,
     excluida,
+    yaExisteEnBD,
   };
 }

@@ -43,7 +43,7 @@ export async function recalcularResumenImportacion(importacionId: string): Promi
     else if (advertencias.length > 0) resumen.filasAdvertencias++;
     else resumen.filasValidas++;
 
-    if (f.decision === "INSERTAR") resumen.filasParaInsertar++;
+    if (f.decision === "INSERTAR" || f.decision === "ACTUALIZAR") resumen.filasParaInsertar++;
   }
 
   await supabase
