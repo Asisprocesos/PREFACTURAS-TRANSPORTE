@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -23,6 +24,7 @@ export function EnviarTodosButton({
   const router = useRouter();
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
+  const [loteId, setLoteId] = useState<string | null>(null);
 
   async function enviarTodos() {
     if (!periodoId) return;
@@ -35,16 +37,26 @@ export function EnviarTodosButton({
     }
     setCargando(true);
     setMensaje(null);
+    setLoteId(null);
     const resultado = await encolarTodosDelPeriodoAction(periodoId);
     setCargando(false);
     if (!resultado.ok) {
       setMensaje(resultado.error ?? "No se pudo encolar el envío.");
       return;
     }
-    if (resultado.loteId) {
-      router.push(`/prefacturas/lotes/${resultado.loteId}`);
-      return;
+    // No se navega directo al lote: el resumen (sobre todo las omitidas, que
+    // antes pasaban desapercibidas con este botón) se queda visible hasta que
+    // el usuario elija "Ver progreso del lote" — igual que "Enviar
+    // seleccionados" ya hace en prefacturas-table.tsx.
+    const partes = [`${resultado.encoladas} encoladas para envío individual`];
+    if (resultado.consolidadasSinCorreo) {
+      partes.push(`${resultado.consolidadasSinCorreo} consolidadas en un ZIP (sin correo registrado)`);
     }
+    if (resultado.omitidas) {
+      partes.push(`${resultado.omitidas} omitidas (sin PDF vigente, o sin correo y sin correo de respaldo)`);
+    }
+    setMensaje(`${partes.join(", ")}.`);
+    if (resultado.loteId) setLoteId(resultado.loteId);
     router.refresh();
   }
 
@@ -53,7 +65,12 @@ export function EnviarTodosButton({
       <Button onClick={enviarTodos} disabled={!periodoId || cargando}>
         {cargando ? "Encolando..." : "Envíos de correos de todo el período"}
       </Button>
-      {mensaje ? <p className="text-xs text-muted-foreground">{mensaje}</p> : null}
+      {mensaje ? <p className="max-w-xs text-right text-xs text-muted-foreground">{mensaje}</p> : null}
+      {loteId ? (
+        <Link href={`/prefacturas/lotes/${loteId}`} className="text-xs text-primary-ink hover:underline">
+          Ver progreso del lote
+        </Link>
+      ) : null}
     </div>
   );
 }
