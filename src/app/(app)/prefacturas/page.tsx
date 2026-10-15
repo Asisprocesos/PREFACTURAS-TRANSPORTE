@@ -4,14 +4,16 @@ import { listarPrefacturas } from "@/lib/prefacturas/queries";
 import type { EstadoPrefactura } from "@/types/database.types";
 
 import { EliminarPrefacturasPeriodoButton } from "./eliminar-prefacturas-periodo-button";
+import { EnviarTodosButton } from "./enviar-todos-button";
 import { FiltrosPrefacturas } from "./filtros";
 import { GenerarPrefacturasButton } from "./generar-prefacturas-button";
 import { GenerarTodosPdfButton } from "./generar-todos-pdf-button";
 import { PrefacturasTable } from "./prefacturas-table";
 
-// encolarEnviosAction (botón "Enviar seleccionados") puede descargar varios
-// PDF y armar un ZIP para las prefacturas sin correo registrado; hereda
-// este límite de la página que la invoca.
+// encolarEnviosAction/encolarTodosDelPeriodoAction (botones "Enviar
+// seleccionados" y "Enviar todos del período") pueden descargar varios PDF y
+// armar un ZIP para las prefacturas sin correo registrado; heredan este
+// límite de la página que los invoca.
 export const maxDuration = 60;
 
 const TAMANO_PAGINA = 20;
@@ -53,6 +55,7 @@ export default async function PrefacturasPage({
               periodoId={periodoSeleccionado}
               periodoNombre={nombrePeriodoSeleccionado}
             />
+            <EnviarTodosButton periodoId={periodoSeleccionado} periodoNombre={nombrePeriodoSeleccionado} />
             {perfil.rol === "ADMIN" ? (
               <EliminarPrefacturasPeriodoButton
                 periodoId={periodoSeleccionado}

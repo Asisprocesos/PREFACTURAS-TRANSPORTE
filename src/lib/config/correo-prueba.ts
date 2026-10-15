@@ -1,6 +1,9 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database.types";
 
 export interface AjustesCorreoPrueba {
   modoPrueba: boolean;
@@ -22,9 +25,20 @@ const CLAVE = "correo_prueba";
  * entorno de Vercel (EMAIL_TEST_MODE / EMAIL_TEST_RECIPIENT /
  * EMAIL_FALLBACK_RECIPIENT) — comportamiento histórico, para no romper nada
  * hasta el primer guardado desde Configuración.
+ *
+ * `supabaseClient` es obligatorio pasarlo cuando quien llama no tiene sesión
+ * de usuario — el worker de correo (`/api/jobs/email`, disparado por
+ * pg_cron sin cookies de ningún usuario) debe pasar su cliente admin
+ * (service_role). Sin esto, el cliente por defecto (cookies de sesión)
+ * no tiene con qué autenticarse ahí, la política de RLS de `configuracion`
+ * (exige un rol válido) no deja leer nada, y el ajuste guardado en
+ * Configuración queda invisible para ese worker — cae en silencio a la
+ * variable de entorno aunque el ADMIN ya lo haya cambiado desde la UI.
  */
-export async function obtenerAjustesCorreoPrueba(): Promise<AjustesCorreoPrueba> {
-  const supabase = await createClient();
+export async function obtenerAjustesCorreoPrueba(
+  supabaseClient?: SupabaseClient<Database>,
+): Promise<AjustesCorreoPrueba> {
+  const supabase = supabaseClient ?? (await createClient());
   const { data } = await supabase.from("configuracion").select("valor").eq("clave", CLAVE).maybeSingle();
   const guardado = (data?.valor ?? {}) as Partial<AjustesCorreoPrueba>;
 

@@ -72,10 +72,15 @@ export async function POST(request: Request) {
   // inicializar (ej. faltan las variables SMTP_*), hay que devolverlas a
   // PENDIENTE explícitamente — si no, quedan huérfanas en ENVIANDO para
   // siempre, porque tomar_lote_envio_correo solo reclama PENDIENTE/REINTENTAR.
-  const { cuentaActiva } = await obtenerAjustesCuentaCorreo();
+  // supabase (admin, service_role) se pasa explícitamente a ambas: este
+  // worker no tiene sesión de usuario (lo dispara pg_cron, sin cookies), así
+  // que el cliente por defecto de estas funciones (RLS por sesión) no vería
+  // nada en `configuracion` y caería en silencio a las variables de entorno
+  // aunque el ADMIN ya haya cambiado el ajuste desde la pantalla.
+  const { cuentaActiva } = await obtenerAjustesCuentaCorreo(supabase);
   let proveedor;
   try {
-    proveedor = await obtenerEmailProvider();
+    proveedor = await obtenerEmailProvider(supabase);
   } catch (error) {
     await supabase
       .from("envio_correo")

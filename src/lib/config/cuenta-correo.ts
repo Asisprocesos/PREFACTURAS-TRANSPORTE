@@ -1,6 +1,9 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database.types";
 
 export type CuentaCorreo = "PRINCIPAL" | "RESPALDO";
 
@@ -21,9 +24,17 @@ const LIMITE_POR_DEFECTO = 500;
  * cuenta activa se acerca o llega al límite, Configuración y la pantalla de
  * envío masivo lo muestran, y el ADMIN cambia la cuenta activa a RESPALDO
  * desde acá para seguir enviando.
+ *
+ * `supabaseClient` es obligatorio pasarlo cuando quien llama no tiene sesión
+ * de usuario (el worker `/api/jobs/email`, disparado por pg_cron sin
+ * cookies) — sin esto, la RLS de `configuracion` bloquea la lectura y el
+ * worker nunca ve el cambio hecho desde Configuración (ver el mismo
+ * comentario en correo-prueba.ts, es exactamente el mismo problema).
  */
-export async function obtenerAjustesCuentaCorreo(): Promise<AjustesCuentaCorreo> {
-  const supabase = await createClient();
+export async function obtenerAjustesCuentaCorreo(
+  supabaseClient?: SupabaseClient<Database>,
+): Promise<AjustesCuentaCorreo> {
+  const supabase = supabaseClient ?? (await createClient());
   const { data } = await supabase.from("configuracion").select("valor").eq("clave", CLAVE).maybeSingle();
   const guardado = (data?.valor ?? {}) as Partial<AjustesCuentaCorreo>;
   return {
@@ -39,8 +50,11 @@ export async function obtenerAjustesCuentaCorreo(): Promise<AjustesCuentaCorreo>
  * (proveedor_cuenta null) no se cuentan — son de días ya pasados, no afectan
  * el contador de hoy.
  */
-export async function contarEnviadosHoy(cuenta: CuentaCorreo): Promise<number> {
-  const supabase = await createClient();
+export async function contarEnviadosHoy(
+  cuenta: CuentaCorreo,
+  supabaseClient?: SupabaseClient<Database>,
+): Promise<number> {
+  const supabase = supabaseClient ?? (await createClient());
   const fechaGuayaquil = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guayaquil" }).format(
     new Date(),
   );
@@ -61,8 +75,10 @@ export interface EstadoEnvioDiario extends AjustesCuentaCorreo {
 }
 
 /** Para el contador visual en Configuración y en la pantalla de envío masivo. */
-export async function obtenerEstadoEnvioDiario(): Promise<EstadoEnvioDiario> {
-  const ajustes = await obtenerAjustesCuentaCorreo();
-  const enviadosHoy = await contarEnviadosHoy(ajustes.cuentaActiva);
+export async function obtenerEstadoEnvioDiario(
+  supabaseClient?: SupabaseClient<Database>,
+): Promise<EstadoEnvioDiario> {
+  const ajustes = await obtenerAjustesCuentaCorreo(supabaseClient);
+  const enviadosHoy = await contarEnviadosHoy(ajustes.cuentaActiva, supabaseClient);
   return { ...ajustes, enviadosHoy };
 }

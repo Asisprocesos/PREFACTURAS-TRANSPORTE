@@ -7,9 +7,10 @@ import { requireRole } from "@/lib/auth/roles";
 import { obtenerAjustesCorreoPrueba, separarCorreos } from "@/lib/config/correo-prueba";
 import { interpolarPlantilla } from "@/lib/email/plantilla";
 import { obtenerGuiasPrefactura, registrarLogEjecucion } from "@/lib/log-ejecucion/registrar";
+import { obtenerPrefactura, type PrefacturaConRelaciones } from "@/lib/prefacturas/queries";
 import { createClient } from "@/lib/supabase/server";
 import type { ResultadoAccion } from "@/lib/types/acciones";
-import { obtenerPrefactura } from "@/lib/prefacturas/queries";
+import type { Database } from "@/types/database.types";
 import { generarYGuardarPdf } from "@/pdf/generar-y-guardar";
 
 import { construirVariablesPlantilla } from "./plantilla-variables";
@@ -217,6 +218,183 @@ export async function encolarEnviosAction(prefacturaIds: string[]): Promise<Resu
 
   const consolidadasSinCorreo = await encolarConsolidadoSinCorreo(supabase, lote.id, sinCorreo);
   omitidas += sinCorreo.length - consolidadasSinCorreo;
+
+  await supabase
+    .from("lote_proceso")
+    .update({ total: encoladas + (consolidadasSinCorreo > 0 ? 1 : 0) })
+    .eq("id", lote.id);
+
+  revalidatePath("/prefacturas");
+  return { ok: true, loteId: lote.id, encoladas, omitidas, consolidadasSinCorreo };
+}
+
+const TAMANO_LOTE_CONSULTA = 500;
+
+function enLotes<T>(items: T[], tamano: number): T[][] {
+  const lotes: T[][] = [];
+  for (let i = 0; i < items.length; i += tamano) lotes.push(items.slice(i, i + tamano));
+  return lotes;
+}
+
+/**
+ * Trae en lotes de TAMANO_LOTE_CONSULTA en vez de un solo `.in(...)` con
+ * todos los ids — con un período grande (cientos o miles de prefacturas),
+ * meterlos todos en una sola consulta genera una URL enorme (PostgREST
+ * codifica el filtro ahí): el mismo problema de fondo que se corrigió en
+ * validar-action.ts para la importación de archivos grandes.
+ */
+async function enLotesConsulta<T>(ids: string[], consultar: (lote: string[]) => Promise<T[]>): Promise<T[]> {
+  const resultados: T[] = [];
+  for (const lote of enLotes(ids, TAMANO_LOTE_CONSULTA)) {
+    resultados.push(...(await consultar(lote)));
+  }
+  return resultados;
+}
+
+/**
+ * "Enviar todos los del período": igual que encolarEnviosAction pero sin
+ * tener que seleccionar fila por fila (ni página por página, ya que el
+ * checkbox "seleccionar todos" de la tabla solo marca la página visible).
+ * A diferencia de esa, acá SÍ hace falta que las consultas estén por lotes
+ * desde el principio — un período puede tener cientos de prefacturas, y
+ * encolarEnviosAction hace ~5 consultas POR prefactura (pensada para una
+ * selección manual de unas pocas), lo que para un período completo se
+ * arriesga a tardar minutos o superar el límite de la función serverless.
+ */
+export async function encolarTodosDelPeriodoAction(periodoId: string): Promise<ResultadoEncolar> {
+  const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);
+  const supabase = await createClient();
+
+  const { data: prefacturasData, error: errorPrefacturas } = await supabase
+    .from("prefactura")
+    .select(
+      "*, vehiculo:vehiculo_id(id, placa), transportista:transportista_id(id, razon_social, nombre, ruc), periodo:periodo_id(id, nombre)",
+    )
+    .eq("periodo_id", periodoId)
+    .in("estado", ["PDF_GENERADO", "ERROR_ENVIO"]);
+  if (errorPrefacturas) return { ok: false, error: "No se pudieron consultar las prefacturas del período." };
+  const prefacturas = (prefacturasData ?? []) as unknown as PrefacturaConRelaciones[];
+  if (prefacturas.length === 0) {
+    return { ok: false, error: "No hay prefacturas con PDF listas para enviar en este período." };
+  }
+
+  const ids = prefacturas.map((p) => p.id);
+  const { data: lote, error: errorLote } = await supabase
+    .from("lote_proceso")
+    .insert({
+      tipo: "CORREO",
+      total: prefacturas.length,
+      iniciado_por: perfil.userId,
+      periodo_id: periodoId,
+      detalle: `Envío masivo (todas del período)${prefacturas[0]?.periodo?.nombre ? ` · ${prefacturas[0].periodo.nombre}` : ""}`,
+    })
+    .select("id")
+    .single();
+  if (errorLote || !lote) return { ok: false, error: "No se pudo crear el lote." };
+
+  const documentos = await enLotesConsulta(ids, async (loteIds) => {
+    const { data } = await supabase
+      .from("documento_pdf")
+      .select("prefactura_id, id, storage_key, nombre_archivo")
+      .in("prefactura_id", loteIds)
+      .eq("estado", "VIGENTE");
+    return data ?? [];
+  });
+  const documentoPorPrefactura = new Map(documentos.map((d) => [d.prefactura_id, d]));
+
+  const vehiculoIds = [...new Set(prefacturas.map((p) => p.vehiculo?.id).filter((x): x is string => !!x))];
+  const transportistaIds = [
+    ...new Set(prefacturas.map((p) => p.transportista?.id).filter((x): x is string => !!x)),
+  ];
+
+  const [contactosVehiculo, contactosTransportista] = await Promise.all([
+    enLotesConsulta(vehiculoIds, async (loteIds) => {
+      const { data } = await supabase
+        .from("contacto_correo")
+        .select("email, tipo, vehiculo_id, transportista_id")
+        .in("vehiculo_id", loteIds)
+        .eq("activo", true);
+      return data ?? [];
+    }),
+    enLotesConsulta(transportistaIds, async (loteIds) => {
+      const { data } = await supabase
+        .from("contacto_correo")
+        .select("email, tipo, vehiculo_id, transportista_id")
+        .in("transportista_id", loteIds)
+        .eq("activo", true);
+      return data ?? [];
+    }),
+  ]);
+
+  const contactosPorVehiculo = new Map<string, typeof contactosVehiculo>();
+  for (const c of contactosVehiculo) {
+    if (!c.vehiculo_id) continue;
+    contactosPorVehiculo.set(c.vehiculo_id, [...(contactosPorVehiculo.get(c.vehiculo_id) ?? []), c]);
+  }
+  const contactosPorTransportista = new Map<string, typeof contactosTransportista>();
+  for (const c of contactosTransportista) {
+    if (!c.transportista_id) continue;
+    contactosPorTransportista.set(c.transportista_id, [
+      ...(contactosPorTransportista.get(c.transportista_id) ?? []),
+      c,
+    ]);
+  }
+
+  type FilaEnvio = Database["public"]["Tables"]["envio_correo"]["Insert"];
+  const filasEnvio: FilaEnvio[] = [];
+  const idsEncolados: string[] = [];
+  const sinCorreo: PrefacturaSinCorreo[] = [];
+  let omitidasSinPdf = 0;
+
+  for (const prefactura of prefacturas) {
+    const doc = documentoPorPrefactura.get(prefactura.id);
+    if (!doc) {
+      omitidasSinPdf++;
+      continue;
+    }
+
+    const pool = [
+      ...(prefactura.vehiculo ? (contactosPorVehiculo.get(prefactura.vehiculo.id) ?? []) : []),
+      ...(prefactura.transportista ? (contactosPorTransportista.get(prefactura.transportista.id) ?? []) : []),
+    ];
+    const principal = pool.find((c) => c.tipo === "PRINCIPAL")?.email ?? null;
+    const adicionales = pool.filter((c) => c.email !== principal).map((c) => c.email);
+
+    if (!principal) {
+      sinCorreo.push({
+        prefacturaId: prefactura.id,
+        storageKey: doc.storage_key,
+        nombreArchivo: doc.nombre_archivo,
+        etiqueta: `${prefactura.vehiculo?.placa ?? "(sin placa)"} - ${prefactura.numero ?? "(sin número)"}`,
+      });
+      continue;
+    }
+
+    const variables = construirVariablesPlantilla(prefactura);
+    filasEnvio.push({
+      prefactura_id: prefactura.id,
+      documento_pdf_id: doc.id,
+      lote_id: lote.id,
+      destinatarios_to: [principal],
+      destinatarios_cc: adicionales,
+      asunto: interpolarPlantilla(defaultAppConfig.correo.plantillaMasiva.asunto, variables),
+      cuerpo: interpolarPlantilla(defaultAppConfig.correo.plantillaMasiva.cuerpo, variables),
+      estado: "PENDIENTE",
+    });
+    idsEncolados.push(prefactura.id);
+  }
+
+  for (const loteFilas of enLotes(filasEnvio, TAMANO_LOTE_CONSULTA)) {
+    const { error } = await supabase.from("envio_correo").insert(loteFilas);
+    if (error) return { ok: false, error: `No se pudo encolar: ${error.message}` };
+  }
+  for (const loteIds of enLotes(idsEncolados, TAMANO_LOTE_CONSULTA)) {
+    await supabase.from("prefactura").update({ estado: "EN_COLA_ENVIO" }).in("id", loteIds);
+  }
+
+  const consolidadasSinCorreo = await encolarConsolidadoSinCorreo(supabase, lote.id, sinCorreo);
+  const encoladas = idsEncolados.length;
+  const omitidas = omitidasSinPdf + (sinCorreo.length - consolidadasSinCorreo);
 
   await supabase
     .from("lote_proceso")

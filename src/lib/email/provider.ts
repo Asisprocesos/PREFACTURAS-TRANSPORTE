@@ -1,7 +1,10 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { obtenerAjustesCorreoPrueba, separarCorreos } from "@/lib/config/correo-prueba";
 import { obtenerAjustesCuentaCorreo, type CuentaCorreo } from "@/lib/config/cuenta-correo";
+import type { Database } from "@/types/database.types";
 
 import { crearProveedorResend } from "./providers/resend";
 import { crearProveedorSmtp } from "./providers/smtp";
@@ -39,11 +42,18 @@ function crearProveedor(cuenta: CuentaCorreo): EmailProvider {
  * Los ajustes salen de obtenerAjustesCorreoPrueba(): editables desde
  * Configuración (solo ADMIN) sin redesplegar, o de las variables de
  * entorno EMAIL_TEST_MODE/EMAIL_TEST_RECIPIENT si nunca se guardaron ahí.
+ *
+ * `supabaseClient`: pásalo (el cliente admin) cuando se llama sin sesión de
+ * usuario, como desde `/api/jobs/email` — ver el comentario en
+ * correo-prueba.ts, es la diferencia entre que el worker vea lo guardado en
+ * Configuración o que siempre caiga en silencio a las variables de entorno.
  */
-export async function obtenerEmailProvider(): Promise<EmailProvider> {
-  const { cuentaActiva } = await obtenerAjustesCuentaCorreo();
+export async function obtenerEmailProvider(
+  supabaseClient?: SupabaseClient<Database>,
+): Promise<EmailProvider> {
+  const { cuentaActiva } = await obtenerAjustesCuentaCorreo(supabaseClient);
   const real = crearProveedor(cuentaActiva);
-  const ajustes = await obtenerAjustesCorreoPrueba();
+  const ajustes = await obtenerAjustesCorreoPrueba(supabaseClient);
   if (!ajustes.modoPrueba) return real;
 
   const destinatariosPrueba = separarCorreos(ajustes.destinatarioPrueba);
