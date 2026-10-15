@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { defaultAppConfig } from "@/config/app.config";
+import { obtenerAjustesCorreoPrueba } from "@/lib/config/correo-prueba";
 import { obtenerAjustesCuentaCorreo } from "@/lib/config/cuenta-correo";
 import { obtenerEmailProvider } from "@/lib/email/provider";
 import { obtenerGuiasPrefactura, registrarLogEjecucion } from "@/lib/log-ejecucion/registrar";
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
   // nada en `configuracion` y caería en silencio a las variables de entorno
   // aunque el ADMIN ya haya cambiado el ajuste desde la pantalla.
   const { cuentaActiva } = await obtenerAjustesCuentaCorreo(supabase);
+  const { modoPrueba } = await obtenerAjustesCorreoPrueba(supabase);
   let proveedor;
   try {
     proveedor = await obtenerEmailProvider(supabase);
@@ -182,7 +184,16 @@ export async function POST(request: Request) {
           })
           .eq("id", envio.id);
         if (prefacturaIds.length > 0) {
-          await supabase.from("prefactura").update({ estado: "ENVIADA" }).in("id", prefacturaIds);
+          // En modo prueba, este "envío exitoso" en realidad se redirigió al
+          // destinatario de prueba — el transportista real no recibió nada.
+          // No se marca ENVIADA (se deja en PDF_GENERADO, lista otra vez)
+          // para que "Enviar seleccionados"/"Envíos de correos de todo el
+          // período" la sigan ofreciendo pendiente de un envío real una vez
+          // se desactive el modo prueba, sin tener que hacer nada a mano.
+          await supabase
+            .from("prefactura")
+            .update({ estado: modoPrueba ? "PDF_GENERADO" : "ENVIADA" })
+            .in("id", prefacturaIds);
         }
       } else if (resultado.cupoAgotado) {
         // No es culpa de este correo ni de los que siguen en el lote: la

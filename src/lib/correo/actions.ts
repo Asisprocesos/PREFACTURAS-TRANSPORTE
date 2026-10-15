@@ -72,7 +72,10 @@ export async function enviarCorreoIndividualAction(
     // quedaba en "Enviando..." para siempre porque nunca llegaba a limpiar
     // su estado.
     const { obtenerEmailProvider } = await import("@/lib/email/provider");
-    const proveedor = await obtenerEmailProvider();
+    const [proveedor, ajustesCorreoPrueba] = await Promise.all([
+      obtenerEmailProvider(),
+      obtenerAjustesCorreoPrueba(),
+    ]);
     const resultado = await proveedor.enviar({
       to: datos.to,
       cc: datos.cc,
@@ -99,10 +102,17 @@ export async function enviarCorreoIndividualAction(
       .select("id")
       .single();
 
-    await supabase
-      .from("prefactura")
-      .update({ estado: resultado.ok ? "ENVIADA" : "ERROR_ENVIO" })
-      .eq("id", prefacturaId);
+    // En modo prueba, un envío "exitoso" en realidad se redirigió al
+    // destinatario de prueba — el transportista real no recibió nada, así
+    // que no se marca ENVIADA (queda en PDF_GENERADO, lista para un envío
+    // real apenas se desactive el modo prueba, sin que haya que hacer nada
+    // a mano). Un error sí es un error, sea cual sea el modo.
+    const estadoFinal = resultado.ok
+      ? ajustesCorreoPrueba.modoPrueba
+        ? "PDF_GENERADO"
+        : "ENVIADA"
+      : "ERROR_ENVIO";
+    await supabase.from("prefactura").update({ estado: estadoFinal }).eq("id", prefacturaId);
 
     if (envio) {
       const guias = await obtenerGuiasPrefactura(supabase, prefacturaId);
