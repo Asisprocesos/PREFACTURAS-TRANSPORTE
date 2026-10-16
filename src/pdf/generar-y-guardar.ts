@@ -33,10 +33,11 @@ export async function generarYGuardarPdf(
   const { prefactura } = validacion;
 
   const supabase = await createClient();
+  const placa = prefactura.vehiculo?.placa ?? prefactura.placa_normalizada;
   const { count: novedadesError } = await supabase
     .from("novedad")
     .select("id", { count: "exact", head: true })
-    .eq("placa", prefactura.vehiculo?.placa ?? "")
+    .eq("placa", placa)
     .eq("periodo_id", prefactura.periodo_id)
     .eq("severidad", "ERROR")
     .eq("estado", "ABIERTA");
@@ -51,12 +52,17 @@ export async function generarYGuardarPdf(
   const ahora = new Date();
   const anio = ahora.getFullYear();
   const mes = String(ahora.getMonth() + 1).padStart(2, "0");
-  const ruc = prefactura.transportista!.ruc;
+  // Prefactura "mínima" (ver generar_prefacturas_periodo): sin transportista
+  // asignado todavía no hay RUC — la ruta de Storage necesita igual un
+  // segmento no vacío, así que cae a un marcador fijo en vez de dejar la
+  // ruta con "//" (el nombre de archivo visible usa su propio fallback
+  // "SIN RUC", vía nombreArchivoPdf).
+  const ruc = prefactura.transportista?.ruc?.trim() || "SIN-RUC";
   // La ruta de Storage usa el RUC tal cual está guardado (clave interna, no
   // visible): completarlo aquí mezclaría carpetas de 12 y 13 dígitos para
   // un mismo transportista según cuándo se generó cada versión.
   const storageKey = `prefacturas/${anio}/${mes}/${ruc}/${prefactura.numero}_v${version}.pdf`;
-  const nombreArchivo = nombreArchivoPdf(prefactura.vehiculo?.placa ?? "", completarRuc(ruc));
+  const nombreArchivo = nombreArchivoPdf(placa, completarRuc(prefactura.transportista?.ruc ?? ""));
 
   // La subida a Storage y marcar la versión anterior como REEMPLAZADO son
   // independientes entre sí: se corren en paralelo para no sumar otra
