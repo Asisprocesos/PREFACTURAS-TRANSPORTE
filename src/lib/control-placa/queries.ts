@@ -160,3 +160,39 @@ export async function obtenerControlPlaca(
 
   return resultado;
 }
+
+export interface PrefacturaResumenPlaca {
+  id: string;
+  numero: string | null;
+  vehiculoId: string | null;
+  avisoDatosMinimos: string | null;
+}
+
+/**
+ * Para el detalle por placa (/control-placa/[placa]): mismo cálculo de
+ * avisoDatosMinimos que obtenerControlPlaca, pero para una sola placa —
+ * evita traer el período completo solo para mostrar el aviso en esta
+ * pantalla. `vehiculoId` sirve para enlazar a "Asignar transportista" (o a
+ * "Registrar vehículo" cuando es null) sin otra consulta.
+ */
+export async function obtenerPrefacturaResumenPlaca(
+  placa: string,
+  periodoId: string,
+): Promise<PrefacturaResumenPlaca | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("prefactura")
+    .select("id, numero, vehiculo_id, transportista_id")
+    .eq("placa_normalizada", placa)
+    .eq("periodo_id", periodoId)
+    .eq("es_principal", true)
+    .maybeSingle();
+  if (!data) return null;
+
+  const avisoDatosMinimos = !data.vehiculo_id
+    ? "Sin vehículo registrado"
+    : !data.transportista_id
+      ? "Sin transportista asignado"
+      : null;
+  return { id: data.id, numero: data.numero, vehiculoId: data.vehiculo_id, avisoDatosMinimos };
+}

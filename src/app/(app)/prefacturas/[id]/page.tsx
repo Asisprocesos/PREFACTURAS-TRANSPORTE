@@ -39,7 +39,7 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
   const [resumen, detalleOdt, todasLasNovedades, contactos] = await Promise.all([
     obtenerResumenFacturacion(id),
     obtenerDetalleOdt(id),
-    obtenerNovedadesPrefactura(prefactura.vehiculo?.placa ?? null, prefactura.periodo_id),
+    obtenerNovedadesPrefactura(prefactura.placa_normalizada, prefactura.periodo_id),
     obtenerContactosPrefactura(prefactura.vehiculo?.id ?? null, prefactura.transportista?.id ?? null),
   ]);
   // Esta tarjeta es una alerta de "pendiente por resolver", no un historial:
