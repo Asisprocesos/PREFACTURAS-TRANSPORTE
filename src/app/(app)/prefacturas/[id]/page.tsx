@@ -112,9 +112,19 @@ export default async function DetallePrefacturaPage({ params }: { params: Promis
         <CardContent>
           <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
             <dt className="text-muted-foreground">Placa</dt>
-            <dd>{prefactura.vehiculo?.placa ?? "—"}</dd>
+            <dd>{prefactura.vehiculo?.placa ?? prefactura.placa_normalizada}</dd>
             <dt className="text-muted-foreground">Transportista</dt>
-            <dd>{nombreTransportista(prefactura.transportista) ?? "—"}</dd>
+            <dd>
+              {nombreTransportista(prefactura.transportista) ??
+                (prefactura.nombre_pendiente ? (
+                  <span className="text-muted-foreground">
+                    {prefactura.nombre_pendiente} (sin transportista — registra el vehículo/transportista y
+                    vuelve a generar las prefacturas del período)
+                  </span>
+                ) : (
+                  "—"
+                ))}
+            </dd>
             <dt className="text-muted-foreground">Razón social</dt>
             <dd>{prefactura.transportista?.razon_social ?? "—"}</dd>
             <dt className="text-muted-foreground">RUC</dt>

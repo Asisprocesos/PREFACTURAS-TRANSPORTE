@@ -26,8 +26,8 @@ export interface FiltrosControlPlaca {
 /**
  * Pantalla "Control por placa": une, por placa, la prefactura del período
  * (si ya se generó) con el conteo de novedades abiertas por severidad. Se
- * combina en el servidor porque involucra 3 tablas con distinta llave de
- * agrupación (odt.placa_normalizada, prefactura.vehiculo_id, novedad.placa).
+ * combina en el servidor porque involucra 3 tablas con su propia columna de
+ * placa (odt.placa_normalizada, prefactura.placa_normalizada, novedad.placa).
  *
  * `filtros.categoria` categoriza cada novedad por el texto de su `mensaje`
  * (ver src/lib/novedades/categorias.ts) porque `novedad.tipo` siempre vale
@@ -47,7 +47,7 @@ export async function obtenerControlPlaca(
       .not("placa_normalizada", "is", null),
     supabase
       .from("prefactura")
-      .select("id, numero, total, cantidad_odt, estado, vehiculo:vehiculo_id(placa)")
+      .select("id, numero, total, cantidad_odt, estado, placa_normalizada")
       .eq("periodo_id", periodoId)
       // Solo la principal: una placa puede tener además 0..N prefacturas
       // secundarias/ajuste (ver Validación ODT / Escaneo), y este semáforo
@@ -72,17 +72,19 @@ export async function obtenerControlPlaca(
     total: number;
     cantidad_odt: number;
     estado: string;
-    vehiculo: { placa: string } | null;
+    placa_normalizada: string;
   }[]) {
-    if (!p.vehiculo?.placa) continue;
-    prefacturaPorPlaca.set(p.vehiculo.placa, {
+    // placa_normalizada vive directo en prefactura (ya no hace falta pasar
+    // por vehiculo): así también aparecen las prefacturas "mínimas", sin
+    // vehículo registrado todavía (ver generar_prefacturas_periodo).
+    prefacturaPorPlaca.set(p.placa_normalizada, {
       id: p.id,
       numero: p.numero,
       total: p.total,
       cantidadOdt: p.cantidad_odt,
       estado: p.estado,
     });
-    placas.add(p.vehiculo.placa);
+    placas.add(p.placa_normalizada);
   }
 
   const novedadesPorPlaca = new Map<string, { error: number; advertencia: number }>();

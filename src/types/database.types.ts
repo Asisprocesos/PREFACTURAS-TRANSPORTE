@@ -523,8 +523,10 @@ export interface Database {
           id: string;
           numero: string | null;
           periodo_id: string;
-          vehiculo_id: string;
-          transportista_id: string;
+          vehiculo_id: string | null;
+          transportista_id: string | null;
+          placa_normalizada: string;
+          nombre_pendiente: string | null;
           total_odt: number;
           total_descuentos: number;
           total: number;
@@ -541,8 +543,10 @@ export interface Database {
           id?: string;
           numero?: string | null;
           periodo_id: string;
-          vehiculo_id: string;
-          transportista_id: string;
+          vehiculo_id?: string | null;
+          transportista_id?: string | null;
+          placa_normalizada: string;
+          nombre_pendiente?: string | null;
           total_odt?: number;
           total_descuentos?: number;
           total?: number;

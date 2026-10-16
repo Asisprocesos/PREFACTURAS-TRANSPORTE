@@ -71,11 +71,30 @@ function crearColumnas(puedeEnviar: boolean): ColumnDef<PrefacturaConRelaciones>
         </Link>
       ),
     },
-    { id: "placa", header: "Placa", cell: ({ row }) => row.original.vehiculo?.placa ?? "—" },
+    {
+      id: "placa",
+      header: "Placa",
+      cell: ({ row }) => row.original.vehiculo?.placa ?? row.original.placa_normalizada,
+    },
     {
       id: "transportista",
       header: "Transportista",
-      cell: ({ row }) => nombreTransportista(row.original.transportista) ?? "—",
+      cell: ({ row }) => {
+        const nombre = nombreTransportista(row.original.transportista);
+        if (nombre) return nombre;
+        // Prefactura "mínima" (sin vehículo/transportista registrado
+        // todavía, ver generar_prefacturas_periodo): se distingue el nombre
+        // de respaldo (del campo Chofer de las ODT) para que no se confunda
+        // con un transportista real ya asignado.
+        if (row.original.nombre_pendiente) {
+          return (
+            <span className="text-muted-foreground">
+              {row.original.nombre_pendiente} <span className="text-xs">(sin transportista)</span>
+            </span>
+          );
+        }
+        return "—";
+      },
     },
     { id: "periodo", header: "Período", cell: ({ row }) => row.original.periodo?.nombre ?? "—" },
     { accessorKey: "cantidad_odt", header: "ODT" },

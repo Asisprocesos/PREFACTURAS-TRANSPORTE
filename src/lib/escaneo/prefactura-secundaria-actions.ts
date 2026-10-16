@@ -69,6 +69,7 @@ export async function generarPrefacturaSecundariaAction(sesionId: string): Promi
       periodo_id: sesion.periodo_id,
       vehiculo_id: vehiculo.id,
       transportista_id: vehiculo.transportista_id,
+      placa_normalizada: sesion.placa,
       total_odt: totalOdt,
       total_descuentos: totalDescuentos,
       total: totalOdt - totalDescuentos,

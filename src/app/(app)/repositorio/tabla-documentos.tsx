@@ -149,7 +149,9 @@ export function TablaDocumentos({
                       </td>
                     ) : null}
                     <td className="px-4 py-3 font-medium">{d.prefactura?.numero ?? "—"}</td>
-                    <td className="px-4 py-3">{d.prefactura?.vehiculo?.placa ?? "—"}</td>
+                    <td className="px-4 py-3">
+                      {d.prefactura?.vehiculo?.placa ?? d.prefactura?.placa_normalizada ?? "—"}
+                    </td>
                     <td className="px-4 py-3">{nombreTransportista(d.prefactura?.transportista) ?? "—"}</td>
                     <td className="px-4 py-3">{d.prefactura?.periodo?.nombre ?? "—"}</td>
                     <td className="px-4 py-3">v{d.version}</td>

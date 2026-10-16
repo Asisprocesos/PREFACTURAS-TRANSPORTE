@@ -21,8 +21,8 @@ export function filasPrefacturas(prefacturas: PrefacturaReporte[]): FilaExcel[] 
     Número: p.numero ?? "(sin número)",
     Tipo: p.es_principal ? "Principal" : "Secundaria (Ajuste)",
     Período: p.periodo?.nombre ?? "",
-    Placa: p.vehiculo?.placa ?? "",
-    Transportista: nombreTransportista(p.transportista) ?? "",
+    Placa: p.vehiculo?.placa ?? p.placa_normalizada ?? "",
+    Transportista: nombreTransportista(p.transportista) ?? p.nombre_pendiente ?? "",
     RUC: p.transportista?.ruc ?? "",
     "Cantidad ODT": p.cantidad_odt,
     "Total ODT": p.total_odt,
@@ -40,8 +40,8 @@ export function filasErroresEnvio(
     .filter((p) => p.estado === "ERROR_ENVIO")
     .map((p) => ({
       Número: p.numero ?? "(sin número)",
-      Placa: p.vehiculo?.placa ?? "",
-      Transportista: nombreTransportista(p.transportista) ?? "",
+      Placa: p.vehiculo?.placa ?? p.placa_normalizada ?? "",
+      Transportista: nombreTransportista(p.transportista) ?? p.nombre_pendiente ?? "",
       Total: p.total,
       "Último error": errores.get(p.id) ?? "",
     }));
