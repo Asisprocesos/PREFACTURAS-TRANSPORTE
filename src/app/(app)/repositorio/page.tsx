@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth/roles";
 import { listarPeriodosParaSelect } from "@/lib/importador/queries";
 import { listarDocumentos } from "@/lib/repositorio/queries";
@@ -56,7 +57,16 @@ export default async function RepositorioPage({
           La fuente de verdad es la tabla <code>documento_pdf</code>, no la carpeta de Storage.
         </p>
       </div>
-      <FiltrosRepositorio periodos={periodos} transportistas={transportistas} />
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <FiltrosRepositorio periodos={periodos} transportistas={transportistas} />
+        {params.periodo ? (
+          <Button asChild>
+            <a href={`/api/repositorio/zip?periodo=${params.periodo}`}>
+              Descargar todos los PDF del período (ZIP)
+            </a>
+          </Button>
+        ) : null}
+      </div>
       <TablaDocumentos
         filas={filas}
         total={total}
