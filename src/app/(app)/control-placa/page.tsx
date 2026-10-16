@@ -79,9 +79,17 @@ export default async function ControlPlacaPage({
                 const color =
                   f.novedadesError > 0
                     ? "bg-destructive"
-                    : f.novedadesAdvertencia > 0
+                    : f.novedadesAdvertencia > 0 || f.avisoDatosMinimos
                       ? "bg-amber-500"
                       : "bg-primary";
+                const textoNovedades = [
+                  f.novedadesError + f.novedadesAdvertencia > 0
+                    ? `${f.novedadesError} errores, ${f.novedadesAdvertencia} advertencias`
+                    : null,
+                  f.avisoDatosMinimos,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
                 return (
                   <tr key={f.placa}>
                     <td className="px-4 py-3 font-medium">
@@ -98,9 +106,7 @@ export default async function ControlPlacaPage({
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-2">
                         <span className={cn("h-2.5 w-2.5 rounded-full", color)} />
-                        {f.novedadesError + f.novedadesAdvertencia === 0
-                          ? "Sin novedades"
-                          : `${f.novedadesError} errores, ${f.novedadesAdvertencia} advertencias`}
+                        {textoNovedades || "Sin novedades"}
                       </span>
                     </td>
                   </tr>

@@ -12,6 +12,14 @@ export interface FilaControlPlaca {
   estadoPrefactura: string | null;
   novedadesError: number;
   novedadesAdvertencia: number;
+  /**
+   * Prefactura "mínima" (ver generar_prefacturas_periodo): qué dato de
+   * catálogo falta para completarla, o null si ya está completa (o si
+   * todavía no hay prefactura). No vive en la tabla `novedad` — no hay nada
+   * que "Resolver" a mano, se completa sola registrando el vehículo/
+   * transportista y volviendo a generar las prefacturas del período.
+   */
+  avisoDatosMinimos: string | null;
 }
 
 export interface FiltrosControlPlaca {
@@ -47,7 +55,7 @@ export async function obtenerControlPlaca(
       .not("placa_normalizada", "is", null),
     supabase
       .from("prefactura")
-      .select("id, numero, total, cantidad_odt, estado, placa_normalizada")
+      .select("id, numero, total, cantidad_odt, estado, placa_normalizada, vehiculo_id, transportista_id")
       .eq("periodo_id", periodoId)
       // Solo la principal: una placa puede tener además 0..N prefacturas
       // secundarias/ajuste (ver Validación ODT / Escaneo), y este semáforo
@@ -64,7 +72,14 @@ export async function obtenerControlPlaca(
 
   const prefacturaPorPlaca = new Map<
     string,
-    { id: string; numero: string | null; total: number; cantidadOdt: number; estado: string }
+    {
+      id: string;
+      numero: string | null;
+      total: number;
+      cantidadOdt: number;
+      estado: string;
+      avisoDatosMinimos: string | null;
+    }
   >();
   for (const p of (prefacturas ?? []) as unknown as {
     id: string;
@@ -73,16 +88,24 @@ export async function obtenerControlPlaca(
     cantidad_odt: number;
     estado: string;
     placa_normalizada: string;
+    vehiculo_id: string | null;
+    transportista_id: string | null;
   }[]) {
     // placa_normalizada vive directo en prefactura (ya no hace falta pasar
     // por vehiculo): así también aparecen las prefacturas "mínimas", sin
     // vehículo registrado todavía (ver generar_prefacturas_periodo).
+    const avisoDatosMinimos = !p.vehiculo_id
+      ? "Sin vehículo registrado"
+      : !p.transportista_id
+        ? "Sin transportista asignado"
+        : null;
     prefacturaPorPlaca.set(p.placa_normalizada, {
       id: p.id,
       numero: p.numero,
       total: p.total,
       cantidadOdt: p.cantidad_odt,
       estado: p.estado,
+      avisoDatosMinimos,
     });
     placas.add(p.placa_normalizada);
   }
@@ -109,6 +132,7 @@ export async function obtenerControlPlaca(
       estadoPrefactura: pref?.estado ?? null,
       novedadesError: nov.error,
       novedadesAdvertencia: nov.advertencia,
+      avisoDatosMinimos: pref?.avisoDatosMinimos ?? null,
     };
   });
 
@@ -127,9 +151,11 @@ export async function obtenerControlPlaca(
   if (filtros.severidad === "ERROR") {
     resultado = resultado.filter((f) => f.novedadesError > 0);
   } else if (filtros.severidad === "ADVERTENCIA") {
-    resultado = resultado.filter((f) => f.novedadesAdvertencia > 0);
+    resultado = resultado.filter((f) => f.novedadesAdvertencia > 0 || f.avisoDatosMinimos !== null);
   } else if (filtros.severidad === "SIN_NOVEDADES") {
-    resultado = resultado.filter((f) => f.novedadesError + f.novedadesAdvertencia === 0);
+    resultado = resultado.filter(
+      (f) => f.novedadesError + f.novedadesAdvertencia === 0 && f.avisoDatosMinimos === null,
+    );
   }
 
   return resultado;
