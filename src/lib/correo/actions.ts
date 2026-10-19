@@ -239,6 +239,14 @@ export async function encolarEnviosAction(prefacturaIds: string[]): Promise<Resu
 }
 
 const TAMANO_LOTE_CONSULTA = 500;
+// Descargas de Storage en paralelo, en lotes chicos, para
+// encolarConsolidadoSinCorreo: con cientos de prefacturas sin correo,
+// descargarlas una por una (secuencial) se arriesgaba a superar el tiempo
+// máximo de la función a mitad de camino — antes de llegar a corregir el
+// total del lote, dejándolo "pegado" mostrando el total original aunque ya
+// no quedara nada pendiente (ver incidente real: lote marcado 388 con solo
+// 145 filas realmente encoladas).
+const CONCURRENCIA_DESCARGA = 20;
 
 function enLotes<T>(items: T[], tamano: number): T[][] {
   const lotes: T[][] = [];
@@ -437,14 +445,24 @@ async function encolarConsolidadoSinCorreo(
 
   // Solo cuentan (y se listan) las que realmente se pudieron descargar y
   // meter al ZIP — si alguna falla, queda como omitida en vez de aparentar
-  // que se envió sin estarlo realmente adjunta.
+  // que se envió sin estarlo realmente adjunta. En lotes paralelos chicos
+  // (CONCURRENCIA_DESCARGA), no una por una: ver el comentario en esa
+  // constante.
   const cubiertas: PrefacturaSinCorreo[] = [];
   const archivos: { nombreArchivo: string; contenido: Buffer }[] = [];
-  for (const item of sinCorreo) {
-    const { data: blob } = await supabase.storage.from("prefacturas").download(item.storageKey);
-    if (blob) {
-      archivos.push({ nombreArchivo: item.nombreArchivo, contenido: Buffer.from(await blob.arrayBuffer()) });
-      cubiertas.push(item);
+  for (const lote of enLotes(sinCorreo, CONCURRENCIA_DESCARGA)) {
+    const descargados = await Promise.all(
+      lote.map(async (item) => {
+        const { data: blob } = await supabase.storage.from("prefacturas").download(item.storageKey);
+        if (!blob) return null;
+        return { item, contenido: Buffer.from(await blob.arrayBuffer()) };
+      }),
+    );
+    for (const d of descargados) {
+      if (d) {
+        archivos.push({ nombreArchivo: d.item.nombreArchivo, contenido: d.contenido });
+        cubiertas.push(d.item);
+      }
     }
   }
   if (archivos.length === 0) return 0;
