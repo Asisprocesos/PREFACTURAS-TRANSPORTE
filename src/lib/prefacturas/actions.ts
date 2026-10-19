@@ -12,6 +12,7 @@ export interface ResultadoGeneracion extends ResultadoAccion {
   creadas?: number;
   actualizadas?: number;
   requierenRegenerar?: number;
+  zipAReenviar?: number;
 }
 
 /** Para el botón "Generar todos los PDF del período" (ver generar-todos-pdf-button.tsx). */
@@ -39,6 +40,7 @@ export async function generarPrefacturasPeriodoAction(periodoId: string): Promis
     creadas: resumen?.prefacturas_creadas,
     actualizadas: resumen?.prefacturas_actualizadas,
     requierenRegenerar: resumen?.prefacturas_requieren_regenerar,
+    zipAReenviar: resumen?.prefacturas_zip_a_reenviar,
   };
 }
 

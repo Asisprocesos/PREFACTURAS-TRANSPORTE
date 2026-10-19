@@ -190,10 +190,15 @@ export async function POST(request: Request) {
           // para que "Enviar seleccionados"/"Envíos de correos de todo el
           // período" la sigan ofreciendo pendiente de un envío real una vez
           // se desactive el modo prueba, sin tener que hacer nada a mano.
-          await supabase
-            .from("prefactura")
-            .update({ estado: modoPrueba ? "PDF_GENERADO" : "ENVIADA" })
-            .in("id", prefacturaIds);
+          //
+          // Un envío consolidado (ZIP a prefacturas sin correo registrado,
+          // ver encolarConsolidadoSinCorreo) tampoco llegó al transportista
+          // real — solo al destinatario de respaldo — así que se distingue
+          // con ENVIADA_ZIP en vez de ENVIADA: generar_prefacturas_periodo
+          // la revierte sola a PDF_GENERADO en cuanto detecta un correo
+          // real registrado, para que vuelva a ofrecerse para un envío real.
+          const estadoExito = modoPrueba ? "PDF_GENERADO" : envio.zip_storage_key ? "ENVIADA_ZIP" : "ENVIADA";
+          await supabase.from("prefactura").update({ estado: estadoExito }).in("id", prefacturaIds);
         }
       } else if (resultado.cupoAgotado) {
         // No es culpa de este correo ni de los que siguen en el lote: la

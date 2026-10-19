@@ -20,6 +20,7 @@ export type EstadoPrefactura =
   | "PDF_GENERADO"
   | "EN_COLA_ENVIO"
   | "ENVIADA"
+  | "ENVIADA_ZIP"
   | "ERROR_ENVIO"
   | "REQUIERE_REGENERAR"
   | "ANULADA";
@@ -965,6 +966,7 @@ export interface Database {
           prefacturas_creadas: number;
           prefacturas_actualizadas: number;
           prefacturas_requieren_regenerar: number;
+          prefacturas_zip_a_reenviar: number;
         }[];
       };
       tomar_lote_envio_correo: {

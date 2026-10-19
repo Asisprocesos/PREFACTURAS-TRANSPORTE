@@ -46,6 +46,7 @@ export default async function DashboardPage({
     indicadores.novedadesAbiertasInfo;
   const prefacturasRequierenRegenerar =
     porEstado.find((p) => p.estado === "REQUIERE_REGENERAR")?.cantidad ?? 0;
+  const prefacturasEnviadaZip = porEstado.find((p) => p.estado === "ENVIADA_ZIP")?.cantidad ?? 0;
 
   const irAPrefacturas = (estado?: string) =>
     `/prefacturas?periodo=${periodoId}${estado ? `&estado=${estado}` : ""}`;
@@ -106,6 +107,16 @@ export default async function DashboardPage({
       valor: formatoEntero.format(prefacturasSinCorreo),
       destacar: prefacturasSinCorreo > 0,
       nota: prefacturasSinCorreo > 0 ? "Regístrales un correo en Vehículos o Transportistas." : undefined,
+    },
+    {
+      titulo: "Enviadas solo por ZIP de respaldo",
+      valor: formatoEntero.format(prefacturasEnviadaZip),
+      destacar: prefacturasEnviadaZip > 0,
+      href: irAPrefacturas("ENVIADA_ZIP"),
+      nota:
+        prefacturasEnviadaZip > 0
+          ? 'No llegaron al correo real del transportista. Registra el correo y dale a "Generar prefacturas del período" para que vuelvan a ofrecerse.'
+          : undefined,
     },
     {
       titulo: "Transportistas activos",

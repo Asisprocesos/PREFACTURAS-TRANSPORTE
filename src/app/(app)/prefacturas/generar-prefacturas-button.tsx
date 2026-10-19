@@ -27,6 +27,11 @@ export function GenerarPrefacturasButton({ periodoId }: { periodoId: string | un
         `${resultado.requierenRegenerar} cambiaron de transportista y quedaron marcadas "Requiere regenerar"`,
       );
     }
+    if (resultado.zipAReenviar) {
+      partes.push(
+        `${resultado.zipAReenviar} que se habían enviado solo por el ZIP de respaldo ya tienen correo real y quedaron listas para reenviar`,
+      );
+    }
     setMensaje(`${partes.join(", ")}.`);
     router.refresh();
   }

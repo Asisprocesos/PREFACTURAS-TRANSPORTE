@@ -29,6 +29,7 @@ const ETIQUETA_ESTADO: Record<string, string> = {
   PDF_GENERADO: "PDF generado",
   EN_COLA_ENVIO: "En cola de envío",
   ENVIADA: "Enviada",
+  ENVIADA_ZIP: "Enviada (ZIP de respaldo)",
   ERROR_ENVIO: "Error de envío",
   REQUIERE_REGENERAR: "Requiere regenerar",
   ANULADA: "Anulada",

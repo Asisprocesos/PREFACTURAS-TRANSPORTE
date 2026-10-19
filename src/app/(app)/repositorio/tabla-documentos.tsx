@@ -24,6 +24,7 @@ const ETIQUETA_ENVIO: Record<string, string> = {
   PDF_GENERADO: "No enviado",
   EN_COLA_ENVIO: "En cola",
   ENVIADA: "Enviado",
+  ENVIADA_ZIP: "Enviado por ZIP (sin correo real)",
   ERROR_ENVIO: "Error de envío",
   REQUIERE_REGENERAR: "Requiere regenerar",
   ANULADA: "Anulada",
@@ -175,7 +176,9 @@ export function TablaDocumentos({
                               ? "rounded-full bg-primary/20 px-2 py-0.5 text-xs font-medium"
                               : d.prefactura.estado === "ERROR_ENVIO"
                                 ? "rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive"
-                                : "rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                                : d.prefactura.estado === "ENVIADA_ZIP"
+                                  ? "rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                                  : "rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
                           }
                         >
                           {ETIQUETA_ENVIO[d.prefactura.estado] ?? d.prefactura.estado}

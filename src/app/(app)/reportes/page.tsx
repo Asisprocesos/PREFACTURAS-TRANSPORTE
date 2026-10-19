@@ -33,7 +33,7 @@ const REPORTES = [
     tipo: "generadas-sin-enviar",
     titulo: "Prefacturas generadas sin enviar",
     descripcion:
-      "Prefacturas con PDF ya listo (vigente) que todavía no llegan a Enviada: en cola, con error, o requieren regenerar. Para descargar y enviar manualmente, como alternativa al ZIP de respaldo.",
+      "Prefacturas con PDF ya listo (vigente) que todavía no llegan a Enviada: en cola, con error, requieren regenerar, o se enviaron solo por el ZIP de respaldo sin llegar al correo real. Para descargar y enviar manualmente.",
     usaTransportista: true,
   },
   {

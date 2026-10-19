@@ -35,7 +35,13 @@ const TIPOS_VALIDOS = [
 // que ni siquiera tienen PDF generado), esta lista es justo la que sirve
 // para descargar y reenviar manualmente: alternativa al ZIP de respaldo
 // cuando no se quiere depender de ese envío automático (ver encolarConsolidadoSinCorreo).
-const ESTADOS_GENERADOS_SIN_ENVIAR = ["PDF_GENERADO", "EN_COLA_ENVIO", "ERROR_ENVIO", "REQUIERE_REGENERAR"];
+const ESTADOS_GENERADOS_SIN_ENVIAR = [
+  "PDF_GENERADO",
+  "EN_COLA_ENVIO",
+  "ERROR_ENVIO",
+  "REQUIERE_REGENERAR",
+  "ENVIADA_ZIP",
+];
 type TipoReporte = (typeof TIPOS_VALIDOS)[number];
 
 function construirLibro(hojas: { nombre: string; filas: FilaExcel[] }[]): Buffer {
