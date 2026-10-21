@@ -106,7 +106,8 @@ export default async function DashboardPage({
       titulo: "Sin correo registrado",
       valor: formatoEntero.format(prefacturasSinCorreo),
       destacar: prefacturasSinCorreo > 0,
-      nota: prefacturasSinCorreo > 0 ? "Regístrales un correo en Vehículos o Transportistas." : undefined,
+      href: `/dashboard/sin-correo?periodo=${periodoId}`,
+      nota: prefacturasSinCorreo > 0 ? "Haz clic para registrarlos directamente." : undefined,
     },
     {
       titulo: "Enviadas solo por ZIP de respaldo",

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { nombreTransportista } from "@/lib/transportistas/display";
 
 export interface IndicadoresDashboard {
   totalPrefacturas: number;
@@ -103,14 +104,27 @@ export async function obtenerMontoPorRegional(periodoId: string | null): Promise
   return (data ?? []).map((f) => ({ nombre: f.regional, monto: f.monto, cantidad: f.cantidad }));
 }
 
+export interface ItemSinCorreo {
+  id: string;
+  etiqueta: string;
+}
+
+export interface SinCorreoPeriodo {
+  prefacturasAfectadas: number;
+  vehiculos: ItemSinCorreo[];
+  transportistas: ItemSinCorreo[];
+}
+
+const SIN_CORREO_VACIO: SinCorreoPeriodo = { prefacturasAfectadas: 0, vehiculos: [], transportistas: [] };
+
 /**
- * Prefacturas del período sin NINGÚN correo de contacto registrado (ni en
- * el vehículo ni en el transportista) — se detectarían recién al intentar
- * enviar (ver encolarEnviosAction), así que este indicador sirve de aviso
- * temprano para ir a completar el dato en Vehículos/Transportistas.
+ * Vehículos y transportistas del período sin NINGÚN correo de contacto
+ * registrado — se detectarían recién al intentar enviar (ver
+ * encolarEnviosAction), así que esto sirve de aviso temprano y de atajo
+ * para ir a completar el dato directamente.
  */
-export async function contarPrefacturasSinCorreo(periodoId: string | null): Promise<number> {
-  if (!periodoId) return 0;
+export async function listarSinCorreo(periodoId: string | null): Promise<SinCorreoPeriodo> {
+  if (!periodoId) return SIN_CORREO_VACIO;
   const supabase = await createClient();
   const { data: prefacturas, error } = await supabase
     .from("prefactura")
@@ -120,7 +134,7 @@ export async function contarPrefacturasSinCorreo(periodoId: string | null): Prom
     // su original, así que contarlas aparte solo duplicaría el aviso.
     .eq("es_principal", true);
   if (error) throw error;
-  if (!prefacturas || prefacturas.length === 0) return 0;
+  if (!prefacturas || prefacturas.length === 0) return SIN_CORREO_VACIO;
 
   const vehiculoIds = [...new Set(prefacturas.map((p) => p.vehiculo_id).filter((id): id is string => !!id))];
   const transportistaIds = [
@@ -139,11 +153,43 @@ export async function contarPrefacturasSinCorreo(periodoId: string | null): Prom
   const vehiculosConCorreo = new Set((contactosVehiculo ?? []).map((c) => c.vehiculo_id));
   const transportistasConCorreo = new Set((contactosTransportista ?? []).map((c) => c.transportista_id));
 
-  return prefacturas.filter(
+  const prefacturasSinCorreo = prefacturas.filter(
     (p) =>
       !(p.vehiculo_id && vehiculosConCorreo.has(p.vehiculo_id)) &&
       !(p.transportista_id && transportistasConCorreo.has(p.transportista_id)),
-  ).length;
+  );
+  if (prefacturasSinCorreo.length === 0) return SIN_CORREO_VACIO;
+
+  const vehiculoIdsAMostrar = [
+    ...new Set(prefacturasSinCorreo.map((p) => p.vehiculo_id).filter((id): id is string => !!id)),
+  ];
+  const transportistaIdsAMostrar = [
+    ...new Set(prefacturasSinCorreo.map((p) => p.transportista_id).filter((id): id is string => !!id)),
+  ];
+
+  const [{ data: vehiculosData }, { data: transportistasData }] = await Promise.all([
+    vehiculoIdsAMostrar.length > 0
+      ? supabase.from("vehiculo").select("id, placa").in("id", vehiculoIdsAMostrar)
+      : Promise.resolve({ data: [] as { id: string; placa: string }[] }),
+    transportistaIdsAMostrar.length > 0
+      ? supabase.from("transportista").select("id, razon_social, nombre").in("id", transportistaIdsAMostrar)
+      : Promise.resolve({ data: [] as { id: string; razon_social: string; nombre: string | null }[] }),
+  ]);
+
+  return {
+    prefacturasAfectadas: prefacturasSinCorreo.length,
+    vehiculos: (vehiculosData ?? [])
+      .map((v) => ({ id: v.id, etiqueta: v.placa }))
+      .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta)),
+    transportistas: (transportistasData ?? [])
+      .map((t) => ({ id: t.id, etiqueta: nombreTransportista(t) ?? t.razon_social }))
+      .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta)),
+  };
+}
+
+export async function contarPrefacturasSinCorreo(periodoId: string | null): Promise<number> {
+  const resultado = await listarSinCorreo(periodoId);
+  return resultado.prefacturasAfectadas;
 }
 
 export interface PuntoTopPlaca {
