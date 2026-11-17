@@ -192,6 +192,7 @@ export function PasoMapeo({
     }
     setCargando(true);
     setError(null);
+    const inicio = Date.now();
     try {
       const resumen = await validarImportacionAction({
         importacionId,
@@ -203,6 +204,19 @@ export function PasoMapeo({
       });
       onValidado(resumen);
     } catch (e) {
+      // Con archivos grandes, el servidor puede terminar de validar bien
+      // aunque la respuesta nunca llegue al navegador (conexión
+      // inestable/larga) — mismo riesgo ya conocido y mitigado en
+      // "Confirmar importación" (ver confirmar() en detalle-importacion.tsx).
+      // Un error que tarda poco es un error real (ej. falta un período);
+      // uno que tarda mucho antes de fallar probablemente sí procesó todo
+      // del lado del servidor, así que se recarga la página entera para
+      // ver el resultado real en vez de mostrar un error falso o arriesgar
+      // una revalidación completa duplicada.
+      if (Date.now() - inicio > 10_000) {
+        window.location.reload();
+        return;
+      }
       setError(e instanceof Error ? e.message : "No se pudo validar la importación.");
     } finally {
       setCargando(false);
