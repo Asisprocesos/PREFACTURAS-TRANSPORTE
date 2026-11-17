@@ -21,6 +21,20 @@ export interface ResumenValidacion {
 }
 
 const TAMANO_LOTE_INSERT = 500;
+// Con 10 000+ filas, 500 por lote son 20+ round-trips: en secuencial (uno
+// esperando al anterior) la suma fácilmente supera el tiempo máximo de la
+// función a mitad de camino, y como la función muere ahí mismo (sin
+// lanzar un error que el cliente pueda mostrar), en pantalla solo se ve
+// "Validando..." volviendo a "Validar" sin ningún cambio — justo el
+// síntoma reportado. Mismo patrón ya aplicado en correo/actions.ts
+// (CONCURRENCIA_DESCARGA) para el mismo problema de fondo.
+const CONCURRENCIA_LOTES = 10;
+
+function enLotes<T>(items: T[], tamano: number): T[][] {
+  const lotes: T[][] = [];
+  for (let i = 0; i < items.length; i += tamano) lotes.push(items.slice(i, i + tamano));
+  return lotes;
+}
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -80,11 +94,16 @@ export async function construirContextoBase(
  */
 async function buscarGuiasExistentes(supabase: SupabaseServerClient, guias: string[]): Promise<Set<string>> {
   const encontradas = new Set<string>();
-  for (let i = 0; i < guias.length; i += TAMANO_LOTE_INSERT) {
-    const lote = guias.slice(i, i + TAMANO_LOTE_INSERT);
-    const { data, error } = await supabase.from("odt").select("guia").in("guia", lote);
-    if (error) throw new Error(`Error consultando guías existentes (lote ${i}): ${error.message}`);
-    for (const fila of data ?? []) encontradas.add(fila.guia.toUpperCase());
+  const lotes = enLotes(guias, TAMANO_LOTE_INSERT);
+  for (const grupo of enLotes(lotes, CONCURRENCIA_LOTES)) {
+    const resultados = await Promise.all(
+      grupo.map(async (lote) => {
+        const { data, error } = await supabase.from("odt").select("guia").in("guia", lote);
+        if (error) throw new Error(`Error consultando guías existentes: ${error.message}`);
+        return data ?? [];
+      }),
+    );
+    for (const data of resultados) for (const fila of data) encontradas.add(fila.guia.toUpperCase());
   }
   return encontradas;
 }
@@ -195,10 +214,14 @@ export async function validarImportacionAction(datos: {
 
   // 4. Reemplazar el staging previo (revalidación) e insertar por lotes.
   await supabase.from("importacion_fila").delete().eq("importacion_id", datos.importacionId);
-  for (let i = 0; i < filasParaInsertarEnBD.length; i += TAMANO_LOTE_INSERT) {
-    const lote = filasParaInsertarEnBD.slice(i, i + TAMANO_LOTE_INSERT);
-    const { error } = await supabase.from("importacion_fila").insert(lote);
-    if (error) throw new Error(`Error guardando el staging (lote ${i}): ${error.message}`);
+  const lotesInsert = enLotes(filasParaInsertarEnBD, TAMANO_LOTE_INSERT);
+  for (const grupo of enLotes(lotesInsert, CONCURRENCIA_LOTES)) {
+    await Promise.all(
+      grupo.map(async (lote) => {
+        const { error } = await supabase.from("importacion_fila").insert(lote);
+        if (error) throw new Error(`Error guardando el staging: ${error.message}`);
+      }),
+    );
   }
 
   await supabase

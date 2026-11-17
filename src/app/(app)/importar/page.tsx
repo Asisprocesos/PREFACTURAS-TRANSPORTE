@@ -9,9 +9,12 @@ import { ImportacionesRecientes } from "./importaciones-recientes";
 
 // validarImportacionAction procesa el archivo completo (parseo + validación
 // fila a fila + inserts por lote al staging) en un solo Server Action, que
-// hereda este límite de la página que lo invoca. Con archivos de varios
-// miles de filas, el límite por defecto de Vercel se queda corto.
-export const maxDuration = 60;
+// hereda este límite de la página que lo invoca. Con archivos de 10 000+
+// filas, 60s no alcanzaba incluso con los lotes en paralelo (ver
+// CONCURRENCIA_LOTES en validar-action.ts) — la función moría a mitad de
+// camino sin llegar a lanzar un error, así que en pantalla solo se veía
+// "Validando..." volviendo a "Validar" sin ningún cambio.
+export const maxDuration = 300;
 
 export default async function ImportarPage() {
   const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE"]);

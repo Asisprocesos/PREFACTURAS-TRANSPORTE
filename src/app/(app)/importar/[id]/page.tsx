@@ -9,7 +9,7 @@ import { DetalleImportacion } from "./detalle-importacion";
 // confirmarLoteImportacionAction, validarImportacionAction (al reanudar un
 // BORRADOR) y la revalidación de filas se invocan desde esta página; heredan
 // este límite (ver el mismo comentario en /importar).
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export default async function DetalleImportacionPage({ params }: { params: Promise<{ id: string }> }) {
   const perfil = await requireRole(["ADMIN", "OPERADOR_TRANSPORTE", "CONSULTA"]);
