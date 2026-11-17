@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireRole } from "@/lib/auth/roles";
 import {
+  contarOdtSinCentroCosto,
   contarPrefacturasSinCorreo,
   obtenerIndicadoresDashboard,
   obtenerMontoPorCentroCosto,
@@ -30,15 +31,23 @@ export default async function DashboardPage({
   const periodos = await listarPeriodosParaSelect();
   const periodoId = params.periodo || periodos.find((p) => p.estado === "ABIERTO")?.id || periodos[0]?.id;
 
-  const [indicadores, montoPorCentroCosto, montoPorRegional, topPlacas, porEstado, prefacturasSinCorreo] =
-    await Promise.all([
-      obtenerIndicadoresDashboard(periodoId ?? null),
-      obtenerMontoPorCentroCosto(periodoId ?? null),
-      obtenerMontoPorRegional(periodoId ?? null),
-      obtenerTopPlacas(periodoId ?? null),
-      obtenerPrefacturasPorEstado(periodoId ?? null),
-      contarPrefacturasSinCorreo(periodoId ?? null),
-    ]);
+  const [
+    indicadores,
+    montoPorCentroCosto,
+    montoPorRegional,
+    topPlacas,
+    porEstado,
+    prefacturasSinCorreo,
+    odtSinCentroCosto,
+  ] = await Promise.all([
+    obtenerIndicadoresDashboard(periodoId ?? null),
+    obtenerMontoPorCentroCosto(periodoId ?? null),
+    obtenerMontoPorRegional(periodoId ?? null),
+    obtenerTopPlacas(periodoId ?? null),
+    obtenerPrefacturasPorEstado(periodoId ?? null),
+    contarPrefacturasSinCorreo(periodoId ?? null),
+    contarOdtSinCentroCosto(periodoId ?? null),
+  ]);
 
   const novedadesAbiertas =
     indicadores.novedadesAbiertasError +
@@ -74,6 +83,13 @@ export default async function DashboardPage({
       valor: formatoEntero.format(novedadesAbiertas),
       destacar: indicadores.novedadesAbiertasError > 0,
       href: `/control-placa?periodo=${periodoId}${indicadores.novedadesAbiertasError > 0 ? "&severidad=ERROR" : ""}`,
+    },
+    {
+      titulo: "ODT sin centro de costo",
+      valor: formatoEntero.format(odtSinCentroCosto),
+      destacar: odtSinCentroCosto > 0,
+      href: `/control-placa?periodo=${periodoId}&categoria=odt_sin_centro_costo`,
+      nota: odtSinCentroCosto > 0 ? "Reclasifica el Tipo de Ruta en Corrección masiva." : undefined,
     },
     {
       titulo: "PDF generado",

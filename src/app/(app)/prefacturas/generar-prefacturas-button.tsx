@@ -32,6 +32,11 @@ export function GenerarPrefacturasButton({ periodoId }: { periodoId: string | un
         `${resultado.zipAReenviar} que se habían enviado solo por el ZIP de respaldo ya tienen correo real y quedaron listas para reenviar`,
       );
     }
+    if (resultado.odtSinCentroCosto) {
+      partes.push(
+        `${resultado.odtSinCentroCosto} ODT del período sin centro de costo asignado (revísalas en Control por placa)`,
+      );
+    }
     setMensaje(`${partes.join(", ")}.`);
     router.refresh();
   }

@@ -64,6 +64,11 @@ const CATEGORIAS: DefinicionCategoria[] = [
     etiqueta: 'Estado distinto de "Entregado"',
     coincide: (m) => /^Estado ".*" distinto de Entregado: no se importa\.$/.test(m),
   },
+  {
+    id: "odt_sin_centro_costo",
+    etiqueta: "ODT sin centro de costo asignado",
+    coincide: (m) => m === "ODT sin centro de costo asignado.",
+  },
 ];
 
 /** Categoría de reserva para mensajes que no calzan con ningún patrón conocido. */

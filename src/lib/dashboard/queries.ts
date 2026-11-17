@@ -192,6 +192,25 @@ export async function contarPrefacturasSinCorreo(periodoId: string | null): Prom
   return resultado.prefacturasAfectadas;
 }
 
+/**
+ * ODT del período sin `centro_costo_final` (tipo de ruta no catalogado, o
+ * catalogado pero sin centro de costo asignado todavía) — se sincroniza
+ * también como novedad ADVERTENCIA al generar prefacturas del período (ver
+ * generar_prefacturas_periodo), esto es solo el conteo en vivo para el
+ * Dashboard.
+ */
+export async function contarOdtSinCentroCosto(periodoId: string | null): Promise<number> {
+  if (!periodoId) return 0;
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("odt")
+    .select("id", { count: "exact", head: true })
+    .eq("periodo_id", periodoId)
+    .is("centro_costo_final", null);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export interface PuntoTopPlaca {
   placa: string;
   transportista: string | null;

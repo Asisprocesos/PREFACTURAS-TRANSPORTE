@@ -4,6 +4,8 @@ import { obtenerDescuentosPorOdt } from "@/lib/descuentos/queries";
 import { createClient } from "@/lib/supabase/server";
 import type { Database, EstadoPrefactura } from "@/types/database.types";
 
+import { repartirJornadaCompleta, type FilaResumenFacturacion } from "./resumen";
+
 export type Prefactura = Database["public"]["Tables"]["prefactura"]["Row"];
 export type Odt = Database["public"]["Tables"]["odt"]["Row"];
 export type Novedad = Database["public"]["Tables"]["novedad"]["Row"];
@@ -115,14 +117,8 @@ export async function obtenerPrefactura(id: string): Promise<PrefacturaConRelaci
   return data as unknown as PrefacturaConRelaciones | null;
 }
 
-export interface FilaResumenFacturacion {
-  centro_costo_final: string | null;
-  regional: string | null;
-  ruta_macro: string | null;
-  cantidad: number | null;
-  suma: number | null;
-  valor_unitario_promedio: number | null;
-}
+export type { FilaResumenFacturacion } from "./resumen";
+export { repartirJornadaCompleta };
 
 export async function obtenerResumenFacturacion(prefacturaId: string): Promise<FilaResumenFacturacion[]> {
   const supabase = await createClient();
@@ -131,7 +127,7 @@ export async function obtenerResumenFacturacion(prefacturaId: string): Promise<F
     .select("*")
     .eq("prefactura_id", prefacturaId);
   if (error) throw error;
-  return data ?? [];
+  return repartirJornadaCompleta(data ?? []);
 }
 
 export async function obtenerDetalleOdt(prefacturaId: string): Promise<OdtConDescuento[]> {

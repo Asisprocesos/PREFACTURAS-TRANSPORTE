@@ -53,6 +53,10 @@ describe("categorizarNovedad", () => {
     );
   });
 
+  it("reconoce ODT sin centro de costo asignado", () => {
+    expect(categorizarNovedad("ODT sin centro de costo asignado.")).toBe("odt_sin_centro_costo");
+  });
+
   it("devuelve 'otra' para mensajes desconocidos", () => {
     expect(categorizarNovedad("Un mensaje que no existe en el catálogo.")).toBe("otra");
   });

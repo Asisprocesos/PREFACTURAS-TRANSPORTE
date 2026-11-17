@@ -967,6 +967,7 @@ export interface Database {
           prefacturas_actualizadas: number;
           prefacturas_requieren_regenerar: number;
           prefacturas_zip_a_reenviar: number;
+          odt_sin_centro_costo: number;
         }[];
       };
       tomar_lote_envio_correo: {
