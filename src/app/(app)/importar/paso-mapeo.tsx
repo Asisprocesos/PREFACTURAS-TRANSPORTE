@@ -208,16 +208,19 @@ export function PasoMapeo({
       // aunque la respuesta nunca llegue al navegador (conexión
       // inestable/larga) — mismo riesgo ya conocido y mitigado en
       // "Confirmar importación" (ver confirmar() en detalle-importacion.tsx).
-      // Un error que tarda poco es un error real (ej. falta un período);
-      // uno que tarda mucho antes de fallar probablemente sí procesó todo
-      // del lado del servidor, así que se recarga la página entera para
-      // ver el resultado real en vez de mostrar un error falso o arriesgar
-      // una revalidación completa duplicada.
-      if (Date.now() - inicio > 10_000) {
-        window.location.reload();
-        return;
-      }
-      setError(e instanceof Error ? e.message : "No se pudo validar la importación.");
+      // Antes, un fallo que tardaba más de 10 s se trataba directamente como
+      // ese caso y se recargaba la página a ciegas: eso escondía el error
+      // real justo en los archivos grandes (la pantalla volvía igual, sin
+      // ningún mensaje, con el mismo botón "Validar"). Ahora el mensaje se
+      // muestra siempre y sólo se avisa de que el servidor pudo haber
+      // terminado, para que se recargue antes de volver a validar en vez de
+      // arriesgar una revalidación completa duplicada.
+      const mensaje = e instanceof Error ? e.message : "No se pudo validar la importación.";
+      setError(
+        Date.now() - inicio > 10_000
+          ? `${mensaje} — Tardó más de 10 segundos, así que el servidor pudo haber terminado aunque la respuesta no llegara: recarga la página para ver el estado real antes de volver a validar.`
+          : mensaje,
+      );
     } finally {
       setCargando(false);
     }

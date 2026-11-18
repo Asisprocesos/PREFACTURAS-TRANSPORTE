@@ -213,7 +213,13 @@ export async function validarImportacionAction(datos: {
   });
 
   // 4. Reemplazar el staging previo (revalidación) e insertar por lotes.
-  await supabase.from("importacion_fila").delete().eq("importacion_id", datos.importacionId);
+  const { error: errorLimpiarStaging } = await supabase
+    .from("importacion_fila")
+    .delete()
+    .eq("importacion_id", datos.importacionId);
+  if (errorLimpiarStaging) {
+    throw new Error(`Error limpiando el staging previo: ${errorLimpiarStaging.message}`);
+  }
   const lotesInsert = enLotes(filasParaInsertarEnBD, TAMANO_LOTE_INSERT);
   for (const grupo of enLotes(lotesInsert, CONCURRENCIA_LOTES)) {
     await Promise.all(
@@ -224,7 +230,15 @@ export async function validarImportacionAction(datos: {
     );
   }
 
-  await supabase
+  // Este es el paso que mueve la importación a VALIDADA, y su error nunca se
+  // comprobaba: si fallaba, el staging quedaba completo (14 000+ filas en
+  // importacion_fila) pero la importación seguía en BORRADOR con 0 filas, la
+  // acción devolvía el resumen correcto igual y en pantalla se veía como que
+  // "Validar" no hacía nada. `.select()` además distingue un error real de un
+  // update que no afectó ninguna fila (RLS, o un id que ya no existe), caso
+  // que PostgREST reporta sin error y que de otro modo volvería a ser un
+  // fallo invisible.
+  const { data: importacionValidada, error: errorEstadoValidada } = await supabase
     .from("importacion")
     .update({
       periodo_id: datos.periodoId,
@@ -236,7 +250,19 @@ export async function validarImportacionAction(datos: {
       estado: "VALIDADA",
       actualizar_existentes: actualizarExistentes,
     })
-    .eq("id", datos.importacionId);
+    .eq("id", datos.importacionId)
+    .select("id")
+    .maybeSingle();
+  if (errorEstadoValidada) {
+    throw new Error(
+      `El staging se guardó, pero no se pudo marcar la importación como VALIDADA: ${errorEstadoValidada.message}`,
+    );
+  }
+  if (!importacionValidada) {
+    throw new Error(
+      "El staging se guardó, pero la importación no quedó marcada como VALIDADA: el update no afectó ninguna fila. Revisa los permisos (RLS) sobre la tabla `importacion`.",
+    );
+  }
 
   return resumen;
 }
