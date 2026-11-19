@@ -11,6 +11,7 @@ import type { Importacion } from "@/lib/importador/queries";
 import { crearUrlDescargaImportacionAction } from "@/lib/importador/storage";
 import type { ResumenValidacion } from "@/lib/importador/validar-action";
 
+import { BotonEliminarImportacion } from "../boton-eliminar-importacion";
 import { PasoMapeo } from "../paso-mapeo";
 import { ResultadosValidacion } from "../resultados-validacion";
 import { Stepper } from "../stepper";
@@ -156,6 +157,13 @@ export function DetalleImportacion({
             <Button variant="destructive" onClick={revertir} disabled={cargando}>
               Revertir importación
             </Button>
+          ) : null}
+          {esAdmin ? (
+            <BotonEliminarImportacion
+              importacionId={importacion.id}
+              archivo={importacion.archivo}
+              alEliminar="detalle"
+            />
           ) : null}
         </div>
       ) : null}

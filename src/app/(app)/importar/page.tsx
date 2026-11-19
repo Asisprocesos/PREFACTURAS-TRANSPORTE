@@ -44,7 +44,7 @@ export default async function ImportarPage() {
         </div>
       </div>
       <ImportarWizard periodos={periodos} esAdmin={perfil.rol === "ADMIN"} />
-      <ImportacionesRecientes importaciones={recientes} />
+      <ImportacionesRecientes importaciones={recientes} esAdmin={perfil.rol === "ADMIN"} />
     </div>
   );
 }

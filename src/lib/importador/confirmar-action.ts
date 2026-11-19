@@ -93,6 +93,48 @@ export async function revertirImportacionAction(importacionId: string): Promise<
 }
 
 /**
+ * Elimina POR COMPLETO una importación (ODT que generó, prefacturas que se
+ * quedan sin ninguna ODT, novedades asociadas, el archivo en Storage y la
+ * fila de `importacion` misma) — a diferencia de "Revertir", que la deja
+ * marcada REVERTIDA pero conserva el registro. Como `hash_sha256` es único,
+ * una importación REVERTIDA que se queda ahí bloquea volver a subir
+ * exactamente el mismo archivo (lo manda de vuelta a un registro sin ningún
+ * paso siguiente); eliminar por completo libera ese hash para un reintento
+ * limpio. Solo ADMIN: a diferencia de Revertir, esto no se puede deshacer
+ * ni siquiera reimportando — se pierde el registro de auditoría.
+ */
+export async function eliminarImportacionAction(importacionId: string): Promise<ResultadoAccion> {
+  await requireRole(["ADMIN"]);
+  const supabase = await createClient();
+
+  const { data: importacion } = await supabase
+    .from("importacion")
+    .select("storage_key")
+    .eq("id", importacionId)
+    .maybeSingle();
+
+  const { error } = await supabase.rpc("eliminar_importacion", { p_importacion_id: importacionId });
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  // El borrado en BD ya quitó el conflicto real (hash_sha256 único); si
+  // Storage falla acá, el archivo queda huérfano pero sin efecto funcional
+  // (nada lo referencia ni lo vuelve a mostrar), así que no se bloquea el
+  // resultado por eso. Se hace DESPUÉS del borrado en BD (no antes): si el
+  // borrado en BD falla (ej. ya hay un envío ENVIADO), el archivo original
+  // sigue disponible para esa importación que no se tocó.
+  if (importacion?.storage_key) {
+    await supabase.storage.from("imports").remove([importacion.storage_key]);
+  }
+
+  revalidatePath("/importar");
+  revalidatePath("/control-placa");
+  revalidatePath("/prefacturas");
+  return { ok: true };
+}
+
+/**
  * Permite decidir manualmente una fila puntual antes de confirmar (Omitir /
  * Insertar de todas formas). Se usa desde la pestaña de Advertencias, donde
  * la fila ya no tiene errores estructurales y forzar la decisión es seguro.

@@ -960,6 +960,7 @@ export interface Database {
         }[];
       };
       revertir_importacion: { Args: { p_importacion_id: string }; Returns: undefined };
+      eliminar_importacion: { Args: { p_importacion_id: string }; Returns: undefined };
       generar_prefacturas_periodo: {
         Args: { p_periodo_id: string };
         Returns: {
